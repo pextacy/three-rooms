@@ -674,11 +674,46 @@ multi-action pattern does exactly what CANDLE does —
 the simulation result is not applied. Checked against the reference rather than
 assumed.
 
+### A second pass — five more
+
+**6. An unbounded loop in the settlement path.** `_draw` rehashed with
+`while (true)`. `claude.md` §3 forbids unbounded loops and this one is reached on
+every settle: a call that never returns reverts the whole settlement, and its gas
+cannot be reasoned about for an audit. Both languages now cap the rehash at
+**3** (64 windows). Reaching the cap needs every window to be rejected —
+`(5536/65536)^64 ≈ 4e-69`, rarer than a keccak collision — and it reverts loudly
+rather than spinning. The two bounds are pinned to each other by a test that reads
+the constant out of the Solidity, because a bound that differs between the mirror
+and the contract is a parity bug on a word neither will ever see.
+
+**7. `aria-modal="true"` was a claim the `?` panel did not honour.** No focus
+trap, so Tab walked straight out into a game the player could not see; and no
+focus restore, so closing it stranded anyone not using a mouse. Both fixed.
+
+**8. No favicon and no share metadata.** Every console a judge has open showed a
+404, and the URL pasted into a gallery or a chat said nothing. The favicon is an
+inline SVG candle in the four inks — **806 bytes, no extra request**, so the "no
+image over 8 KB" gate stays trivially true.
+
+**9. CI would have passed a broken RTP.** `verify:rtp` still carried
+`continue-on-error: true # until phase 1 lands the DP`, five phases after phase 1
+landed. The one number a judge checks could have gone wrong silently. Removed —
+and CI now has a second job that starts the chain and the VRF node, so `parity`,
+`caps` and `adversarial` **run** there instead of skipping, plus `round-trip` and
+`spike`.
+
+**10. A broken npm script and dead CSS.** `spike:phase0` pointed at contracts
+nothing copies into the simulator any more, and a `prefers-reduced-motion` rule
+disabled a CSS animation that does not exist (the flicker is drawn, not animated).
+The spikes keep a README saying what they were and how to run them; the CSS says
+where reduced motion is actually handled.
+
 ### What is left, and it is not code
 
 | | |
 |---|---|
 | Record the 60–90 s video | `?seed=198` — an early claim, a ride to the gutter, a 25× at the first inch |
+| Point CI at a remote | the workflow has never run; it needs a `git remote` and `vars.PRODUCTION_ORIGIN` |
 | Deploy the contract to the target chain | `RPC_URL=… DEPLOYER_KEY=… npm run deploy:contract` — the chain and the gas are the entrant's |
 | Submit at jam.chain.wtf | a form, under the entrant's name |
 

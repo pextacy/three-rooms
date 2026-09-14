@@ -3,13 +3,18 @@
   Phase 3 drives luminance from WAX_BP[k]; these are the full-flame anchors.
 */
 :root {
+  /*
+    Opening values only — these are the four inks AT THE FIRST INCH. From the
+    first frame on, `applySceneLight` overwrites them from `paletteAtWax`, so the
+    chrome dims with the room instead of floating above it in a fixed palette.
+    There is one light model, not two (src/render/light.ts).
+  */
   --ink: #0c0a07; /* the room */
   --ink-raised: #16120c;
   --tallow: #f6e6c4; /* the flame, live values */
-  --tallow-dim: #b9a07a;
-  --brass: #c8963c; /* the lot on the table */
-  --oxblood: #6d211b; /* a lot you let burn */
-  --oxblood-text: #b4574c; /* oxblood, lifted to stay legible on ink */
+  --brass: #e0b463; /* the lot on the table */
+  --oxblood: #8d3a30; /* a lot you let burn — never load-bearing text */
+  --wax: 1;
 
   /* Fixed type scale — hierarchy is carried by luminance, never by size. */
   --t-lot: 2.75rem;

@@ -25,3 +25,18 @@ time after 09-20.
   every word of a multi-step session. That is the whole Ledger (stretch item) for
   free, and it survives a page reload — which also answers the SDK's "refresh
   mid-round" unhappy-path test.
+
+## From phase 3
+
+- **Alias `preact/compat` for React.** React and ReactDOM are ~45 KB gzipped of an
+  85 KB bundle, for a UI that is two buttons, a stake field and a canvas. A vite
+  alias would cut the bundle to roughly 40 KB and take ~200 ms off the slow-4G cold
+  open. Not done in v1 because it is a dependency decision (`docs.md` §8) rather
+  than a rendering one, and `npm run cold-open` shows the 400 ms budget is already
+  met on broadband. Worth doing before the jam gallery, where every entry is an
+  iframe preview loading at once.
+
+- **Taper the flare.** The wick flares at the fifth inch and holds. A real wick
+  flares and *then* dies, so the flare should decay into the gutter rather than
+  sitting at full brightness until the round settles. Cheap; it just needs the
+  settle event to drive it, which is phase 4's pacing work anyway.

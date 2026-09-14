@@ -12,3 +12,23 @@ createRoot(root).render(
     <App />
   </StrictMode>,
 );
+
+/**
+ * Cold open, measured rather than hoped (prd.md §7: p95 < 400 ms, hard budget
+ * 1,200 ms). The mark lands on the first frame after the tree is interactive —
+ * with the free-play host that is a playable frame, since there is no wallet,
+ * no modal and no splash to get through (claude.md I10).
+ *
+ * `npm run cold-open` reads this back; the browser console can too.
+ */
+declare global {
+  interface Window {
+    __candleColdOpenMs?: number;
+  }
+}
+
+requestAnimationFrame(() => {
+  const now = performance.now();
+  window.__candleColdOpenMs = now;
+  performance.mark?.('candle:playable');
+});

@@ -8,8 +8,8 @@
   min-height: 100svh;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 1.25rem;
-  padding: 1rem clamp(1rem, 4vw, 2.5rem) 1.75rem;
+  gap: clamp(0.5rem, 2vh, 1.25rem);
+  padding: 0.75rem clamp(0.85rem, 4vw, 2.5rem) 1.25rem;
   max-width: 46rem;
   margin: 0 auto;
 }
@@ -25,7 +25,7 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgb(246 230 196 / 0.12);
+  border-bottom: 1px solid rgb(from var(--tallow) r g b / 0.12);
 }
 
 .top__mark {
@@ -39,7 +39,7 @@
   font-family: var(--font-num);
   font-size: var(--t-label);
   letter-spacing: 0.1em;
-  color: var(--oxblood-text);
+  color: var(--oxblood);
   border: 1px solid var(--oxblood-text);
   border-radius: 2px;
   padding: 0.15rem 0.4rem;
@@ -55,93 +55,86 @@
   flex: 1;
 }
 
-/* --- stage -------------------------------------------------------------- */
+/* --- stage: the one canvas, plus the accessible readout --------------- */
 .stage {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: clamp(1rem, 5vw, 2.5rem);
-  align-items: center;
+  /* The scene needs room to be a room. On a short viewport it gives way to the
+     switches rather than pushing them off the screen. */
+  min-height: clamp(11rem, 38vh, 22rem);
 }
 
-.candle {
-  display: grid;
-  gap: 0.4rem;
-  justify-items: center;
+/*
+  The canvas IS the scene. It fills the stage and the readout sits over it, so
+  the room is behind the words rather than beside them.
+*/
+.scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.candle__pin {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--tallow);
-  box-shadow: 0 0 6px rgb(246 230 196 / 0.5);
+.readout {
+  position: relative;
+  align-self: end;
+  padding: 1rem 0 0;
 }
 
-.candle__pin--fallen {
-  background: transparent;
-  border: 1px solid rgb(246 230 196 / 0.22);
-  box-shadow: none;
-}
-
-.candle__inch {
-  margin-top: 0.35rem;
-  font-family: var(--font-num);
-  font-size: var(--t-label);
-  color: var(--tallow-dim);
-  white-space: nowrap;
-}
-
-/* --- the lot ------------------------------------------------------------ */
-.lot__label,
-.lot__waiting {
+.readout__label,
+.readout__line {
   margin: 0 0 0.35rem;
   font-family: var(--font-num);
   font-size: var(--t-label);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--tallow-dim);
-}
-
-.lot__name {
-  margin: 0;
-  font-size: 1.5rem;
-  color: var(--brass);
-}
-
-.lot__name--empty {
-  color: var(--oxblood-text);
-}
-
-.lot__face {
-  margin: 0.1rem 0 0.9rem;
-  font-family: var(--font-num);
-  font-size: var(--t-lot);
-  line-height: 1;
   color: var(--tallow);
+  opacity: 0.62;
 }
 
-.lot__facts {
+/*
+  The canvas already draws the lot's name, face value and payout. These repeat
+  them for screen readers and for anyone whose browser has no canvas, so they
+  are hidden from sight rather than deleted — the facts must exist in the DOM.
+*/
+.readout__name,
+.readout__face {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.readout__facts {
   display: grid;
-  gap: 0.55rem;
+  grid-auto-flow: column;
+  justify-content: start;
+  gap: 2rem;
   margin: 0;
 }
 
-.lot__facts dt {
+.readout__facts dt {
   font-family: var(--font-num);
   font-size: var(--t-label);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--tallow-dim);
+  color: var(--tallow);
+  opacity: 0.62;
 }
 
-.lot__facts dd {
-  margin: 0.1rem 0 0;
+.readout__facts dd {
+  margin: 0.15rem 0 0;
   color: var(--tallow);
 }
 
-.lot__payout {
+.readout__payout {
   font-family: var(--font-num);
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   color: var(--brass);
 }
 
@@ -158,11 +151,11 @@
 .settled__line {
   margin: 0;
   font-size: var(--t-body);
-  color: var(--tallow-dim);
+  color: var(--tallow); opacity: 0.62;
 }
 
 .switches__error {
-  color: var(--oxblood-text);
+  color: var(--oxblood);
 }
 
 .settled {
@@ -188,16 +181,16 @@
 .btn--burn {
   color: var(--tallow);
   background: transparent;
-  border-color: rgb(246 230 196 / 0.35);
+  border-color: rgb(from var(--tallow) r g b / 0.35);
 }
 
 .btn--ghost {
   width: auto;
   padding: 0.25rem 0.55rem;
   font-size: var(--t-label);
-  color: var(--tallow-dim);
+  color: var(--tallow); opacity: 0.62;
   background: transparent;
-  border-color: rgb(246 230 196 / 0.2);
+  border-color: rgb(from var(--tallow) r g b / 0.2);
   letter-spacing: 0.08em;
 }
 
@@ -237,7 +230,7 @@ kbd {
   font-size: var(--t-label);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--tallow-dim);
+  color: var(--tallow); opacity: 0.62;
 }
 
 .stake__input {
@@ -248,14 +241,14 @@ kbd {
   padding: 0.4rem 0.5rem;
   color: var(--tallow);
   background: var(--ink-raised);
-  border: 1px solid rgb(246 230 196 / 0.25);
+  border: 1px solid rgb(from var(--tallow) r g b / 0.25);
   border-radius: 2px;
 }
 
 .stake__symbol {
   font-family: var(--font-num);
   font-size: var(--t-label);
-  color: var(--tallow-dim);
+  color: var(--tallow); opacity: 0.62;
 }
 
 .stake .btn,
@@ -266,14 +259,14 @@ kbd {
 .stake__error {
   margin: 0;
   font-size: var(--t-label);
-  color: var(--oxblood-text);
+  color: var(--oxblood);
 }
 
 /* --- the ? panel -------------------------------------------------------- */
 .panel {
   position: fixed;
   inset: 0;
-  background: rgb(12 10 7 / 0.94);
+  background: rgb(from var(--ink) r g b / 0.96);
   overflow-y: auto;
   z-index: 10;
 }
@@ -329,7 +322,7 @@ kbd {
   margin: 0.6rem 0 0;
   font-size: var(--t-label);
   line-height: 1.6;
-  color: var(--tallow-dim);
+  color: var(--tallow); opacity: 0.62;
 }
 
 .panel__verify {
@@ -347,7 +340,7 @@ kbd {
 .grid td {
   padding: 0.3rem 0.5rem 0.3rem 0;
   text-align: left;
-  border-bottom: 1px solid rgb(246 230 196 / 0.1);
+  border-bottom: 1px solid rgb(from var(--tallow) r g b / 0.1);
   color: var(--tallow);
 }
 
@@ -357,7 +350,7 @@ kbd {
   font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--tallow-dim);
+  color: var(--tallow); opacity: 0.62;
 }
 
 .grid .num,
@@ -378,7 +371,7 @@ kbd {
 }
 
 .facts dt {
-  color: var(--tallow-dim);
+  color: var(--tallow); opacity: 0.62;
   font-size: var(--t-body);
 }
 
@@ -393,21 +386,79 @@ kbd {
 }
 
 .muted {
-  color: var(--tallow-dim);
+  color: var(--tallow); opacity: 0.62;
 }
 
+/* --- phone ------------------------------------------------------------- */
 @media (max-width: 30rem) {
+  .top {
+    gap: 0.4rem 0.6rem;
+  }
+
+  .top__mark {
+    font-size: 0.875rem;
+    letter-spacing: 0.22em;
+  }
+
+  .readout__facts {
+    grid-auto-flow: row;
+    gap: 0.4rem;
+  }
+
+  .btn {
+    padding: 0.95rem 0.85rem;
+  }
+
+  /* The hint is the first thing to go: the switch already says what it does. */
+  .btn__hint {
+    display: none;
+  }
+
+  .stake {
+    grid-template-columns: 1fr auto;
+  }
+
+  .stake__label {
+    grid-column: 1 / -1;
+  }
+}
+
+/*
+  The jam gallery renders the game as a miniature in a cartridge. At that size
+  the readout would crowd the scene out, so the canvas keeps the space and the
+  words step back — the light still says which inch it is, which is the whole
+  point of the light model.
+*/
+@media (max-height: 26rem), (max-width: 22rem) {
+  .table {
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem 0.75rem;
+  }
+
   .stage {
-    grid-template-columns: 1fr;
-    justify-items: start;
+    min-height: 7rem;
   }
 
-  .candle {
-    grid-auto-flow: column;
-    align-items: center;
+  .readout__label,
+  .readout__facts dt {
+    display: none;
   }
 
-  .candle__inch {
-    margin: 0 0 0 0.5rem;
+  .btn {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8125rem;
+  }
+
+  .switches {
+    min-height: 0;
+    gap: 0.35rem;
+  }
+}
+
+/* Respect a player who has asked for less motion: the flame stops dancing. */
+@media (prefers-reduced-motion: reduce) {
+  .scene {
+    /* The scene still redraws on state changes; only the idle flicker stops. */
+    animation: none;
   }
 }

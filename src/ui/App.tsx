@@ -9,13 +9,15 @@
  * The UI holds no game logic (claude.md §3). Every number it shows is either
  * read from the host or computed by `src/game/`.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { COPY } from './copy';
 import { formatAmount, formatFace, formatWax, parseAmount } from './format';
 import { HelpPanel } from './HelpPanel';
+import { Scene, applySceneLight } from './Scene';
 import { useCandleHost } from './useHost';
 import { lotById } from '../game/paytable';
 import { INCHES, payoutBase, waxBpAt } from '../game/wax';
+import type { LotFace } from '../render/scene';
 import type { CandleHost, HostView } from '../bridge';
 
 export function App() {
@@ -36,6 +38,49 @@ export function App() {
   const lot = session?.lotId !== null && session?.lotId !== undefined ? lotById(session.lotId) : null;
   const canAct = session?.phase === 'waiting-player' && lot !== null;
   const forced = canAct && session.inch >= INCHES;
+
+  // The lot the player just refused, kept for one beat so the scene can show it
+  // receding into oxblood (docs.md §6.1).
+  const burnedRef = useRef<LotFace | null>(null);
+  const lastLotRef = useRef<{ key: string; face: LotFace } | null>(null);
+
+  const lotFace: LotFace | null = useMemo(
+    () => (lot ? { name: lot.name, faceText: formatFace(lot.faceBp), isEmpty: lot.faceBp === 0 } : null),
+    [lot],
+  );
+
+  const payoutText = useMemo(() => {
+    if (!session || !lot) return null;
+    const amount = settled ? session.payoutBase : payoutBase(session.stakeBase, lot.faceBp, session.inch);
+    return formatAmount(amount, decimals);
+  }, [session, lot, settled, decimals]);
+
+  useEffect(() => {
+    const key = session ? `${session.sessionKey}:${session.inch}` : '';
+    const previous = lastLotRef.current;
+    if (lotFace && key && previous?.key !== key) {
+      // A new lot landed; whatever was here before was refused.
+      burnedRef.current = previous && previous.key.startsWith(session?.sessionKey ?? '') ? previous.face : null;
+      lastLotRef.current = { key, face: lotFace };
+    }
+    if (!session) {
+      burnedRef.current = null;
+      lastLotRef.current = null;
+    }
+  }, [lotFace, session]);
+
+  const burnedLot = session && !settled && lot === null ? burnedRef.current : null;
+
+  const sceneLabel = useMemo(() => {
+    if (!session) return COPY.tagline;
+    if (!lot) return COPY.waitingForLot;
+    return `${COPY.inchOf(session.inch)}. ${lot.name}, ${formatFace(lot.faceBp)}. ${COPY.waxRemaining} ${formatWax(waxBpAt(session.inch))}.`;
+  }, [session, lot]);
+
+  // The room is lit from the wax even before the first lot lands.
+  useEffect(() => {
+    applySceneLight(waxBpAt(session?.inch ?? 1));
+  }, [session?.inch]);
 
   const stakeError = useMemo(() => {
     if (!view || session) return null;
@@ -73,9 +118,22 @@ export function App() {
       <TopBar view={view} host={host} soundOn={soundOn} onSound={() => setSoundOn(v => !v)} onHelp={() => setHelpOpen(true)} />
 
       <section className="stage">
-        <Candle inch={session?.inch ?? 1} />
+        <Scene
+          inch={session?.inch ?? 1}
+          lot={lotFace}
+          burnedLot={burnedLot}
+          payoutText={payoutText}
+          settled={settled}
+          label={sceneLabel}
+        />
 
-        <div className="lot">
+        {/*
+          The accessible layer. The canvas above is the scene; this is what a
+          screen reader reads and what the keyboard user is told. It carries the
+          same facts, never a different set — nothing in this game is said in
+          colour alone.
+        */}
+        <div className="readout" aria-live="polite">
           {session === null ? (
             <StakeControl
               view={view}
@@ -85,13 +143,13 @@ export function App() {
               onDeal={deal}
             />
           ) : lot === null ? (
-            <p className="lot__waiting">{COPY.waitingForLot}</p>
+            <p className="readout__line">{COPY.waitingForLot}</p>
           ) : (
             <>
-              <p className="lot__label">{COPY.lotOnTable}</p>
-              <p className={`lot__name${lot.faceBp === 0 ? ' lot__name--empty' : ''}`}>{lot.name}</p>
-              <p className="lot__face">{formatFace(lot.faceBp)}</p>
-              <dl className="lot__facts">
+              <p className="readout__label">{COPY.lotOnTable}</p>
+              <p className="readout__name">{lot.name}</p>
+              <p className="readout__face">{formatFace(lot.faceBp)}</p>
+              <dl className="readout__facts">
                 <div>
                   <dt>{COPY.inchOf(session.inch)}</dt>
                   <dd>
@@ -100,12 +158,8 @@ export function App() {
                 </div>
                 <div>
                   <dt>{settled ? COPY.paid : COPY.ifClaimedNow}</dt>
-                  <dd className="lot__payout">
-                    {formatAmount(
-                      settled ? session.payoutBase : payoutBase(session.stakeBase, lot.faceBp, session.inch),
-                      decimals,
-                    )}{' '}
-                    {view.tokenSymbol}
+                  <dd className="readout__payout">
+                    {payoutText} {view.tokenSymbol}
                   </dd>
                 </div>
               </dl>
@@ -209,18 +263,6 @@ function walletMessage(view: HostView): string | null {
     default:
       return COPY.walletDisconnected;
   }
-}
-
-/** Five pins in the wax. One falls per inch; phase 3 animates the fall. */
-function Candle({ inch }: { inch: number }) {
-  return (
-    <div className="candle" aria-label={COPY.inchOf(inch)}>
-      {Array.from({ length: INCHES }, (_, i) => (
-        <span key={i} className={`candle__pin${i < INCHES - inch + 1 ? '' : ' candle__pin--fallen'}`} aria-hidden="true" />
-      ))}
-      <span className="candle__inch">{COPY.inchOf(inch)}</span>
-    </div>
-  );
 }
 
 function TopBar({

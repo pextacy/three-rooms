@@ -15,7 +15,7 @@ looks full.
 
 **Status legend:** ⬜ not started · 🟡 in progress · ✅ gate passed · ❌ gate failed
 
-**Current phase: 3 — Make it look real.** Phases 0–2 closed 2026-09-14.
+**Current phase: 4 — Make it feel real.** Phases 0–3 closed 2026-09-14.
 
 ---
 
@@ -238,21 +238,95 @@ when the SDK version moves.
 
 ---
 
-## Phase 3 — Make it look real  ·  D3 (Wed 09-17)  ·  ⬜
+## Phase 3 — Make it look real  ·  D3 (Wed 09-17)  ·  ✅
 
-| # | Deliverable |
-|---|---|
-| 3.1 | `src/render/scene.ts` — one canvas, one emitter, luminance driven by `WAX_BP[k]` |
-| 3.2 | Four inks; blackbody cooling on tallow as it dims; exactly one gradient |
-| 3.3 | The candle: five pins; a pin **falls** on each burn |
-| 3.4 | The table: lot in brass; a let-burn lot goes oxblood and recedes |
-| 3.5 | The **flare** at inch 5 |
-| 3.6 | Cold open p95 < 400 ms to first playable frame — measured |
-| 3.7 | Responsive to phone; gallery miniature checked small |
+| # | Deliverable | Status |
+|---|---|---|
+| 3.1 | `src/render/scene.ts` — one canvas, one emitter, luminance driven by `WAX_BP[k]` | ✅ |
+| 3.2 | Four inks, blackbody cooling on tallow as it dims, exactly one gradient | ✅ |
+| 3.3 | The candle: five pins, a pin **falls** on each burn | ✅ |
+| 3.4 | The table: the lot in brass; a let-burn lot goes oxblood and recedes | ✅ |
+| 3.5 | The **flare** at inch 5 | ✅ |
+| 3.6 | Cold-open budget — measured, not hoped | ✅ |
+| 3.7 | Responsive to a phone; the gallery miniature checked small | ✅ |
 
-**Exit gate:** screenshot the same round at inch 1 and inch 5 side by side. If a stranger
-cannot tell which pays less **without reading a number**, the light model has failed and is
-fixed before phase 4.
+**Exit gate — result**
+
+> *"Screenshot the same round at inches 1 and 5 side by side. If a stranger cannot
+> tell which one pays less **without reading a number**, the light model has failed."*
+
+A screenshot is a judgement someone has to make with their eyes, so the two frames
+were published as a page that runs the **shipping renderer** — not a mock-up —
+with a control to hide every number and walk the candle down:
+
+**https://claude.ai/code/artifact/7c924a3d-d07c-4f0e-bb6d-a0e680a195b3**
+
+The claim underneath it is measurable, so it is measured. `npm run verify:light`:
+
+```
+inch   wax    flame              tallow   luminance   of inch 1
+   1   100%   2000K    rgb(246 230 196)      0.8017     100.00%
+   2    85%   1875K    rgb(237 215 129)      0.6819      85.06%
+   3    70%   1750K    rgb(221 196 119)      0.5618      70.08%
+   4    55%   1625K    rgb(203 174 107)      0.4403      54.92%
+   5    40%   1500K    rgb(181 149  93)      0.3211      40.05%
+```
+
+**Brightness is literally the multiplier.** Relative luminance at each inch is
+`WAX_BP[k] / 10000` of the first inch, to within byte rounding, for every ink that
+carries light. Not "looks dimmer" — 40.05% against a ladder that says 40%.
+
+**The light model is built in linear light, and that is the whole reason the claim
+is true.** Scaling an sRGB byte by 0.4 leaves about 69% of the light, so the naive
+version would have made the claim false while looking plausible. `inkAtWax` shifts
+hue first, restores the ink's own luminance, and scales last; where a channel would
+clip it desaturates toward its own luminance-grey, which preserves luminance
+exactly, so gamut mapping cannot break the claim either.
+
+**Two real defects, both found by the gate on its first run**
+
+1. **The luminance ratio drifted** — 88.01% where the ladder said 85%. The hue tint
+   was changing brightness as well as colour, and the flame's colour changes with
+   the wax, so the error grew as the room dimmed. Fixed by making the shift
+   relative to the first inch and renormalising to the ink's own luminance.
+2. **Brass failed WCAG AA at the gutter** (3.59:1). Brass carries the lot's *face
+   value* — that is information, not decoration. The ink was lightened until it
+   clears AA at 40% of the light: it is now **4.85:1**.
+
+Oxblood is deliberately *below* AA and stays there. It is a past-tense mark that
+recedes, so it never carries text that has to be read; anything it would say is
+said in words elsewhere. That is now a test, so it cannot drift into being used for
+something load-bearing.
+
+**Cold open — `npm run cold-open`**
+
+| network | transfer | execute | total | |
+|---|---|---|---|---|
+| fast broadband (25 Mbps, 25 ms) | 77 ms | 70 ms | **147 ms** | within 400 |
+| typical broadband (10 Mbps, 50 ms) | 168 ms | 70 ms | **238 ms** | within 400 |
+| slow 4G (1.6 Mbps, 150 ms) | 723 ms | 70 ms | **793 ms** | over 400, inside the 1,200 hard budget |
+
+Transfer is *modelled* and says so; execute is *measured* in jsdom; paint is
+neither and is excluded. The p95 `prd.md` §7 actually commits to is a browser
+number — the app now records it at `window.__candleColdOpenMs`.
+
+**The finding worth a decision: React is the largest single line item.** About
+45 KB gz of the 85 KB total, for a UI that is two buttons, a stake field and a
+canvas. Aliasing `preact/compat` is a one-line vite change that would take it to
+roughly 40 KB and ~200 ms off slow 4G. **Not done** — it is a dependency decision
+with a `docs.md` §8 obligation, not a rendering one, and the 400 ms budget is met
+on broadband either way. Logged in `LATER.md`.
+
+**Carried into phase 4**
+
+- The pin fall and the flare are already animated state in the scene loop, so the
+  audio graphs have something to key off: a pin's fall and its sound are the same
+  event (`docs.md` §6.1).
+- `prefers-reduced-motion` stops the flame's flicker without touching the light
+  model, so a player who asks for less motion loses nothing they need to read.
+- The frame budget (p95 < 12 ms) is instrumented on the scene handle
+  (`metrics().lastFrameMs`) but not yet asserted — that is a phase-4 gate, because
+  it only means anything once the audio graphs are competing for the main thread.
 
 ---
 

@@ -367,11 +367,31 @@ The light model is the product. One emitter (the flame) at a fixed position; sce
 luminance is a direct function of `WAX_BP[k]`. Consequences that must hold:
 
 - The room at inch 5 is genuinely dim. The player reads decay without reading text.
+
+> **How this is actually done, and why it is checkable (D3).** Scene brightness is
+> **relative luminance in linear light**, scaled by exactly `WAX_BP[k] / 10_000`.
+> Working in linear light is not pedantry: scaling an sRGB byte by 0.4 leaves about
+> **69%** of the light, so the naive version makes the claim false while looking
+> plausible. `inkAtWax` shifts the hue by how far the flame has cooled *since the
+> first inch*, restores the ink's own luminance so the shift changed colour and not
+> brightness, and scales last. Where a channel would clip it desaturates toward its
+> own luminance-grey, which preserves luminance exactly. `npm run verify:light`
+> measures all of it, and `test/light.spec.ts` asserts it.
+>
+> Measured: `0.8017 / 0.6819 / 0.5618 / 0.4403 / 0.3211`, which is
+> `100.00 / 85.06 / 70.08 / 54.92 / 40.05` percent of the first inch.
 - Tallow shifts **down the blackbody curve** as luminance falls (warm white →
   amber → deep amber). An LED-like constant hue is wrong and is a visible tell of
   a fake light model.
 - Four inks: **tallow** (flame, live values), **brass** (the lot on the table),
   **oxblood** (a lot let burn), **ink** (the room). No fifth.
+- **Legibility is a constraint on the palette, not an afterthought.** Brass carries
+  the lot's face value, so it must clear WCAG AA against the room at the *fifth*
+  inch, where only 40% of the light is left. It was lightened on D3 until it did
+  (3.59:1 → **4.85:1**). Tallow clears AA at every inch (16.04:1 → 7.24:1).
+  **Oxblood is deliberately below AA and stays there**: it is a past-tense mark
+  that recedes, so it never carries text that has to be read, and that is a test
+  rather than an intention.
 - Exactly one gradient in the entire build: the flame's own falloff.
 - Hierarchy by luminance, never by size; the type scale is fixed.
 
@@ -392,6 +412,23 @@ that this is the last lot.
 of the lot being offered, so a practised player hears a good lot land before reading
 it. Unmuted by default with a one-key toggle (`M`); nothing that matters is
 audio-only.
+
+### 6.2b One light model, two render targets
+
+The canvas draws the scene. The controls, the stake field and the `?` panel are
+DOM, because they are controls rather than scenery — "nothing else draws" forbids a
+second *visual* system, not the buttons.
+
+There is still only one light model. `applySceneLight` writes `paletteAtWax` onto
+the document root as CSS custom properties on every change, so the chrome dims with
+the room instead of floating above it in a fixed palette. The values in
+`tokens.css` are opening values for the first inch only; from the first frame on
+they are overwritten.
+
+The DOM also carries an **accessible layer**: the lot, the inch, the wax and the
+payout, in a polite live region. It is visually hidden where the canvas already
+draws the same fact, and it is what a screen reader and a canvas-less browser get.
+No information in this game is carried by colour alone.
 
 ### 6.3 Keyboard
 `Space` / `Enter` claim · `B` or `↓` let it burn · `Enter` deal again on a settled

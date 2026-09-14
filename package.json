@@ -24,7 +24,9 @@
     "bench": "vite-node scripts/bench.ts",
     "sync:simulator": "node scripts/sync-simulator.mjs",
     "play": "vite-node scripts/play-demo.ts",
-    "spike:phase0": "node spikes/spike-multidraw.mjs && node spikes/spike-maxpayout.mjs && node spikes/spike-coinflip.mjs"
+    "spike:phase0": "node spikes/spike-multidraw.mjs && node spikes/spike-maxpayout.mjs && node spikes/spike-coinflip.mjs",
+    "verify:light": "vite-node scripts/verify-light.ts",
+    "cold-open": "vite-node scripts/cold-open.ts"
   },
   "dependencies": {
     "penpal": "^7.0.6",
@@ -32,6 +34,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^22.20.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

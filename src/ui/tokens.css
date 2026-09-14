@@ -16,6 +16,29 @@
   --oxblood: #8d3a30; /* a lot you let burn — never load-bearing text */
   --wax: 1;
 
+  /*
+    Chrome tokens. Distinct from the four inks on purpose: inside a light host
+    the FRAME adapts and the SCENE does not (docs.md §4.1). A candlelit room is
+    dark by nature — repainting it for a light theme would be repainting the
+    game, and the light model is the product.
+  */
+  --chrome-bg: var(--ink);
+  --chrome-ink: var(--tallow);
+  --chrome-rule: rgb(from var(--tallow) r g b / 0.12);
+  --chrome-field: var(--ink-raised);
+}
+
+/*
+  A light host. Only the frame changes: the canvas keeps its own room, and
+  `applySceneLight` keeps overwriting the four inks from the wax ladder either
+  way, so nothing here can touch what the player reads decay from.
+*/
+[data-theme='light'] {
+  --chrome-bg: #efe7d7;
+  --chrome-ink: #2b2118;
+  --chrome-rule: rgb(43 33 24 / 0.16);
+  --chrome-field: #f7f1e5;
+
   /* Fixed type scale — hierarchy is carried by luminance, never by size. */
   --t-lot: 2.75rem;
   --t-body: 0.9375rem;

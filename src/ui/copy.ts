@@ -106,6 +106,7 @@ export const COPY = {
     ['?', 'this panel'],
     ['M', 'sound'],
     ['T', 'turbo — the same decisions, less waiting'],
+    ['L', 'the ledger'],
   ] as ReadonlyArray<readonly [string, string]>,
 
   soundOn: 'SOUND ON',
@@ -124,6 +125,29 @@ export const COPY = {
   // thing that helps, and do not apologise at length.
   crashed: 'The candle went out. Nothing was staked that is not already settled on chain.',
   crashReload: 'LIGHT IT AGAIN',
+
+  // --- the Ledger ---------------------------------------------------------
+  // A log that tallies what you COULD have won is a loss-chasing nudge with a
+  // spreadsheet on it (claude.md §7). This one states what happened and closes
+  // on your realised return against the declared RTP — the useful number, and
+  // the honest answer to "I'm due a win".
+  ledgerTitle: 'The ledger',
+  ledgerKey: 'L',
+  ledgerEmpty: 'No rounds settled yet.',
+  ledgerRound: 'Round',
+  ledgerTook: 'Took',
+  ledgerInch: 'Inch',
+  ledgerPaid: 'Paid',
+  ledgerNext: 'Next lot was',
+  ledgerGuttered: 'guttered',
+  ledgerSoFar: 'This session',
+  ledgerRounds: 'Rounds',
+  ledgerStaked: 'Staked',
+  ledgerReturned: 'Returned',
+  ledgerRealised: 'Your return so far',
+  ledgerDeclared: 'Declared RTP, optimal play',
+  ledgerNote:
+    'A short session says little about the return; the spread is wide until the rounds run into the thousands. This log lasts one page load and is not saved.',
 
   turboOn: 'TURBO',
   turboOff: 'TURBO',

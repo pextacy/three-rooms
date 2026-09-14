@@ -18,6 +18,8 @@ import { COPY } from '../src/ui/copy';
 import { LOTS } from '../src/game/paytable';
 import { INCHES } from '../src/game/wax';
 import { DWELL_SLOW_MS } from '../src/audio/voice';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -300,5 +302,85 @@ describe('the last line of defence', () => {
   it('says nothing that could be mistaken for a lost stake', () => {
     expect(COPY.crashed).toContain('already settled on chain');
     expect(/!/.test(COPY.crashed)).toBe(false);
+  });
+});
+
+describe('the ledger', () => {
+  const settledBoardNow = () => /Claimed at the|The candle guttered/.test(text());
+
+  it('opens on L and closes on Escape', async () => {
+    await press('L');
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(text()).toContain(COPY.ledgerTitle);
+    await press('Escape');
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('says plainly that nothing has settled yet', async () => {
+    await press('L');
+    expect(text()).toContain(COPY.ledgerEmpty);
+    await press('Escape');
+  });
+
+  it('records a settled round, with the ghost in a column of its own', async () => {
+    await settle(() => text().includes(COPY.lotOnTable));
+    await press(' ');
+    await settle(settledBoardNow);
+
+    await press('L');
+    const body = text();
+    expect(body).toContain(COPY.ledgerTook);
+    expect(body).toContain(COPY.ledgerNext);
+    expect(body).toContain(COPY.ledgerRealised);
+    expect(body).toContain(COPY.ledgerDeclared);
+    expect(body, 'the declared RTP, so a short run can be read against it').toContain('96.99');
+    await press('Escape');
+  });
+
+  it('never tallies what the player could have won', async () => {
+    // claude.md §7: no loss-chasing nudges. The ledger reports what HAPPENED and
+    // the realised return; it must not compute a regret.
+    const forbidden = [/missed/i, /could have/i, /would have won/i, /left on the table/i, /lost value/i, /if only/i];
+    const strings = [
+      COPY.ledgerTitle, COPY.ledgerEmpty, COPY.ledgerRound, COPY.ledgerTook, COPY.ledgerInch,
+      COPY.ledgerPaid, COPY.ledgerNext, COPY.ledgerGuttered, COPY.ledgerSoFar, COPY.ledgerRounds,
+      COPY.ledgerStaked, COPY.ledgerReturned, COPY.ledgerRealised, COPY.ledgerDeclared, COPY.ledgerNote,
+    ];
+    for (const value of strings) {
+      for (const pattern of forbidden) expect(pattern.test(value), `"${value}" matches ${pattern}`).toBe(false);
+    }
+    // And it warns that a short session proves nothing, rather than implying it does.
+    expect(COPY.ledgerNote).toMatch(/says little|wide/i);
+  });
+
+  it('only one panel is open at a time', async () => {
+    await press('?');
+    expect(text()).toContain(COPY.helpTitle);
+    await press('L');
+    expect(text()).toContain(COPY.ledgerTitle);
+    expect(text()).not.toContain(COPY.paytableTitle);
+    await press('Escape');
+  });
+});
+
+describe('the host theme reaches the chrome and stops there', () => {
+  it('declares the light palette for a light host', () => {
+    const tokens = readFileSync(resolve(process.cwd(), 'src/ui/tokens.css'), 'utf8');
+    expect(tokens).toContain("[data-theme='light']");
+    for (const token of ['--chrome-bg', '--chrome-ink', '--chrome-rule', '--chrome-field']) {
+      expect(tokens, token).toContain(token);
+    }
+  });
+
+  it('never lets a theme touch the four inks or the scene', () => {
+    const tokens = readFileSync(resolve(process.cwd(), 'src/ui/tokens.css'), 'utf8');
+    const light = tokens.slice(tokens.indexOf("[data-theme='light']"));
+    // The light model is the product; a host theme adapts the frame only
+    // (docs.md §4.1). Redefining an ink here would repaint the game.
+    for (const ink of ['--tallow:', '--brass:', '--oxblood:', '--ink:']) {
+      expect(light.includes(ink), `${ink} must not be redefined by a theme`).toBe(false);
+    }
+    const table = readFileSync(resolve(process.cwd(), 'src/ui/table.css'), 'utf8');
+    expect(table, 'the canvas keeps the room whatever the host does').toMatch(/\.scene \{\s*background: var\(--ink\)/);
   });
 });

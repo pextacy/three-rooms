@@ -4,7 +4,10 @@
   colour is approved (claude.md §5).
 */
 
+/* The frame follows the host; the stage inside it never does. */
 .table {
+  background: var(--chrome-bg);
+  color: var(--chrome-ink);
   min-height: 100svh;
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -25,14 +28,14 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgb(from var(--tallow) r g b / 0.12);
+  border-bottom: 1px solid var(--chrome-rule);
 }
 
 .top__mark {
   font-size: 1rem;
   letter-spacing: 0.3em;
   text-indent: 0.3em;
-  color: var(--tallow);
+  color: var(--chrome-ink);
 }
 
 .top__badge {
@@ -51,6 +54,13 @@
   color: var(--brass);
 }
 
+.top__count {
+  margin-left: 0.35rem;
+  font-family: var(--font-num);
+  font-size: 0.65rem;
+  opacity: 0.75;
+}
+
 .top__spacer {
   flex: 1;
 }
@@ -66,9 +76,11 @@
 
 /*
   The canvas IS the scene. It fills the stage and the readout sits over it, so
-  the room is behind the words rather than beside them.
+  the room is behind the words rather than beside them. It keeps the room's own
+  ink whatever the host's theme is — the light model is not chrome.
 */
 .scene {
+  background: var(--ink);
   position: absolute;
   inset: 0;
   width: 100%;
@@ -285,8 +297,8 @@ kbd {
   width: 100%;
   padding: 0.4rem 0.5rem;
   color: var(--tallow);
-  background: var(--ink-raised);
-  border: 1px solid rgb(from var(--tallow) r g b / 0.25);
+  background: var(--chrome-field);
+  border: 1px solid var(--chrome-rule);
   border-radius: 2px;
 }
 

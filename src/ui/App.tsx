@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { COPY } from './copy';
 import { formatAmount, formatFace, formatWax, parseAmount } from './format';
 import { HelpPanel } from './HelpPanel';
+import { Ledger, ledgerRowFrom, type LedgerRow } from './Ledger';
 import { Scene, applySceneLight } from './Scene';
 import { useCandleHost } from './useHost';
 import { useCandleAudio } from './useAudio';
@@ -25,6 +26,9 @@ import type { CandleHost, HostView } from '../bridge';
 export function App() {
   const { host, view } = useCandleHost();
   const [helpOpen, setHelpOpen] = useState(false);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  /** One page load, like the purse. Nothing is written to storage. */
+  const [ledger, setLedger] = useState<readonly LedgerRow[]>([]);
   const [stakeText, setStakeText] = useState<string | null>(null);
   // Unmuted by default, with a visible one-key toggle (claude.md §5).
   const [soundOn, setSoundOn] = useState(true);
@@ -130,6 +134,12 @@ export function App() {
 
   useCandleAudio(soundOn, session);
 
+  // A settled round joins the ledger exactly once.
+  useEffect(() => {
+    if (!session?.isSettled) return;
+    setLedger(rows => (rows.some(row => row.key === session.sessionKey) ? rows : [...rows, ledgerRowFrom(session)]));
+  }, [session]);
+
   /**
    * **Zero clicks to comprehension** (claude.md §5, prd.md §2). Someone landing
    * on the bare URL must see the lot on the table, its face value, the candle and
@@ -155,7 +165,21 @@ export function App() {
     host?.setTurbo?.(turbo);
   }, [host, turbo]);
 
-  useKeyboard({ helpOpen, setHelpOpen, canAct, forced, settled, session: !!session, act, again, deal, setSoundOn, setTurbo });
+  useKeyboard({
+    helpOpen,
+    setHelpOpen,
+    ledgerOpen,
+    setLedgerOpen,
+    canAct,
+    forced,
+    settled,
+    session: !!session,
+    act,
+    again,
+    deal,
+    setSoundOn,
+    setTurbo,
+  });
 
   if (!view) return <main className="table table--loading" />;
 
@@ -168,6 +192,8 @@ export function App() {
         onSound={() => setSoundOn(v => !v)}
         turbo={turbo}
         onTurbo={() => setTurbo(v => !v)}
+        onLedger={() => setLedgerOpen(true)}
+        ledgerCount={ledger.length}
         onHelp={() => setHelpOpen(true)}
       />
 
@@ -255,6 +281,9 @@ export function App() {
       </section>
 
       {helpOpen ? <HelpPanel onClose={() => setHelpOpen(false)} /> : null}
+      {ledgerOpen ? (
+        <Ledger rows={ledger} decimals={decimals} symbol={view.tokenSymbol} onClose={() => setLedgerOpen(false)} />
+      ) : null}
     </main>
   );
 }
@@ -402,6 +431,8 @@ function TopBar({
   onSound,
   turbo,
   onTurbo,
+  onLedger,
+  ledgerCount,
   onHelp,
 }: {
   view: HostView;
@@ -410,6 +441,8 @@ function TopBar({
   onSound: () => void;
   turbo: boolean;
   onTurbo: () => void;
+  onLedger: () => void;
+  ledgerCount: number;
   onHelp: () => void;
 }) {
   return (
@@ -429,6 +462,10 @@ function TopBar({
         </>
       ) : null}
       <span className="top__spacer" />
+      <button className="btn btn--ghost" onClick={onLedger}>
+        {COPY.ledgerTitle} <kbd>{COPY.ledgerKey}</kbd>
+        {ledgerCount > 0 ? <span className="top__count">{ledgerCount}</span> : null}
+      </button>
       <button className="btn btn--ghost" onClick={onTurbo} aria-pressed={turbo}>
         {turbo ? COPY.turboOn : COPY.turboOff} <kbd>{COPY.turboKey}</kbd>
       </button>
@@ -446,6 +483,8 @@ function TopBar({
 function useKeyboard(args: {
   helpOpen: boolean;
   setHelpOpen: (open: boolean) => void;
+  ledgerOpen: boolean;
+  setLedgerOpen: (open: boolean) => void;
   canAct: boolean;
   forced: boolean;
   settled: boolean;
@@ -456,23 +495,32 @@ function useKeyboard(args: {
   setSoundOn: (update: (value: boolean) => boolean) => void;
   setTurbo: (update: (value: boolean) => boolean) => void;
 }) {
-  const { helpOpen, setHelpOpen, canAct, forced, settled, session, act, again, deal, setSoundOn, setTurbo } = args;
+  const { helpOpen, setHelpOpen, ledgerOpen, setLedgerOpen, canAct, forced, settled, session, act, again, deal, setSoundOn, setTurbo } = args;
+  const anyPanelOpen = helpOpen || ledgerOpen;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
       const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 
-      if (event.key === 'Escape' && helpOpen) {
+      if (event.key === 'Escape' && anyPanelOpen) {
         setHelpOpen(false);
+        setLedgerOpen(false);
         return;
       }
       if (event.key === '?' || (event.key === '/' && event.shiftKey)) {
         event.preventDefault();
+        setLedgerOpen(false);
         setHelpOpen(!helpOpen);
         return;
       }
-      if (helpOpen) return;
+      if (event.key === 'l' || event.key === 'L') {
+        if (typing) return;
+        setHelpOpen(false);
+        setLedgerOpen(!ledgerOpen);
+        return;
+      }
+      if (anyPanelOpen) return;
       if (event.key === 'm' || event.key === 'M') {
         setSoundOn(value => !value);
         return;
@@ -507,5 +555,5 @@ function useKeyboard(args: {
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [helpOpen, setHelpOpen, canAct, forced, settled, session, act, again, deal, setSoundOn, setTurbo]);
+  }, [helpOpen, setHelpOpen, ledgerOpen, setLedgerOpen, anyPanelOpen, canAct, forced, settled, session, act, again, deal, setSoundOn, setTurbo]);
 }

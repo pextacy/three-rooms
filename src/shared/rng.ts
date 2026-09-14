@@ -11,7 +11,11 @@
  *
  * Pure: no ambient randomness, no clock, no DOM. The word is an input.
  */
-import { WEIGHT_DENOM, lotForDraw, type Lot } from './paytable';
+/**
+ * The draw space every game maps its own table onto. 2^16 is not a multiple of
+ * it, which is exactly why rejection sampling is required.
+ */
+export const DRAW_DENOM = 10_000;
 
 /** A VRF word, as an unsigned 256-bit integer. */
 export type Word = bigint;
@@ -29,7 +33,7 @@ export const WINDOWS = 16;
  */
 export const MAX_REHASHES = 3;
 
-/** The largest multiple of `WEIGHT_DENOM` that fits in 16 bits. */
+/** The largest multiple of `DRAW_DENOM` that fits in 16 bits. */
 export const RNG_LIMIT = 60_000;
 
 const WINDOW_MASK = 0xffffn;
@@ -54,7 +58,7 @@ export const REHASH_UNSUPPORTED: Rehash = () => {
 };
 
 export type DrawResult = {
-  /** Uniform on [0, WEIGHT_DENOM). */
+  /** Uniform on [0, DRAW_DENOM). */
   readonly value: number;
   /** Where the next draw from this word should start. */
   readonly cursor: number;
@@ -72,7 +76,7 @@ function windowAt(word: Word, index: number): number {
 /**
  * Reads 16-bit windows from `word` starting at `cursor`, rejecting any window
  * at or above `RNG_LIMIT` so the surviving range is an exact multiple of
- * `WEIGHT_DENOM`. Exactly uniform on [0, 10000).
+ * `DRAW_DENOM`. Exactly uniform on [0, 10000).
  *
  * The per-window rejection probability is 5536/65536 ≈ 8.45%, so a draw
  * consumes ≈ 1.09 windows on average and one word carries an inch with room to
@@ -91,7 +95,7 @@ export function draw(word: Word, cursor = 0, rehash: Rehash = REHASH_UNSUPPORTED
       const v = windowAt(current, index);
       index++;
       if (v < RNG_LIMIT) {
-        return { value: v % WEIGHT_DENOM, cursor: index, word: current, rejected };
+        return { value: v % DRAW_DENOM, cursor: index, word: current, rejected };
       }
       rejected++;
     }
@@ -101,16 +105,6 @@ export function draw(word: Word, cursor = 0, rehash: Rehash = REHASH_UNSUPPORTED
 
   // Unreachable at p ~ 4e-69, and loud rather than silent if the impossible happens.
   throw new Error(`randomness exhausted after ${MAX_REHASHES} rehashes`);
-}
-
-/** The same draw, mapped through the paytable's cumulative weights. */
-export function drawLot(
-  word: Word,
-  cursor = 0,
-  rehash: Rehash = REHASH_UNSUPPORTED,
-): DrawResult & { readonly lot: Lot } {
-  const result = draw(word, cursor, rehash);
-  return { ...result, lot: lotForDraw(result.value) };
 }
 
 // ---------------------------------------------------------------------------

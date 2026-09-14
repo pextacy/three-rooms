@@ -8,6 +8,8 @@
  * Pure. No React, no DOM, no `window`, no `Date.now()`, no ambient randomness.
  */
 
+import { draw } from '../../../shared/rng';
+
 /** Weights are out of this. Asserted below and in CI. */
 export const WEIGHT_DENOM = 10_000;
 
@@ -70,6 +72,18 @@ export function lotForDraw(r: number): Lot {
   }
   // Unreachable: the final cumulative weight is WEIGHT_DENOM and r < WEIGHT_DENOM.
   throw new Error(`no lot for draw ${r} — the weights do not sum to ${WEIGHT_DENOM}`);
+}
+
+/** A word -> a lot, through the shared rejection sampler. */
+export function drawLot(
+  word: bigint,
+  cursor = 0,
+  rehash: (w: bigint) => bigint = () => {
+    throw new Error('rehash required');
+  },
+): { readonly lot: Lot; readonly value: number; readonly cursor: number; readonly word: bigint; readonly rejected: number } {
+  const result = draw(word, cursor, rehash);
+  return { ...result, lot: lotForDraw(result.value) };
 }
 
 export function lotById(id: LotId): Lot {

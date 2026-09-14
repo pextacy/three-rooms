@@ -40,7 +40,8 @@
     "pretest": "node scripts/require-sdk.mjs",
     "deploy:contract": "node scripts/deploy-contract.mjs",
     "contracts:build": "forge build",
-    "verify:survey": "vite-node scripts/verify-survey.ts"
+    "verify:survey": "vite-node scripts/verify-survey.ts",
+    "gen:survey": "vite-node scripts/gen-survey-constants.ts"
   },
   "dependencies": {
     "penpal": "^7.0.6",

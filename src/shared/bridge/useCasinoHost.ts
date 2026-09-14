@@ -16,9 +16,8 @@
  */
 import { connectGameToHost, computeMaxWager } from '@chain/casino-sdk/guest';
 import type { HostApiV1, HostSnapshotV1, GuestBridgeConnection } from '@chain/casino-sdk/guest';
-import { MAX_FACE_BP, FACE_DENOM, LOTS, lotForDraw, type LotId } from '../../games/candle/core/paytable';
+import {MAX_FACE_BP, FACE_DENOM, LOTS, lotForDraw, type LotId, drawLot} from '../../games/candle/core/paytable';
 import { INCHES } from '../../games/candle/core/wax';
-import { drawLot } from '../../games/candle/core/rng';
 import { createPrng, seedFromCrypto } from './prng';
 import { decodeGameState, encodeAction, type CandleHost, type HostView, type PlayerAction, type SessionPhase, type SessionView } from './types';
 

@@ -30,7 +30,15 @@ export function loadDeployment(): Deployment | null {
 }
 
 export function candleAddress(): `0x${string}` | null {
-  return loadDeployment()?.games.find(g => g.name === 'CandleGame')?.address ?? null;
+  return gameAddress('CandleGame');
+}
+
+export function surveyAddress(): `0x${string}` | null {
+  return gameAddress('SurveyGame');
+}
+
+export function gameAddress(name: string): `0x${string}` | null {
+  return loadDeployment()?.games.find(g => g.name === name)?.address ?? null;
 }
 
 /**
@@ -95,6 +103,33 @@ export const STEP_RESULT = {
     { name: 'payout', type: 'uint256' },
   ],
 } as const;
+
+/** THE SURVEY's hooks. Same ICasinoGameV2 shape, different game. */
+export const surveyAbi = [
+  { type: 'function', name: 'quoteCaps', stateMutability: 'view', inputs: [{ name: 'wager', type: 'uint256' }, { name: 'gameData', type: 'bytes' }], outputs: [{ name: 'maxEscrowStake', type: 'uint256' }, { name: 'maxReservedProfit', type: 'uint256' }] },
+  { type: 'function', name: 'quoteRiskParams', stateMutability: 'view', inputs: [{ name: 'wager', type: 'uint256' }, { name: 'gameData', type: 'bytes' }], outputs: [{ name: 'maxPayout', type: 'uint256' }, { name: 'probabilityWad', type: 'uint256' }, { name: 'expectedPayout', type: 'uint256' }, { name: 'subJackpotVarianceScaled', type: 'uint256' }] },
+  { type: 'function', name: 'onSessionStart', stateMutability: 'view', inputs: [{ ...CTX, name: 'ctx' }], outputs: [{ ...STEP_RESULT, name: 'r' }] },
+  { type: 'function', name: 'onPlayerAction', stateMutability: 'view', inputs: [{ ...CTX, name: 'ctx' }, { name: 'actionData', type: 'bytes' }], outputs: [{ ...STEP_RESULT, name: 'r' }] },
+  { type: 'function', name: 'onRandomness', stateMutability: 'view', inputs: [{ ...CTX, name: 'ctx' }, { name: 'randomness', type: 'bytes32' }], outputs: [{ ...STEP_RESULT, name: 'r' }] },
+  { type: 'function', name: 'quoteForfeitPayout', stateMutability: 'view', inputs: [{ ...CTX, name: 'ctx' }], outputs: [{ type: 'uint256' }] },
+] as const;
+
+/** `abi.encodePacked(uint16 valueBp, uint8 surveys, int8 margin+128, uint8 phase)` */
+export function encodeSurveyState(valueBp: number, surveys: number, margin: number, phase: number): `0x${string}` {
+  const biased = margin + 128;
+  return `0x${valueBp.toString(16).padStart(4, '0')}${surveys.toString(16).padStart(2, '0')}${biased.toString(16).padStart(2, '0')}${phase.toString(16).padStart(2, '0')}`;
+}
+
+export function decodeSurveyState(hex: string): { valueBp: number; surveys: number; margin: number; phase: number } {
+  const body = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (body.length !== 10) throw new Error(`survey gameState must be 5 bytes, got ${body.length / 2}`);
+  return {
+    valueBp: parseInt(body.slice(0, 4), 16),
+    surveys: parseInt(body.slice(4, 6), 16),
+    margin: parseInt(body.slice(6, 8), 16) - 128,
+    phase: parseInt(body.slice(8, 10), 16),
+  };
+}
 
 export const candleAbi = [
   { type: 'function', name: 'quoteCaps', stateMutability: 'view', inputs: [{ name: 'wager', type: 'uint256' }, { name: 'gameData', type: 'bytes' }], outputs: [{ name: 'maxEscrowStake', type: 'uint256' }, { name: 'maxReservedProfit', type: 'uint256' }] },

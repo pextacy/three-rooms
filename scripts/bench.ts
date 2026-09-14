@@ -12,7 +12,7 @@
  *   npm run bench                # 10^7 draws, 10^7 rounds
  *   BENCH_N=1000000 npm run bench
  */
-import { draw, type Rehash } from '../src/games/candle/core/rng';
+import { draw, type Rehash } from '../src/shared/rng';
 import { LOTS, WEIGHT_DENOM, lotForDraw } from '../src/games/candle/core/paytable';
 import { INCHES, waxBpAt } from '../src/games/candle/core/wax';
 import { solve, optimalPolicy, probabilityAtLeast, probabilityOfNothing, meanRoundLength, standardDeviation } from '../src/games/candle/core/solve';

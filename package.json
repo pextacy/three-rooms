@@ -6,7 +6,7 @@
   "description": "A lot is on the table, the candle is burning, and every inch you wait is worth less.",
   "scripts": {
     "dev": "vite --port 3200 --strictPort",
-    "build": "vite build",
+    "build": "node scripts/require-sdk.mjs && vite build",
     "preview": "vite preview --port 3200 --strictPort",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
@@ -36,7 +36,9 @@
     "verify:live": "node scripts/gates.mjs --headers-only --origin",
     "ship": "node scripts/ship.mjs",
     "vercel-build": "node scripts/fetch-sdk.mjs && vite build",
-    "find:seed": "vite-node scripts/find-demo-seed.ts"
+    "find:seed": "vite-node scripts/find-demo-seed.ts",
+    "postinstall": "node scripts/fetch-sdk.mjs --soft",
+    "pretest": "node scripts/require-sdk.mjs"
   },
   "dependencies": {
     "penpal": "^7.0.6",
@@ -55,5 +57,8 @@
     "vite": "^6.0.0",
     "vitest": "^2.1.0"
   },
-  "homepage": "https://candle-ashen-tau.vercel.app"
+  "homepage": "https://candle-ashen-tau.vercel.app",
+  "engines": {
+    "node": ">=22"
+  }
 }

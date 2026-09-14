@@ -5,9 +5,9 @@
  * The rejections are the point of this file.
  */
 import { describe, it, expect } from 'vitest';
-import { lightCandle, transition, isTerminal, legalInputs, payoutIfClaimedNow, waxNow, RoundTransitionError, type RoundState } from '../src/game/round';
-import { LOTS, type LotId } from '../src/game/paytable';
-import { INCHES, WAX_BP, payoutBase } from '../src/game/wax';
+import { lightCandle, transition, isTerminal, legalInputs, payoutIfClaimedNow, waxNow, RoundTransitionError, type RoundState } from '../src/games/candle/core/round';
+import { LOTS, type LotId } from '../src/games/candle/core/paytable';
+import { INCHES, WAX_BP, payoutBase } from '../src/games/candle/core/wax';
 
 const STAKE = 1_000_000n;
 const EMPTY: LotId = 0;

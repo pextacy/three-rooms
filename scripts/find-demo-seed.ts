@@ -6,13 +6,13 @@
  * camera is not a plan. Load the winner with `?seed=<n>` and the sequence is the
  * same every time — free play only; nothing here can touch a host session.
  */
-import { createDemoHost } from '../src/bridge/demoHost';
-import { seedFrom } from '../src/bridge';
-import type { CandleHost, HostView } from '../src/bridge/types';
-import { lotById, MAX_FACE_BP } from '../src/game/paytable';
-import { INCHES } from '../src/game/wax';
-import { optimalPolicy, solve } from '../src/game/solve';
-import { formatFace } from '../src/ui/format';
+import { createDemoHost } from '../src/shared/bridge/demoHost';
+import { seedFrom } from '../src/shared/bridge';
+import type { CandleHost, HostView } from '../src/shared/bridge/types';
+import { lotById, MAX_FACE_BP } from '../src/games/candle/core/paytable';
+import { INCHES } from '../src/games/candle/core/wax';
+import { optimalPolicy, solve } from '../src/games/candle/core/solve';
+import { formatFace } from '../src/games/candle/app/ui/format';
 
 const optimal = optimalPolicy(solve());
 const STAKE = 20n * 10n ** 18n;

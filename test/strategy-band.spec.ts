@@ -6,10 +6,10 @@
  * (claude.md §8). This test is what makes that claim checkable.
  */
 import { describe, it, expect } from 'vitest';
-import { solve, evaluate, optimalPolicy, thresholdPolicy, strategyBand, type Policy } from '../src/game/solve';
-import { LOTS } from '../src/game/paytable';
-import { INCHES } from '../src/game/wax';
-import * as R from '../src/game/rational';
+import { solve, evaluate, optimalPolicy, thresholdPolicy, strategyBand, type Policy } from '../src/games/candle/core/solve';
+import { LOTS } from '../src/games/candle/core/paytable';
+import { INCHES } from '../src/games/candle/core/wax';
+import * as R from '../src/games/candle/core/rational';
 
 const solution = solve();
 const optimal = optimalPolicy(solution);

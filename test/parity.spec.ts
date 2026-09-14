@@ -9,9 +9,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { keccak256 } from 'viem';
 import { candleAddress, chainIsUp, loadDeployment, publicClient, candleAbi, makeCtx, encodeGameState, decodeGameState, type Deployment } from './helpers/chain';
-import { LOTS, lotForDraw, WEIGHT_DENOM } from '../src/game/paytable';
-import { INCHES, payoutBase } from '../src/game/wax';
-import { draw, wordToBytes, wordFromBytes, type Rehash } from '../src/game/rng';
+import { LOTS, lotForDraw, WEIGHT_DENOM } from '../src/games/candle/core/paytable';
+import { INCHES, payoutBase } from '../src/games/candle/core/wax';
+import { draw, wordToBytes, wordFromBytes, type Rehash } from '../src/games/candle/core/rng';
 
 const address = candleAddress();
 const deployment = loadDeployment();

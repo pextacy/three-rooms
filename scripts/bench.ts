@@ -12,11 +12,11 @@
  *   npm run bench                # 10^7 draws, 10^7 rounds
  *   BENCH_N=1000000 npm run bench
  */
-import { draw, type Rehash } from '../src/game/rng';
-import { LOTS, WEIGHT_DENOM, lotForDraw } from '../src/game/paytable';
-import { INCHES, waxBpAt } from '../src/game/wax';
-import { solve, optimalPolicy, probabilityAtLeast, probabilityOfNothing, meanRoundLength, standardDeviation } from '../src/game/solve';
-import * as R from '../src/game/rational';
+import { draw, type Rehash } from '../src/games/candle/core/rng';
+import { LOTS, WEIGHT_DENOM, lotForDraw } from '../src/games/candle/core/paytable';
+import { INCHES, waxBpAt } from '../src/games/candle/core/wax';
+import { solve, optimalPolicy, probabilityAtLeast, probabilityOfNothing, meanRoundLength, standardDeviation } from '../src/games/candle/core/solve';
+import * as R from '../src/games/candle/core/rational';
 
 const N = Number(process.env['BENCH_N'] ?? 10_000_000);
 const MASK = (1n << 256n) - 1n;

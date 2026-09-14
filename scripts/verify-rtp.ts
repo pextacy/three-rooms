@@ -6,8 +6,8 @@
  * constant. This is the command a reviewer runs to check the claim, and it is
  * where the README and the `?` panel get their numbers (claude.md §8).
  */
-import { LOTS, WEIGHT_DENOM, FACE_DENOM, CUMULATIVE_WEIGHTS, MAX_FACE_BP } from '../src/game/paytable';
-import { INCHES, payoutBase, waxBpAt } from '../src/game/wax';
+import { LOTS, WEIGHT_DENOM, FACE_DENOM, CUMULATIVE_WEIGHTS, MAX_FACE_BP } from '../src/games/candle/core/paytable';
+import { INCHES, payoutBase, waxBpAt } from '../src/games/candle/core/wax';
 import {
   solve,
   optimalPolicy,
@@ -22,8 +22,8 @@ import {
   faceValue,
   lotProbability,
   waxFraction,
-} from '../src/game/solve';
-import * as R from '../src/game/rational';
+} from '../src/games/candle/core/solve';
+import * as R from '../src/games/candle/core/rational';
 
 const B = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const D = (s: string) => `\x1b[2m${s}\x1b[0m`;

@@ -5,7 +5,7 @@
  * exclamation marks. Never "you lose" — say what happened. Never congratulate
  * the player for a bad decision.
  */
-import { INCHES } from '../game/wax';
+import { INCHES } from '../../core/wax';
 
 const ORDINAL = ['first', 'second', 'third', 'fourth', 'fifth'] as const;
 

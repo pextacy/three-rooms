@@ -21,8 +21,19 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    // Everything in one chunk: a second request costs more than the bytes save.
-    rollupOptions: { output: { manualChunks: undefined } },
+    /**
+     * One origin, several entries. The host resolves a manifest with
+     * `new URL('game.manifest.json', gameUrl)` — relative to the GAME's url,
+     * not the origin root — so each game lives in its own directory with its
+     * own manifest beside it, and `/` is a lobby that is not an entry.
+     */
+    rollupOptions: {
+      input: {
+        lobby: fileURLToPath(new URL('./index.html', import.meta.url)),
+        candle: fileURLToPath(new URL('./candle/index.html', import.meta.url)),
+      },
+      output: { manualChunks: undefined },
+    },
     assetsInlineLimit: 8192, // matches the "no image over 8 KB" gate (I12)
     reportCompressedSize: true,
   },

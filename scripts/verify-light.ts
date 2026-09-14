@@ -8,8 +8,8 @@
  * exactly the wax ladder, and the tallow must actually walk down the blackbody
  * curve rather than just fading.
  */
-import { INKS, paletteAtWax, relativeLuminance, contrastRatio, temperatureForWax, blackbody, sceneLuminance, css, type InkName } from '../src/render/light';
-import { WAX_BP, INCHES, waxBpAt } from '../src/game/wax';
+import { INKS, paletteAtWax, relativeLuminance, contrastRatio, temperatureForWax, blackbody, sceneLuminance, css, type InkName } from '../src/shared/render/light';
+import { WAX_BP, INCHES, waxBpAt } from '../src/games/candle/core/wax';
 
 const B = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const D = (s: string) => `\x1b[2m${s}\x1b[0m`;

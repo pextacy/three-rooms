@@ -10,11 +10,11 @@
  *   3. it is never dramatised — no "you were so close", ever.
  */
 import { describe, it, expect } from 'vitest';
-import { createDemoHost } from '../src/bridge/demoHost';
-import type { CandleHost, HostView } from '../src/bridge/types';
-import { LOTS, lotById } from '../src/game/paytable';
-import { INCHES } from '../src/game/wax';
-import { COPY } from '../src/ui/copy';
+import { createDemoHost } from '../src/shared/bridge/demoHost';
+import type { CandleHost, HostView } from '../src/shared/bridge/types';
+import { LOTS, lotById } from '../src/games/candle/core/paytable';
+import { INCHES } from '../src/games/candle/core/wax';
+import { COPY } from '../src/games/candle/app/ui/copy';
 
 const STAKE = 20n * 10n ** 18n;
 

@@ -41,7 +41,15 @@ const walk = async dir => {
   return out;
 };
 
-const srcHtml = await readFile(join(ROOT, 'index.html'), 'utf8');
+/**
+ * The ENTRIES are the game pages, not the lobby. `/` lists the games and is not
+ * submitted, carries no jam widget and reports no engagement; each game lives in
+ * its own directory with its own manifest beside it, which is how the host
+ * resolves one (`new URL('game.manifest.json', gameUrl)`).
+ */
+const GAMES = ['candle'];
+const srcHtml = await readFile(join(ROOT, 'candle', 'index.html'), 'utf8');
+const lobbyHtml = await readFile(join(ROOT, 'index.html'), 'utf8');
 
 // ---------------------------------------------------------------- header config
 console.log('\n\x1b[1mheaders — vercel.json\x1b[0m');
@@ -87,24 +95,36 @@ check('nothing in the repo SETS X-Frame-Options', xfoOffenders.length === 0, xfo
 // ---------------------------------------------------------------- widget tag
 console.log('\n\x1b[1mjam widget — raw HTML\x1b[0m');
 const countIn = text => (text.match(new RegExp(WIDGET_TAG.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) ?? []).length;
-check('index.html contains the widget tag exactly once', countIn(srcHtml) === 1, `${countIn(srcHtml)} occurrence(s)`);
+for (const game of GAMES) {
+  const html = await readFile(join(ROOT, game, 'index.html'), 'utf8');
+  check(`${game}/index.html contains the widget tag exactly once`, countIn(html) === 1, `${countIn(html)} occurrence(s)`);
+}
+check(
+  'the lobby carries NO widget — it is a door, not an entry',
+  countIn(lobbyHtml) === 0,
+  'a widget there would report engagement for something never submitted',
+);
 check(
   'the widget tag is a real <script src>, not injected by JS',
   /<script[^>]+src=["']https:\/\/jam\.chain\.wtf\/widget\.js["']/.test(srcHtml),
   'the gallery reads the served document',
 );
 
-if (existsSync(join(DIST, 'index.html'))) {
-  const builtHtml = await readFile(join(DIST, 'index.html'), 'utf8');
-  check('dist/index.html contains the widget tag exactly once', countIn(builtHtml) === 1, `${countIn(builtHtml)} occurrence(s)`);
-} else if (!headersOnly) {
-  check('dist/index.html exists (run `npm run build`)', false);
+for (const game of GAMES) {
+  const built = join(DIST, game, 'index.html');
+  if (existsSync(built)) {
+    const html = await readFile(built, 'utf8');
+    check(`dist/${game}/index.html contains the widget tag exactly once`, countIn(html) === 1, `${countIn(html)} occurrence(s)`);
+  } else if (!headersOnly) {
+    check(`dist/${game}/index.html exists (run \`npm run build\`)`, false);
+  }
 }
 
 // ---------------------------------------------------------------- the document
 console.log('\n\x1b[1mdocument head\x1b[0m');
 {
-  const head = existsSync(join(DIST, 'index.html')) ? await readFile(join(DIST, 'index.html'), 'utf8') : srcHtml;
+  const built = join(DIST, 'candle', 'index.html');
+  const head = existsSync(built) ? await readFile(built, 'utf8') : srcHtml;
   const favicon = /rel="icon"\s+href="(data:image\/svg\+xml,[^"]+)"/.exec(head);
   check(
     'a favicon is inlined, so nothing 404s in a console a judge has open',
@@ -139,7 +159,7 @@ console.log('\n\x1b[1mbrowser storage\x1b[0m');
 
 // ---------------------------------------------------------------- manifest
 console.log('\n\x1b[1mmanifest\x1b[0m');
-const manifestPath = join(ROOT, 'public', 'game.manifest.json');
+const manifestPath = join(ROOT, 'public', 'candle', 'game.manifest.json');
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 check('game.manifest.json parses', true);
 check('schemaVersion/apiVersion are 1', manifest.schemaVersion === 1 && manifest.apiVersion === 1);
@@ -238,21 +258,26 @@ if (!headersOnly) {
     }
     check(`no image over ${IMAGE_BUDGET_BYTES / 1024} KB`, big.length === 0, big.join(', '));
 
-    check('dist/game.manifest.json is served at the origin', existsSync(join(DIST, 'game.manifest.json')));
+      for (const game of GAMES) {
+      check(`dist/${game}/game.manifest.json sits beside its page`, existsSync(join(DIST, game, 'game.manifest.json')));
+    }
+    check('the lobby exists and is not itself an entry', existsSync(join(DIST, 'index.html')));
   }
 }
 
 // ---------------------------------------------------------------- live origin
 if (origin) {
   console.log(`\n\x1b[1mlive origin — ${origin}\x1b[0m`);
-  const res = await fetch(origin, { redirect: 'follow' });
+  // The entry is the GAME page; the origin root is the lobby.
+  const gameUrl = new URL('/candle/', origin).toString();
+  const res = await fetch(gameUrl, { redirect: 'follow' });
   const html = await res.text();
   const hdr = n => res.headers.get(n);
-  check('origin responds 200', res.status === 200, String(res.status));
+  check('the game page responds 200', res.status === 200, gameUrl);
   check('CSP frame-ancestors * is served', (hdr('content-security-policy') ?? '').includes('frame-ancestors *'), hdr('content-security-policy') ?? 'missing');
   check('NO X-Frame-Options is served', hdr('x-frame-options') === null, hdr('x-frame-options') ?? 'absent');
   check('served HTML contains the widget tag exactly once', countIn(html) === 1, `${countIn(html)} occurrence(s)`);
-  const mres = await fetch(new URL('/game.manifest.json', origin));
+  const mres = await fetch(new URL('/candle/game.manifest.json', origin));
   check('game.manifest.json is live and parses', mres.ok && Boolean(await mres.json().catch(() => null)), String(mres.status));
 }
 

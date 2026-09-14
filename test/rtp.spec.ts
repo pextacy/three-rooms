@@ -5,10 +5,10 @@
  * test. Everything else is derived (claude.md §2).
  */
 import { describe, it, expect } from 'vitest';
-import { solve, optimalPolicy, evaluate, outcomes, reachByInch, probabilityAtLeast, probabilityOfNothing, meanRoundLength, standardDeviation, expectedFace, faceValue, waxFraction, lotProbability } from '../src/game/solve';
-import { LOTS, WEIGHT_DENOM, MAX_FACE_BP, FACE_DENOM } from '../src/game/paytable';
-import { INCHES } from '../src/game/wax';
-import * as R from '../src/game/rational';
+import { solve, optimalPolicy, evaluate, outcomes, reachByInch, probabilityAtLeast, probabilityOfNothing, meanRoundLength, standardDeviation, expectedFace, faceValue, waxFraction, lotProbability } from '../src/games/candle/core/solve';
+import { LOTS, WEIGHT_DENOM, MAX_FACE_BP, FACE_DENOM } from '../src/games/candle/core/paytable';
+import { INCHES } from '../src/games/candle/core/wax';
+import * as R from '../src/games/candle/core/rational';
 
 /** The declared numbers from docs.md §9.4. The DP must reproduce them. */
 const DECLARED_RTP_NUMERATOR = 7_577_820_426_157n;

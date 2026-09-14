@@ -18,10 +18,10 @@ import { Ledger, ledgerRowFrom, type LedgerRow } from './Ledger';
 import { Scene, applySceneLight } from './Scene';
 import { useCandleHost } from './useHost';
 import { useCandleAudio } from './useAudio';
-import { lotById } from '../game/paytable';
-import { INCHES, payoutBase, waxBpAt } from '../game/wax';
-import type { LotFace } from '../render/scene';
-import type { CandleHost, HostView } from '../bridge';
+import { lotById } from '../../core/paytable';
+import { INCHES, payoutBase, waxBpAt } from '../../core/wax';
+import type { LotFace } from '../../../../shared/render/scene';
+import type { CandleHost, HostView } from '../../../../shared/bridge';
 
 export function App() {
   const { host, view } = useCandleHost();

@@ -10,8 +10,8 @@
 import { writeFileSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LOTS, WEIGHT_DENOM, FACE_DENOM, MAX_FACE_BP, CUMULATIVE_WEIGHTS } from '../src/game/paytable';
-import { INCHES, WAX_BP, waxBpAt } from '../src/game/wax';
+import { LOTS, WEIGHT_DENOM, FACE_DENOM, MAX_FACE_BP, CUMULATIVE_WEIGHTS } from '../src/games/candle/core/paytable';
+import { INCHES, WAX_BP, waxBpAt } from '../src/games/candle/core/wax';
 import {
   solve,
   optimalPolicy,
@@ -23,10 +23,10 @@ import {
   meanRoundLength,
   standardDeviation,
   lotProbability,
-} from '../src/game/solve';
-import { knifeEdge, pinDropHz } from '../src/audio/voice';
-import { INKS, relativeLuminance, paletteAtWax, contrastRatio, temperatureForWax } from '../src/render/light';
-import * as R from '../src/game/rational';
+} from '../src/games/candle/core/solve';
+import { knifeEdge, pinDropHz } from '../src/shared/audio/voice';
+import { INKS, relativeLuminance, paletteAtWax, contrastRatio, temperatureForWax } from '../src/shared/render/light';
+import * as R from '../src/games/candle/core/rational';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, '../README.md');
@@ -89,7 +89,7 @@ A provably-fair on-chain wagering game for **Chain Jam Vol. 1**. Take the lot in
 front of you, or let the candle burn an inch and see the next one — knowing the
 next one is worth less by construction.
 
-${homepage ? `### ▸ Play it: **${homepage}**\n\nFree play. No wallet, no modal, no splash — the first lot is already on the table\nwhen the page loads.` : ''}
+${homepage ? `### ▸ Play it: **${homepage}/candle/**\n\nFree play. No wallet, no modal, no splash — the first lot is already on the table\nwhen the page loads.` : ''}
 
 **Declared RTP ${pct(solution.rtp)}** under optimal play, exactly
 \`${R.toExactString(solution.rtp)}\`. Reproduce it in under a minute:

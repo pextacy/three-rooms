@@ -6,9 +6,9 @@
  */
 import { describe, it, expect } from 'vitest';
 import { keccak256 } from 'viem';
-import { draw, drawLot, wordFromHex, wordToHex, wordToBytes, wordFromBytes, RNG_LIMIT, WINDOWS, MAX_REHASHES, REHASH_UNSUPPORTED, type Rehash } from '../src/game/rng';
+import { draw, drawLot, wordFromHex, wordToHex, wordToBytes, wordFromBytes, RNG_LIMIT, WINDOWS, MAX_REHASHES, REHASH_UNSUPPORTED, type Rehash } from '../src/games/candle/core/rng';
 import { readFileSync } from 'node:fs';
-import { WEIGHT_DENOM, LOTS, CUMULATIVE_WEIGHTS, lotForDraw } from '../src/game/paytable';
+import { WEIGHT_DENOM, LOTS, CUMULATIVE_WEIGHTS, lotForDraw } from '../src/games/candle/core/paytable';
 
 /** The contract's rehash: keccak256 over the raw 32 bytes. */
 const keccakRehash: Rehash = word => wordFromBytes(wordToBytes(BigInt(keccak256(wordToBytes(word)))));

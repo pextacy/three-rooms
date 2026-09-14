@@ -12,9 +12,9 @@
  * carried by colour alone).
  */
 import { useEffect, useRef } from 'react';
-import { mountScene, type LotFace, type SceneHandle } from '../render/scene';
-import { paletteAtWax, css, type InkName } from '../render/light';
-import { waxBpAt } from '../game/wax';
+import { mountScene, type LotFace, type SceneHandle } from '../../../../shared/render/scene';
+import { paletteAtWax, css, type InkName } from '../../../../shared/render/light';
+import { waxBpAt } from '../../core/wax';
 
 export type SceneProps = {
   readonly inch: number;

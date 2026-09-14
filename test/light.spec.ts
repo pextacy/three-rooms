@@ -22,8 +22,8 @@ import {
   FLAME_KELVIN_FULL,
   FLAME_KELVIN_GUTTER,
   type InkName,
-} from '../src/render/light';
-import { INCHES, WAX_BP, WAX_DENOM, waxBpAt } from '../src/game/wax';
+} from '../src/shared/render/light';
+import { INCHES, WAX_BP, WAX_DENOM, waxBpAt } from '../src/games/candle/core/wax';
 
 const NAMES: InkName[] = ['tallow', 'brass', 'oxblood', 'ink'];
 const FULL = waxBpAt(1);

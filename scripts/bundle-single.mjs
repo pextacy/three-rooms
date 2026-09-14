@@ -22,15 +22,19 @@ const OUT = process.argv[2] ?? join(ROOT, 'dist', 'candle-standalone.html');
  */
 const FRAGMENT = process.argv.includes('--fragment');
 
-let html = await readFile(join(DIST, 'index.html'), 'utf8');
+let html = await readFile(join(DIST, 'candle', 'index.html'), 'utf8');
 const assets = await readdir(join(DIST, 'assets'));
 
-const js = assets.find(f => f.endsWith('.js'));
-const css = assets.find(f => f.endsWith('.css'));
-if (!js || !css) throw new Error('build first: npm run build');
+// The build splits shared code (React) from each page's own chunk, so the
+// single-file bundle has to inline every asset the page actually references,
+// in the order the document lists them.
+const referenced = [...html.matchAll(/(?:src|href)="\/assets\/([^"]+)"/g)].map(m => m[1]);
+const js = referenced.filter(f => f?.endsWith('.js'));
+const css = referenced.filter(f => f?.endsWith('.css'));
+if (js.length === 0 || css.length === 0) throw new Error('build first: npm run build');
 
-const jsSource = await readFile(join(DIST, 'assets', js), 'utf8');
-const cssSource = await readFile(join(DIST, 'assets', css), 'utf8');
+const jsSource = (await Promise.all(js.map(f => readFile(join(DIST, 'assets', f), 'utf8')))).join('\n');
+const cssSource = (await Promise.all(css.map(f => readFile(join(DIST, 'assets', f), 'utf8')))).join('\n');
 
 const output = FRAGMENT
   ? [
@@ -41,8 +45,9 @@ const output = FRAGMENT
     ].join('\n')
   : html
       .replace(/<script async src="https:\/\/jam\.chain\.wtf\/widget\.js"><\/script>/, '')
-      .replace(new RegExp(`<script type="module"[^>]*src="/assets/${js}"[^>]*></script>`), '')
-      .replace(new RegExp(`<link rel="stylesheet"[^>]*href="/assets/${css}"[^>]*>`), `<style>${cssSource}</style>`)
+      .replace(/<script type="module"[^>]*src="\/assets\/[^"]+"[^>]*><\/script>/g, '')
+      .replace(/<link rel="(?:stylesheet|modulepreload)"[^>]*href="\/assets\/[^"]+"[^>]*>/g, '')
+      .replace('</head>', `<style>${cssSource}</style></head>`)
       .replace('<div id="root"></div>', `<div id="root"></div><script type="module">${jsSource}</script>`);
 
 await writeFile(OUT, output);

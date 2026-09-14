@@ -19,11 +19,11 @@ import {
   DWELL_FAST_MS,
   DWELL_SLOW_MS,
   TURBO_SCALE,
-} from '../src/audio/voice';
-import { LOTS } from '../src/game/paytable';
-import { INCHES, WAX_BP, waxBpAt } from '../src/game/wax';
-import { solve } from '../src/game/solve';
-import * as R from '../src/game/rational';
+} from '../src/shared/audio/voice';
+import { LOTS } from '../src/games/candle/core/paytable';
+import { INCHES, WAX_BP, waxBpAt } from '../src/games/candle/core/wax';
+import { solve } from '../src/games/candle/core/solve';
+import * as R from '../src/games/candle/core/rational';
 
 const SORTED = [...LOTS].sort((a, b) => a.faceBp - b.faceBp);
 

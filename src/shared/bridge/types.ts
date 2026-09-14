@@ -6,7 +6,7 @@
  * implement `CandleHost`, so the UI has exactly ONE code path and the demo
  * cannot quietly drift into being a different game.
  */
-import type { LotId } from '../game/paytable';
+import type { LotId } from '../../games/candle/core/paytable';
 
 export type HostKind = 'chain' | 'demo';
 

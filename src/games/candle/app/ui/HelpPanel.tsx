@@ -10,10 +10,10 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { COPY } from './copy';
 import { formatFace, formatWax, formatWeight } from './format';
-import { LOTS, WEIGHT_DENOM, MAX_FACE_BP, FACE_DENOM } from '../game/paytable';
-import { INCHES, WAX_BP } from '../game/wax';
-import { solve, strategyBand, evaluate, optimalPolicy } from '../game/solve';
-import * as R from '../game/rational';
+import { LOTS, WEIGHT_DENOM, MAX_FACE_BP, FACE_DENOM } from '../../core/paytable';
+import { INCHES, WAX_BP } from '../../core/wax';
+import { solve, strategyBand, evaluate, optimalPolicy } from '../../core/solve';
+import * as R from '../../core/rational';
 
 /**
  * Keeps keyboard focus inside the dialog while it is open, and gives it back to

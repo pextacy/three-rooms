@@ -9,10 +9,10 @@
  * gesture, so the first key or click unlocks it.
  */
 import { useEffect, useRef } from 'react';
-import { createAudio, type CandleAudio } from '../audio/graphs';
-import { INCHES } from '../game/wax';
-import { lotById } from '../game/paytable';
-import type { SessionView } from '../bridge';
+import { createAudio, type CandleAudio } from '../../../../shared/audio/graphs';
+import { INCHES } from '../../core/wax';
+import { lotById } from '../../core/paytable';
+import type { SessionView } from '../../../../shared/bridge';
 
 export function useCandleAudio(enabled: boolean, session: SessionView | null): void {
   const audioRef = useRef<CandleAudio | null>(null);

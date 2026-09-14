@@ -12,12 +12,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { App } from '../src/ui/App';
-import { ErrorBoundary } from '../src/ui/ErrorBoundary';
-import { COPY } from '../src/ui/copy';
-import { LOTS } from '../src/game/paytable';
-import { INCHES } from '../src/game/wax';
-import { DWELL_SLOW_MS } from '../src/audio/voice';
+import { App } from '../src/games/candle/app/ui/App';
+import { ErrorBoundary } from '../src/games/candle/app/ui/ErrorBoundary';
+import { COPY } from '../src/games/candle/app/ui/copy';
+import { LOTS } from '../src/games/candle/core/paytable';
+import { INCHES } from '../src/games/candle/core/wax';
+import { DWELL_SLOW_MS } from '../src/shared/audio/voice';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -365,7 +365,7 @@ describe('the ledger', () => {
 
 describe('the host theme reaches the chrome and stops there', () => {
   it('declares the light palette for a light host', () => {
-    const tokens = readFileSync(resolve(process.cwd(), 'src/ui/tokens.css'), 'utf8');
+    const tokens = readFileSync(resolve(process.cwd(), 'src/games/candle/app/ui/tokens.css'), 'utf8');
     expect(tokens).toContain("[data-theme='light']");
     for (const token of ['--chrome-bg', '--chrome-ink', '--chrome-rule', '--chrome-field']) {
       expect(tokens, token).toContain(token);
@@ -373,14 +373,14 @@ describe('the host theme reaches the chrome and stops there', () => {
   });
 
   it('never lets a theme touch the four inks or the scene', () => {
-    const tokens = readFileSync(resolve(process.cwd(), 'src/ui/tokens.css'), 'utf8');
+    const tokens = readFileSync(resolve(process.cwd(), 'src/games/candle/app/ui/tokens.css'), 'utf8');
     const light = tokens.slice(tokens.indexOf("[data-theme='light']"));
     // The light model is the product; a host theme adapts the frame only
     // (docs.md §4.1). Redefining an ink here would repaint the game.
     for (const ink of ['--tallow:', '--brass:', '--oxblood:', '--ink:']) {
       expect(light.includes(ink), `${ink} must not be redefined by a theme`).toBe(false);
     }
-    const table = readFileSync(resolve(process.cwd(), 'src/ui/table.css'), 'utf8');
+    const table = readFileSync(resolve(process.cwd(), 'src/games/candle/app/ui/table.css'), 'utf8');
     expect(table, 'the canvas keeps the room whatever the host does').toMatch(/\.scene \{\s*background: var\(--ink\)/);
   });
 });

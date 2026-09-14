@@ -13,9 +13,9 @@
 import { readFileSync } from 'node:fs';
 import { createPublicClient, createWalletClient, http, parseEther, decodeEventLog, formatEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { lotById, type LotId } from '../src/game/paytable';
-import { payoutBase } from '../src/game/wax';
-import { lightCandle, transition, payoutIfClaimedNow, type RoundState } from '../src/game/round';
+import { lotById, type LotId } from '../src/games/candle/core/paytable';
+import { payoutBase } from '../src/games/candle/core/wax';
+import { lightCandle, transition, payoutIfClaimedNow, type RoundState } from '../src/games/candle/core/round';
 
 const deployed = JSON.parse(
   readFileSync(new URL('../sdk/casino-sdk/simulator/local-node/deployed.json', import.meta.url), 'utf8'),

@@ -10,9 +10,9 @@
  * The budget is 16.7 ms for 60 fps; prd.md §7 asks for 12, leaving the browser
  * 4.7 ms of its own.
  */
-import { drawScene, type SceneState, type LotFace } from '../src/render/scene';
-import { LOTS } from '../src/game/paytable';
-import { INCHES } from '../src/game/wax';
+import { drawScene, type SceneState, type LotFace } from '../src/shared/render/scene';
+import { LOTS } from '../src/games/candle/core/paytable';
+import { INCHES } from '../src/games/candle/core/wax';
 
 const FRAMES = Number(process.env['FRAME_BUDGET_FRAMES'] ?? 2_000);
 const BUDGET_MS = 12;

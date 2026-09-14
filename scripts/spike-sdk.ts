@@ -15,9 +15,9 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { computeMaxWager } from '@chain/casino-sdk/guest';
 import { validateCasinoGameManifest, canonicalCasinoGameId, resolveManifestMetadata, assertSameOriginUrls } from '@chain/casino-sdk/manifest';
 import type { HostSnapshotV1 } from '@chain/casino-sdk';
-import { decodeGameState, encodeAction, encodeGameState } from '../src/bridge/types';
-import { MAX_FACE_BP, FACE_DENOM, LOTS } from '../src/game/paytable';
-import { INCHES, payoutBase } from '../src/game/wax';
+import { decodeGameState, encodeAction, encodeGameState } from '../src/shared/bridge/types';
+import { MAX_FACE_BP, FACE_DENOM, LOTS } from '../src/games/candle/core/paytable';
+import { INCHES, payoutBase } from '../src/games/candle/core/wax';
 
 const deployed = JSON.parse(
   readFileSync(new URL('../sdk/casino-sdk/simulator/local-node/deployed.json', import.meta.url), 'utf8'),

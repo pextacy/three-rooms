@@ -12,8 +12,8 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { candleAddress, chainIsUp, loadDeployment, publicClient, candleAbi, makeCtx, encodeGameState, type Deployment } from './helpers/chain';
-import { LOTS, MAX_FACE_BP } from '../src/game/paytable';
-import { INCHES, payoutBase } from '../src/game/wax';
+import { LOTS, MAX_FACE_BP } from '../src/games/candle/core/paytable';
+import { INCHES, payoutBase } from '../src/games/candle/core/wax';
 
 const address = candleAddress();
 const deployment = loadDeployment();

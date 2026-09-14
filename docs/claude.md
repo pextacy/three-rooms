@@ -58,23 +58,19 @@ candle/
 ├── contracts/
 │   └── Candle.sol            ICasinoGameV2 implementation. Solidity 0.8.30.
 │                             No constructor args. No unbounded loops.
+├── index.html                the LOBBY. Not an entry: no jam widget, no metrics.
+├── candle/index.html         an entry's page
 ├── src/
-│   ├── game/
-│   │   ├── paytable.ts       THE single source of truth for face values + weights
-│   │   ├── wax.ts            the five-inch discount ladder
-│   │   ├── solve.ts          the DP: continuation values + claim thresholds
-│   │   ├── rng.ts            bytes32 -> uniform draw, mirrors the contract exactly
-│   │   └── round.ts          pure state machine: LIT -> OFFERED -> CLAIMED|GUTTERED
-│   ├── bridge/
-│   │   ├── useCasinoHost.ts  penpal guest <-> chain.wtf host
-│   │   └── demoHost.ts       standalone free-play host, seeded PRNG, labelled DEMO
-│   ├── render/
-│   │   └── scene.ts          ONE canvas renderer. See §5.
-│   ├── audio/
-│   │   └── graphs.ts         three Web Audio graphs. No files.
-│   └── ui/                   thin React layer. Holds no game logic.
-├── public/
-│   └── game.manifest.json    the SDK game manifest (that EXACT filename)
+│   ├── lobby/                the door. No balance, no deposit, no wallet.
+│   ├── shared/               everything a second game reuses unchanged
+│   │   ├── bridge/           penpal host + the free-play host, one interface
+│   │   ├── render/           light.ts (the measurable light model) + scene.ts
+│   │   └── audio/            three Web Audio graphs. No files.
+│   └── games/<slug>/
+│       ├── core/             the PURE core: the game's own maths
+│       └── app/ui/           thin React layer. Holds no game logic.
+├── public/<slug>/
+│   └── game.manifest.json    one per entry, beside its page (that EXACT filename)
 ├── contracts/generated/      gen:constants output. NEVER hand-edited.
 ├── test/
 ├── scripts/                  verify-rtp, gen-constants, gates

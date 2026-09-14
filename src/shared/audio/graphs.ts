@@ -16,7 +16,7 @@
  * Nothing that matters is audio-only (prd.md §7).
  */
 import { pinDropHz, roomGain, crackleDensityHz } from './voice';
-import { waxBpAt } from '../game/wax';
+import { waxBpAt } from '../../games/candle/core/wax';
 
 export type AudioEvent =
   /** A lot lands on the table. Pitch rises with its face value. */

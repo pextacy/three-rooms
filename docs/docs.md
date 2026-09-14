@@ -313,6 +313,26 @@ Implements the identical interface with a seeded PRNG (`xoshiro128**`, seeded fr
 
 ## 5. Manifest, widget and hosting
 
+### 5.0 One origin, several entries
+
+The host resolves a manifest with `new URL('game.manifest.json', gameUrl)` —
+**relative to the game's URL, not the origin root**. So one origin can carry
+several entries, each in its own directory with its own manifest beside it:
+
+```
+/                       the lobby — NOT an entry, no jam widget, no metrics
+/candle/                an entry: its own page, manifest and contract
+/candle/game.manifest.json
+```
+
+A game's entry URL must therefore end in a slash, or the manifest resolves to the
+origin root and the host reads the wrong one.
+
+**The lobby is a door, not a casino.** It lists the games and links to them. It
+has no balance, no deposit and no wallet, because inside chain.wtf the host owns
+all three (§4.1, `claude.md` §7) — and because a game origin that asks for money
+is the exact shape of a phishing page.
+
 ### 5.1 Manifest
 Served at the origin as **`/game.manifest.json`** — that exact filename, on the
 same origin as the iframe. Fork the shape from the coinflip example and do not

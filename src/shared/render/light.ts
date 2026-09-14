@@ -14,7 +14,7 @@
  * something 40% as bright; sRGB is encoded with a ~2.2 gamma, so the naive
  * version lands near 69% of the light and the claim would be false.
  */
-import { WAX_DENOM, waxBpAt } from '../game/wax';
+import { WAX_DENOM, waxBpAt } from '../../games/candle/core/wax';
 
 export type Rgb = { readonly r: number; readonly g: number; readonly b: number };
 

@@ -68,13 +68,15 @@ try {
   }
 
   console.log(`\n\x1b[1mCANDLE — embeddability\x1b[0m`);
-  console.log(`\x1b[2m${origin}\x1b[0m\n`);
+  console.log(`\x1b[2m${new URL('/candle/', origin).toString()}\x1b[0m\n`);
 
-  const res = await fetch(origin, { redirect: 'follow' });
+  // The embeddable thing is the GAME page. `/` is the lobby.
+  const gameUrl = new URL('/candle/', origin).toString();
+  const res = await fetch(gameUrl, { redirect: 'follow' });
   const html = await res.text();
   const header = name => res.headers.get(name);
 
-  check('the origin responds 200', res.status === 200, String(res.status));
+  check('the game page responds 200', res.status === 200, String(res.status));
 
   const csp = admitsAnyAncestor(header('content-security-policy'));
   check('CSP admits any ancestor', csp.ok, csp.why);
@@ -96,7 +98,7 @@ try {
   check('the document carries a #root for the app to mount into', /<div id="root">/.test(html));
   check('the jam widget tag is present exactly once', (html.match(/jam\.chain\.wtf\/widget\.js/g) ?? []).length === 1);
 
-  const manifest = await fetch(new URL('/game.manifest.json', origin));
+  const manifest = await fetch(new URL('/candle/game.manifest.json', origin));
   const parsed = manifest.ok ? await manifest.json().catch(() => null) : null;
   check('game.manifest.json is served and parses', Boolean(parsed), `${manifest.status}`);
   check('the manifest declares submitAction — CANDLE is multi-action', parsed?.capabilities?.submitAction === true);
@@ -107,7 +109,7 @@ try {
       res2.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res2.end(`<!doctype html><title>gallery stand-in</title>
 <p>If CANDLE renders below, the headers are right.</p>
-<iframe src="${origin}" width="420" height="620" style="border:1px solid #333"></iframe>`);
+<iframe src="${gameUrl}" width="420" height="620" style="border:1px solid #333"></iframe>`);
     });
     await new Promise(resolve => hostServer.listen(HOST_PORT, resolve));
     console.log(

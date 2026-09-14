@@ -9,16 +9,16 @@
  *
  *   npm run play -- 50
  */
-import { createDemoHost, DEMO_OPENING_PURSE } from '../src/bridge/demoHost';
-import type { CandleHost, HostView } from '../src/bridge/types';
-import { LOTS } from '../src/game/paytable';
-import { INCHES, payoutBase, waxBpAt } from '../src/game/wax';
-import { solve, optimalPolicy } from '../src/game/solve';
-import { COPY } from '../src/ui/copy';
-import { dwellMs, tension, knifeEdge, pinDropHz } from '../src/audio/voice';
-import { lotById } from '../src/game/paytable';
-import { formatAmount, formatFace, formatWax } from '../src/ui/format';
-import * as R from '../src/game/rational';
+import { createDemoHost, DEMO_OPENING_PURSE } from '../src/shared/bridge/demoHost';
+import type { CandleHost, HostView } from '../src/shared/bridge/types';
+import { LOTS } from '../src/games/candle/core/paytable';
+import { INCHES, payoutBase, waxBpAt } from '../src/games/candle/core/wax';
+import { solve, optimalPolicy } from '../src/games/candle/core/solve';
+import { COPY } from '../src/games/candle/app/ui/copy';
+import { dwellMs, tension, knifeEdge, pinDropHz } from '../src/shared/audio/voice';
+import { lotById } from '../src/games/candle/core/paytable';
+import { formatAmount, formatFace, formatWax } from '../src/games/candle/app/ui/format';
+import * as R from '../src/games/candle/core/rational';
 
 const ROUNDS = Number(process.argv[2] ?? 50);
 const TRANSCRIBE = 6;

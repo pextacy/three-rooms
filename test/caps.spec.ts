@@ -8,9 +8,9 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { candleAddress, chainIsUp, loadDeployment, publicClient, candleAbi, makeCtx, encodeGameState, decodeGameState, type Deployment } from './helpers/chain';
-import { LOTS, MAX_FACE_BP, TOP_TIER_WEIGHT, WEIGHT_DENOM } from '../src/game/paytable';
-import { INCHES, payoutBase } from '../src/game/wax';
-import { solve } from '../src/game/solve';
+import { LOTS, MAX_FACE_BP, TOP_TIER_WEIGHT, WEIGHT_DENOM } from '../src/games/candle/core/paytable';
+import { INCHES, payoutBase } from '../src/games/candle/core/wax';
+import { solve } from '../src/games/candle/core/solve';
 
 const address = candleAddress();
 const deployment = loadDeployment();

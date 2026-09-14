@@ -1,8 +1,8 @@
 /**
  * Formatting for base-unit amounts and multipliers. No game logic lives here.
  */
-import { FACE_DENOM } from '../game/paytable';
-import { WAX_DENOM } from '../game/wax';
+import { FACE_DENOM } from '../../core/paytable';
+import { WAX_DENOM } from '../../core/wax';
 
 /** Base units -> a human string, trimmed of trailing zeros. */
 export function formatAmount(base: bigint, decimals: number, maxFraction = 2): string {

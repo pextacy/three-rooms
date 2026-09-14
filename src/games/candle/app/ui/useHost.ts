@@ -5,7 +5,7 @@
  * view into React state and exposes the host's own methods.
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { selectHost, type CandleHost, type HostView } from '../bridge';
+import { selectHost, type CandleHost, type HostView } from '../../../../shared/bridge';
 
 export function useCandleHost(): { host: CandleHost | null; view: HostView | null } {
   const [host, setHost] = useState<CandleHost | null>(null);

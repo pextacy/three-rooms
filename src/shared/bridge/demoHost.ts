@@ -12,9 +12,9 @@
  * worse lie than one that obviously resets. The purse lives for exactly one page
  * load and `REFILL` is right there.
  */
-import { drawLot } from '../game/rng';
-import { lotById, lotForDraw, type LotId } from '../game/paytable';
-import { INCHES, payoutBase } from '../game/wax';
+import { drawLot } from '../../games/candle/core/rng';
+import { lotById, lotForDraw, type LotId } from '../../games/candle/core/paytable';
+import { INCHES, payoutBase } from '../../games/candle/core/wax';
 import { createPrng, seedFromCrypto, type Prng } from './prng';
 import { dwellWithTurbo } from '../audio/voice';
 import type { CandleHost, HostView, PlayerAction, SessionView } from './types';

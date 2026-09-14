@@ -15,10 +15,10 @@
  */
 import { COPY } from './copy';
 import { formatAmount, formatFace } from './format';
-import { lotById, type LotId } from '../game/paytable';
-import { INCHES } from '../game/wax';
-import { solve } from '../game/solve';
-import * as R from '../game/rational';
+import { lotById, type LotId } from '../../core/paytable';
+import { INCHES } from '../../core/wax';
+import { solve } from '../../core/solve';
+import * as R from '../../core/rational';
 
 export type LedgerRow = {
   readonly key: string;

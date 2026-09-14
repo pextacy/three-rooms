@@ -42,9 +42,17 @@ createServer(async (req, res) => {
   let file = join(DIST, normalize(pathname).replace(/^(\.\.[/\\])+/, ''));
 
   try {
-    const s = await stat(file).catch(() => null);
-    if (!s || s.isDirectory()) {
-      file = join(DIST, 'index.html'); // SPA fallback, same as Vercel's default
+    let s = await stat(file).catch(() => null);
+    // A directory serves its own index. This is a multi-PAGE site, not an SPA:
+    // `/` is the lobby and `/candle/` is an entry, and neither may fall back to
+    // the other.
+    if (s?.isDirectory()) {
+      file = join(file, 'index.html');
+      pathname = `${pathname.replace(/\/$/, '')}/index.html`;
+      s = await stat(file).catch(() => null);
+    }
+    if (!s) {
+      file = join(DIST, 'index.html');
       pathname = '/index.html';
     }
     const body = await readFile(file);

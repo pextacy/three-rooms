@@ -16,15 +16,18 @@
     "serve:headers": "node scripts/serve-with-headers.mjs",
     "gates": "node scripts/gates.mjs",
     "gates:headers": "node scripts/gates.mjs --headers-only",
-    "spike": "node spikes/spike-multidraw.mjs && node spikes/spike-maxpayout.mjs && node spikes/spike-coinflip.mjs",
+    "spike": "vite-node scripts/spike-sdk.ts",
     "sdk:stack": "npm --prefix sdk/casino-sdk start",
     "sdk:fetch": "node scripts/fetch-sdk.mjs",
     "sdk:install": "npm --prefix sdk/casino-sdk install",
     "round-trip": "vite-node scripts/round-trip.ts",
     "bench": "vite-node scripts/bench.ts",
-    "sync:simulator": "node scripts/sync-simulator.mjs"
+    "sync:simulator": "node scripts/sync-simulator.mjs",
+    "play": "vite-node scripts/play-demo.ts",
+    "spike:phase0": "node spikes/spike-multidraw.mjs && node spikes/spike-maxpayout.mjs && node spikes/spike-coinflip.mjs"
   },
   "dependencies": {
+    "penpal": "^7.0.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -33,6 +36,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
     "typescript": "^5.7.0",
     "viem": "^2.21.0",
     "vite": "^6.0.0",

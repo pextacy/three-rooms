@@ -15,7 +15,7 @@ looks full.
 
 **Status legend:** ⬜ not started · 🟡 in progress · ✅ gate passed · ❌ gate failed
 
-**Current phase: 2 — Playable.** Phase 0 and 1 closed 2026-09-14.
+**Current phase: 3 — Make it look real.** Phases 0–2 closed 2026-09-14.
 
 ---
 
@@ -149,22 +149,92 @@ regardless" baseline at **46.500%**. It is **44.000%** — `E[face] × wax(1) = 
 
 ---
 
-## Phase 2 — Playable  ·  D2 (Tue 09-16)  ·  ⬜
+## Phase 2 — Playable  ·  D2 (Tue 09-16)  ·  ✅
 
-| # | Deliverable |
-|---|---|
-| 2.1 | `src/bridge/useCasinoHost.ts` — penpal, session lifecycle, bet limits, `ui.theme` |
-| 2.2 | `src/bridge/demoHost.ts` — seeded PRNG, 2,000-chip purse, `REFILL`, **no browser storage** |
-| 2.3 | `src/ui/` — deliberately ugly: lot, face value, inch counter, payout-if-claimed-now, two buttons |
-| 2.4 | Full keyboard path (`docs.md` §6.3) |
-| 2.5 | `src/ui/copy.ts` — all strings; no literals in components |
-| 2.6 | `?` panel: paytable, wax ladder, thresholds, declared RTP, strategy band |
-| 2.7 | `npm run spike` — every SDK symbol used, exercised end to end |
+| # | Deliverable | Status |
+|---|---|---|
+| 2.1 | `src/bridge/useCasinoHost.ts` — penpal, session lifecycle, bet limits, `ui.theme` | ✅ |
+| 2.2 | `src/bridge/demoHost.ts` — xoshiro128\*\*, 2,000-chip purse, `REFILL`, **no browser storage** | ✅ |
+| 2.3 | `src/ui/` — plain: lot, face value, inch counter, payout-if-claimed-now, two switches | ✅ |
+| 2.4 | Full keyboard path (`docs.md` §6.3) | ✅ |
+| 2.5 | `src/ui/copy.ts` — all strings; no literals in components | ✅ |
+| 2.6 | `?` panel: paytable, wax ladder, thresholds, declared RTP, strategy band | ✅ |
+| 2.7 | `npm run spike` — every SDK symbol used, exercised end to end — **28/28** | ✅ |
 
-**Exit gate:** **play 50 rounds by hand**, simulator *and* standalone. Write down what is
-boring, confusing, broken. That list drives phases 3–4. If the loop is not fun in ASCII, no
-amount of candlelight fixes it — and this is the **last honest moment to change the
-paytable** (`plan.md` R2).
+**Exit gate — the 50-round verdict**
+
+Played through `npm run play` (the demo host, driven by three policies) and
+`npm run spike` (the real contract, in the simulator). 124 tests green, including
+17 that drive the actual React tree in jsdom.
+
+*Numbers first, because they settle most of the argument:*
+
+```
+demo RTP over 20,000 rounds   96.38%   vs 96.9961% closed form   (0.5 sigma)
+rounds that ask the player something   80.2%   = 1 - 0.669^4, exactly
+offers below the last inch that are a real choice   33.1%   = 1 - 0.669
+mean round length   3.13 inches   vs 3.12 closed form
+```
+
+**What is boring.** Two thirds of every offer is an empty crate, and an empty
+crate is never claimable, so the player is clicking **LET IT BURN** on a decision
+that is not a decision. A transcript reads:
+
+```
+Inch 1 · 100% · Empty crate 0.00x  -> LET IT BURN
+Inch 2 ·  85% · Empty crate 0.00x  -> LET IT BURN
+Inch 3 ·  70% · Empty crate 0.00x  -> LET IT BURN
+Inch 4 ·  55% · Cordage 1.00x      -> CLAIM
+```
+
+Three quarters of that round is dead air. **This is a pacing problem, not a
+paytable problem**, and the distinction matters because the fixes are different
+and `plan.md` R2's levers are the expensive ones:
+
+- 80.2 % of rounds *do* ask a real question, and the per-round decision rate is
+  exactly `1 − 0.669⁴`. The dead air is *within* a round, not across rounds.
+- The knife edge the design is built on is real and lands: a 0.50× lot against a
+  0.51392 threshold at the third inch.
+- So the lever is `plan.md` D4's pacing pass — *"hold longer on a lot that sits
+  near the threshold, move fast through empty crates"* — not R2's retune. **The
+  paytable is not being changed.** If D4's pacing does not fix it, R2 is still
+  open on D3, which is the last honest moment.
+
+**What is broken.** Nothing, now. Four real defects were found and fixed here,
+three of them by code that only existed because it was written to be run:
+
+1. **The PRNG emitted negative words.** `x & 0xffffffff` operates on *signed*
+   32-bit ints in JS, so every output at or above 2³¹ came back negative. Caught
+   by the range guard in `rng.ts` — an assertion that earned its place.
+2. **`subscribe` fired synchronously**, which React forbids for an external
+   store, and **`snapshot()` returned a fresh object every call**, which makes
+   `useSyncExternalStore` re-render forever. Both found by the jsdom test on its
+   first run. The store now caches its view and `subscribe` registers only.
+3. A `localStorage` gate that matched the *comment forbidding* `localStorage`.
+   It now strips comments first — a rule has to be documentable in the files it
+   governs.
+
+**What is confusing.** The word *wax* does double duty — the physical candle and
+the discount. The UI says "Wax remaining 70%" next to "Claim now and take 14",
+and nothing yet connects the two. Phase 3 is exactly where that connection gets
+made *without a number*: brightness is the multiplier.
+
+**One structural decision.** The SDK ships raw `.ts`, not `.d.ts`, so importing
+it pulled its source into our program and broke our stricter flags on code that
+is not ours to fix. `src/types/casino-sdk.d.ts` now declares the exact SDK
+surface we depend on; Vite still aliases the real source at build time. Our
+`strict` settings are fully intact, and `npm run spike` is what catches drift
+when the SDK version moves.
+
+**Carried into phase 3**
+
+- Every burn is an on-chain transaction. Mean round length 3.13 inches means
+  ~2.1 extra transactions per round — fine for the 8–15 s budget in `prd.md`
+  §4.1, but it is why "move fast through empty crates" cannot mean "skip them".
+- `src/ui/table.css` already carries the four inks and a fixed type scale, so the
+  scene inherits the palette rather than fighting it.
+- The `?` panel computes every number from the DP at render time, so it can never
+  drift from the contract. Keep it that way.
 
 ---
 

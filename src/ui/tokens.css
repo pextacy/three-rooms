@@ -9,6 +9,7 @@
   --tallow-dim: #b9a07a;
   --brass: #c8963c; /* the lot on the table */
   --oxblood: #6d211b; /* a lot you let burn */
+  --oxblood-text: #b4574c; /* oxblood, lifted to stay legible on ink */
 
   /* Fixed type scale — hierarchy is carried by luminance, never by size. */
   --t-lot: 2.75rem;
@@ -36,6 +37,4 @@ body {
 
 #root {
   min-height: 100%;
-  display: grid;
-  place-items: center;
 }

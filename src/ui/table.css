@@ -1,0 +1,413 @@
+/*
+  Phase 2 layout: deliberately plain (plan.md D2). The candlelight scene lands in
+  phase 3 and replaces the look, not the structure. Four inks only — no fifth
+  colour is approved (claude.md §5).
+*/
+
+.table {
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 1.25rem;
+  padding: 1rem clamp(1rem, 4vw, 2.5rem) 1.75rem;
+  max-width: 46rem;
+  margin: 0 auto;
+}
+
+.table--loading {
+  place-items: center;
+}
+
+/* --- top bar ------------------------------------------------------------ */
+.top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgb(246 230 196 / 0.12);
+}
+
+.top__mark {
+  font-size: 1rem;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--tallow);
+}
+
+.top__badge {
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  letter-spacing: 0.1em;
+  color: var(--oxblood-text);
+  border: 1px solid var(--oxblood-text);
+  border-radius: 2px;
+  padding: 0.15rem 0.4rem;
+}
+
+.top__purse {
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  color: var(--brass);
+}
+
+.top__spacer {
+  flex: 1;
+}
+
+/* --- stage -------------------------------------------------------------- */
+.stage {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(1rem, 5vw, 2.5rem);
+  align-items: center;
+}
+
+.candle {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+}
+
+.candle__pin {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--tallow);
+  box-shadow: 0 0 6px rgb(246 230 196 / 0.5);
+}
+
+.candle__pin--fallen {
+  background: transparent;
+  border: 1px solid rgb(246 230 196 / 0.22);
+  box-shadow: none;
+}
+
+.candle__inch {
+  margin-top: 0.35rem;
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  color: var(--tallow-dim);
+  white-space: nowrap;
+}
+
+/* --- the lot ------------------------------------------------------------ */
+.lot__label,
+.lot__waiting {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tallow-dim);
+}
+
+.lot__name {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--brass);
+}
+
+.lot__name--empty {
+  color: var(--oxblood-text);
+}
+
+.lot__face {
+  margin: 0.1rem 0 0.9rem;
+  font-family: var(--font-num);
+  font-size: var(--t-lot);
+  line-height: 1;
+  color: var(--tallow);
+}
+
+.lot__facts {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.lot__facts dt {
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tallow-dim);
+}
+
+.lot__facts dd {
+  margin: 0.1rem 0 0;
+  color: var(--tallow);
+}
+
+.lot__payout {
+  font-family: var(--font-num);
+  font-size: 1.25rem;
+  color: var(--brass);
+}
+
+/* --- the two switches --------------------------------------------------- */
+.switches {
+  display: grid;
+  gap: 0.6rem;
+  min-height: 8rem;
+  align-content: end;
+}
+
+.switches__note,
+.switches__error,
+.settled__line {
+  margin: 0;
+  font-size: var(--t-body);
+  color: var(--tallow-dim);
+}
+
+.switches__error {
+  color: var(--oxblood-text);
+}
+
+.settled {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.btn {
+  font: inherit;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  color: var(--ink);
+  background: var(--tallow);
+  border: 1px solid var(--tallow);
+  border-radius: 2px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+.btn--burn {
+  color: var(--tallow);
+  background: transparent;
+  border-color: rgb(246 230 196 / 0.35);
+}
+
+.btn--ghost {
+  width: auto;
+  padding: 0.25rem 0.55rem;
+  font-size: var(--t-label);
+  color: var(--tallow-dim);
+  background: transparent;
+  border-color: rgb(246 230 196 / 0.2);
+  letter-spacing: 0.08em;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn__hint {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  letter-spacing: 0;
+  opacity: 0.7;
+  text-align: right;
+}
+
+kbd {
+  font-family: var(--font-num);
+  font-size: 0.7rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.65;
+}
+
+/* --- stake -------------------------------------------------------------- */
+.stake {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem 0.6rem;
+}
+
+.stake__label {
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tallow-dim);
+}
+
+.stake__input {
+  font: inherit;
+  font-family: var(--font-num);
+  font-size: 1.25rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  color: var(--tallow);
+  background: var(--ink-raised);
+  border: 1px solid rgb(246 230 196 / 0.25);
+  border-radius: 2px;
+}
+
+.stake__symbol {
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  color: var(--tallow-dim);
+}
+
+.stake .btn,
+.stake__error {
+  grid-column: 1 / -1;
+}
+
+.stake__error {
+  margin: 0;
+  font-size: var(--t-label);
+  color: var(--oxblood-text);
+}
+
+/* --- the ? panel -------------------------------------------------------- */
+.panel {
+  position: fixed;
+  inset: 0;
+  background: rgb(12 10 7 / 0.94);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.panel__inner {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem clamp(1rem, 4vw, 2.5rem) 3rem;
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  padding: 0.5rem 0 0.75rem;
+  background: var(--ink);
+}
+
+.panel__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tallow);
+}
+
+.panel__rule {
+  margin: 0 0 0.6rem;
+  line-height: 1.6;
+  color: var(--tallow);
+}
+
+.panel__section {
+  margin-top: 1.75rem;
+}
+
+.panel__heading {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.panel__note,
+.panel__verify {
+  margin: 0.6rem 0 0;
+  font-size: var(--t-label);
+  line-height: 1.6;
+  color: var(--tallow-dim);
+}
+
+.panel__verify {
+  margin-top: 2rem;
+  font-family: var(--font-num);
+}
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-body);
+}
+
+.grid th,
+.grid td {
+  padding: 0.3rem 0.5rem 0.3rem 0;
+  text-align: left;
+  border-bottom: 1px solid rgb(246 230 196 / 0.1);
+  color: var(--tallow);
+}
+
+.grid th {
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tallow-dim);
+}
+
+.grid .num,
+.num {
+  font-family: var(--font-num);
+  text-align: right;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem 1rem;
+  margin: 0;
+}
+
+.facts__row {
+  display: contents;
+}
+
+.facts dt {
+  color: var(--tallow-dim);
+  font-size: var(--t-body);
+}
+
+.facts dd {
+  margin: 0;
+  text-align: right;
+  color: var(--tallow);
+}
+
+.small {
+  font-size: var(--t-label);
+}
+
+.muted {
+  color: var(--tallow-dim);
+}
+
+@media (max-width: 30rem) {
+  .stage {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .candle {
+    grid-auto-flow: column;
+    align-items: center;
+  }
+
+  .candle__inch {
+    margin: 0 0 0 0.5rem;
+  }
+}

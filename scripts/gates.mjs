@@ -88,6 +88,26 @@ if (existsSync(join(DIST, 'index.html'))) {
   check('dist/index.html exists (run `npm run build`)', false);
 }
 
+// ---------------------------------------------------------------- no storage
+console.log('\n\x1b[1mbrowser storage\x1b[0m');
+{
+  // claude.md §7: a purse that looks like it survives a reload and does not is
+  // worse than one that obviously resets. Grepped rather than tested, because a
+  // test environment without storage passes a storage test for the wrong reason.
+  const offenders = [];
+  for (const f of repoFiles) {
+    if (!['.ts', '.tsx'].includes(extname(f))) continue;
+    if (!f.includes('/src/')) continue;
+    const text = await readFile(f, 'utf8').catch(() => '');
+    // Strip comments first — the rule has to be documentable in the very files
+    // it governs, and a doc comment saying "localStorage is forbidden" is not a
+    // use of localStorage.
+    const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    if (/\b(localStorage|sessionStorage|indexedDB)\b/.test(code)) offenders.push(f.replace(ROOT, ''));
+  }
+  check('src/ uses no localStorage, sessionStorage or indexedDB', offenders.length === 0, offenders.join(', '));
+}
+
 // ---------------------------------------------------------------- manifest
 console.log('\n\x1b[1mmanifest\x1b[0m');
 const manifestPath = join(ROOT, 'public', 'game.manifest.json');

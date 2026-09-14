@@ -679,9 +679,25 @@ Every dependency needs a line here. Budget: 150 KB gzipped total.
 | `penpal` | required by the SDK bridge |
 | `@chain/casino-sdk` | the SDK |
 | `vite`, `typescript`, `vitest` | toolchain |
+| `jsdom` | **devDependency only.** The environment for `test/ui.spec.tsx`, which drives the real React tree through a whole round plus the keyboard path. A render that throws is the kind of break that ships silently; nothing lighter proves it does not. Zero bundle cost. |
 | `viem` | **devDependency only.** Drives the spikes and the parity tests against the local chain. Deliberately **not** a runtime dependency: `gameData` is empty and `actionData` is a single byte, so the guest needs no ABI encoder and the bundle pays nothing for this. |
 
 No animation library, no state library, no UI kit, no icon pack, no audio library.
+
+**The SDK is not a dependency, it is an alias.** It ships raw `.ts` rather than
+`.d.ts`, so importing it drags its source into our TypeScript program and fails
+our stricter flags on code that is not ours to fix. Instead:
+
+- `src/types/casino-sdk.d.ts` declares the exact surface we use, so the boundary
+  is explicit and our own `strict` settings stay intact;
+- `vite.config.ts` and `vitest.config.ts` alias `@chain/casino-sdk/*` to the real
+  source, so the shipped bundle runs the SDK's own bridge and we never
+  reimplement 20 lines of penpal wiring;
+- `npm run spike` exercises every symbol in that declaration end to end, so a
+  drift between the declaration and the SDK is caught rather than assumed.
+
+`penpal` is a direct dependency because the aliased guest source imports it and it
+must resolve from our tree.
 
 ---
 

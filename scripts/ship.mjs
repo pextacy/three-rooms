@@ -9,7 +9,7 @@
  * Needs a Vercel login (`npx vercel login`). Everything before the deploy runs
  * without one, so a failure there is a real failure and not a missing account.
  */
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync, execSync, spawnSync } from 'node:child_process';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const run = (cmd, args, opts = {}) =>
@@ -53,14 +53,23 @@ if (url) {
   console.log(D(`  PRODUCTION_ORIGIN is set — skipping the deploy and verifying ${url}`));
 } else {
   try {
-    // Vercel prints progress and an "Aliased" line to stdout too, so the URL is
-    // pulled out by pattern rather than by taking the last line.
-    const out = capture('npx', ['--yes', 'vercel', 'deploy', '--prod', '--yes']);
+    // Vercel prints progress, the deployment URL and the alias across BOTH
+    // streams, so both are captured and merged — reading stdout alone loses the
+    // alias, which is the URL that actually matters here.
+    const result = spawnSync('npx', ['--yes', 'vercel', 'deploy', '--prod', '--yes'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const out = `${result.stdout ?? ''}\n${result.stderr ?? ''}`.replace(ANSI, '');
+    console.log(out.trim());
+    if (result.status !== 0) throw new Error(`vercel exited ${result.status}`);
+
+    // Prefer the ALIAS. The deployment-specific URL sits behind Vercel's SSO
+    // deployment protection and 302s every check that follows it.
     const aliased = /Aliased\s+(https:\/\/\S+)/.exec(out)?.[1];
     const production = /Production\s+(https:\/\/\S+)/.exec(out)?.[1];
-    const bare = out.split(/\s+/).filter(w => w.startsWith('https://')).pop();
-    // Prefer the alias: the deployment-specific URL sits behind Vercel's SSO
-    // deployment protection, which would 302 every check that follows.
+    const bare = out.split(/\s+/).filter(w => w.startsWith('https://') && w.includes('.vercel.app')).pop();
     url = aliased ?? production ?? bare ?? null;
   } catch (error) {
     console.error(`\n\x1b[31mThe deploy failed.\x1b[0m ${error instanceof Error ? error.message : ''}`);

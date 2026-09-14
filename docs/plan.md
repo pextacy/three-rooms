@@ -155,7 +155,8 @@ yourself about the 0.50× at the third inch, the game works.
       The novelty claim in one paragraph. The strategy band in full.
 - [ ] `DEMO.md` — the one-minute reviewer runbook with expected output inline.
 - [ ] Source access arranged for the review team, per the jam rules.
-- [ ] **Submit at jam.chain.wtf.** Today. Not tomorrow.
+- [ ] **Submit at jam.chain.wtf.** Today. Not tomorrow. — **open: needs a human.**
+      Live URL ready: https://candle-ashen-tau.vercel.app
 
 **Exit gate:** the submission exists and the live URL plays. Everything after this
 is improvement, not rescue.

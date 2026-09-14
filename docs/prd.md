@@ -61,9 +61,19 @@ Three things carry it past the novelty window:
    that one.
 2. **The Ghost Lot.** After every settled round the game reveals the lot that
    *would* have come next. "You claimed 1.00×. The next lot was 5.00×." The
-   randomness for it is drawn after the decision is locked, so it leaks nothing and
-   is fully verifiable — it exists purely to produce the feeling that keeps
-   optimal-stopping problems alive in people's heads. This is the retention loop.
+   randomness for it is drawn **after the decision is locked**, so it leaks
+   nothing — it exists purely to produce the feeling that keeps optimal-stopping
+   problems alive in people's heads. This is the retention loop.
+
+   > **Corrected on D4.** This also claimed the ghost was "fully verifiable",
+   > meaning on-chain. It cannot be both. Deriving it from the settling VRF word
+   > leaks — that word is public the moment the lot is revealed, so a player could
+   > compute the ghost before deciding. Requesting a *further* word at settlement
+   > does not leak, but it puts the payout behind a randomness fulfilment, and
+   > `cancelStuckRandomness` refunds only the escrowed stake — a stuck word after
+   > a 25× claim would destroy the win. The ghost is therefore drawn in the
+   > client, from the same paytable and the same rejection sampler, and the UI
+   > says so. It settles nothing. See `docs.md` §6.4.
 3. **A skill floor that is real but shallow.** The whole optimal policy fits in one
    sentence, and we print it. But *executing* it while a 5× is sitting there at the
    second inch is a different matter. The spread between playing well and playing on

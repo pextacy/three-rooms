@@ -16,7 +16,10 @@
  */
 import { connectGameToHost, computeMaxWager } from '@chain/casino-sdk/guest';
 import type { HostApiV1, HostSnapshotV1, GuestBridgeConnection } from '@chain/casino-sdk/guest';
-import { MAX_FACE_BP, FACE_DENOM, LOTS, type LotId } from '../game/paytable';
+import { MAX_FACE_BP, FACE_DENOM, LOTS, lotForDraw, type LotId } from '../game/paytable';
+import { INCHES } from '../game/wax';
+import { drawLot } from '../game/rng';
+import { createPrng, seedFromCrypto } from './prng';
 import { decodeGameState, encodeAction, type CandleHost, type HostView, type PlayerAction, type SessionPhase, type SessionView } from './types';
 
 const MAX_MULTIPLIER_X = MAX_FACE_BP / FACE_DENOM; // 25
@@ -77,6 +80,26 @@ export function createCasinoHost(options: CasinoHostOptions = {}): CandleHost {
   /** Session ids we have already told the host to unhide. */
   const revealed = new Set<string>();
 
+  /**
+   * The Ghost Lot is drawn HERE, in the client, once a round has already settled.
+   * It is not on chain and the UI says so: putting it on chain would mean one
+   * more VRF word between the claim and the payout, and `cancelStuckRandomness`
+   * refunds only the escrowed stake — a stuck word after a 25x claim would wipe
+   * the win out. Same paytable, same rejection sampler, so the distribution is
+   * the real one; it just settles nothing (docs.md §6.4).
+   */
+  const ghostPrng = createPrng(seedFromCrypto());
+  const ghosts = new Map<string, LotId | null>();
+
+  const ghostFor = (key: string, settledInch: number): LotId | null => {
+    if (settledInch >= INCHES) return null; // the candle was out; there was no next lot
+    const existing = ghosts.get(key);
+    if (existing !== undefined) return existing;
+    const lot = lotForDraw(drawLot(ghostPrng.nextWord(), 0, () => ghostPrng.nextWord()).value).id;
+    ghosts.set(key, lot);
+    return lot;
+  };
+
   const decimals = () => snapshot?.token.decimals ?? 18;
   const one = () => 10n ** BigInt(decimals());
 
@@ -101,6 +124,7 @@ export function createCasinoHost(options: CasinoHostOptions = {}): CandleHost {
         stakeBase,
         payoutBase: 0n,
         isSettled: false,
+        ghostLotId: null,
         error: localError,
       };
     }
@@ -114,6 +138,8 @@ export function createCasinoHost(options: CasinoHostOptions = {}): CandleHost {
     const state = decodeGameState(row.raw.gameState);
     const lotId = state?.hasLot ? lotIdForFaceBp(state.faceBp) : null;
 
+    const isSettled = row.isSettled || phase === 'settled' || phase === 'forfeited' || phase === 'cancelled';
+
     return {
       sessionKey,
       sessionId: row.sessionId,
@@ -122,7 +148,9 @@ export function createCasinoHost(options: CasinoHostOptions = {}): CandleHost {
       lotId,
       stakeBase,
       payoutBase: toBigInt(row.payout),
-      isSettled: row.isSettled || phase === 'settled' || phase === 'forfeited' || phase === 'cancelled',
+      isSettled,
+      // Only once the round is over, so it cannot have leaked into the decision.
+      ghostLotId: isSettled && phase === 'settled' ? ghostFor(sessionKey, state?.inch ?? 1) : null,
       error: localError,
     };
   };

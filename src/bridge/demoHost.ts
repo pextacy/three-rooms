@@ -13,9 +13,10 @@
  * load and `REFILL` is right there.
  */
 import { drawLot } from '../game/rng';
-import { lotById, lotForDraw } from '../game/paytable';
+import { lotById, lotForDraw, type LotId } from '../game/paytable';
 import { INCHES, payoutBase } from '../game/wax';
 import { createPrng, seedFromCrypto, type Prng } from './prng';
+import { dwellWithTurbo } from '../audio/voice';
 import type { CandleHost, HostView, PlayerAction, SessionView } from './types';
 
 /** 18 decimals, like the production token, so the arithmetic matches exactly. */
@@ -26,19 +27,23 @@ export const DEMO_OPENING_PURSE = 2_000n * ONE;
 export const DEMO_DEFAULT_STAKE = 20n * ONE;
 export const DEMO_MIN_STAKE = 1n * ONE;
 
-/** How long a word takes to "arrive". Real enough to feel like a network. */
-const DEMO_RANDOMNESS_MS = 260;
-
 export type DemoHostOptions = {
   /** Fixed seed for tests. Omitted in the browser, where it comes from crypto. */
   readonly seed?: readonly [number, number, number, number];
   /** Set to 0 in tests to settle synchronously. */
   readonly randomnessDelayMs?: number;
+  /** Turbo collapses the pacing without changing a single decision. */
+  readonly turbo?: boolean;
 };
 
 export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
   const prng: Prng = createPrng(options.seed ?? seedFromCrypto());
-  const delay = options.randomnessDelayMs ?? DEMO_RANDOMNESS_MS;
+  /**
+   * `undefined` means "pace it from the numbers" (plan.md D4). A fixed value is
+   * for tests, which must not wait on a knife edge to find out what happened.
+   */
+  const fixedDelay = options.randomnessDelayMs;
+  let turbo = options.turbo ?? false;
 
   let purse = DEMO_OPENING_PURSE;
   let session: SessionView | null = null;
@@ -85,35 +90,59 @@ export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
     emit();
   };
 
+  /**
+   * The Ghost Lot, drawn from the same PRNG and the same paytable — but only
+   * once the round is settled, so it cannot have leaked into the decision.
+   * Never after a gutter: there was no next inch.
+   */
+  const drawGhost = (settledInch: number): LotId | null => {
+    if (settledInch >= INCHES) return null;
+    return lotForDraw(drawLot(prng.nextWord(), 0, () => prng.nextWord()).value).id;
+  };
+
   /** Draw the lot for the current inch, exactly as `onRandomness` would. */
-  const revealLot = () => {
+  const revealLot = (lot: ReturnType<typeof lotForDraw>) => {
     if (destroyed || !session) return;
-    // The word is generated HERE, after the previous decision is already
-    // locked — the demo's mirror of invariant I4.
-    const { value } = drawLot(prng.nextWord(), 0, () => prng.nextWord());
-    const lot = lotForDraw(value);
     const inch = session.inch;
 
     if (inch >= INCHES) {
       // The candle gutters: whatever is on the table is claimed.
       const payout = payoutBase(session.stakeBase, lot.faceBp, inch);
       purse += payout;
-      patch({ lotId: lot.id, phase: 'settled', payoutBase: payout, isSettled: true });
+      patch({ lotId: lot.id, phase: 'settled', payoutBase: payout, isSettled: true, ghostLotId: drawGhost(inch) });
       return;
     }
     patch({ lotId: lot.id, phase: 'waiting-player' });
   };
 
+  /**
+   * Draws the next lot, then waits before putting it on the table.
+   *
+   * The wait is DERIVED, not scripted: `dwellMs` asks how close this lot sits to
+   * the DP's claim threshold at this inch, so the auctioneer moves briskly past
+   * an empty crate and lingers over the 0.50x at the third inch — which is the
+   * one lot in the game that is genuinely a coin toss (plan.md D4).
+   *
+   * Nothing is hidden by the wait: the player cannot act until the lot is on the
+   * table either way, so the pacing costs them no decision.
+   */
   const scheduleReveal = () => {
     if (pending !== null) clearTimeout(pending);
-    if (delay <= 0) {
-      revealLot();
+    if (destroyed || !session) return;
+
+    // The word is generated HERE, after the previous decision is already
+    // locked — the demo's mirror of invariant I4.
+    const lot = lotForDraw(drawLot(prng.nextWord(), 0, () => prng.nextWord()).value);
+    const wait = fixedDelay ?? dwellWithTurbo(lot.faceBp, session.inch, turbo);
+
+    if (wait <= 0) {
+      revealLot(lot);
       return;
     }
     pending = setTimeout(() => {
       pending = null;
-      revealLot();
-    }, delay);
+      revealLot(lot);
+    }, wait);
   };
 
   return {
@@ -150,6 +179,7 @@ export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
         stakeBase,
         payoutBase: 0n,
         isSettled: false,
+        ghostLotId: null,
         error: null,
       };
       emit();
@@ -166,7 +196,8 @@ export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
       if (action === 'CLAIM') {
         const payout = payoutBase(stakeBase, lotById(lotId).faceBp, inch);
         purse += payout;
-        patch({ phase: 'settled', payoutBase: payout, isSettled: true });
+        // The ghost is drawn HERE — after the claim is locked in, never before.
+        patch({ phase: 'settled', payoutBase: payout, isSettled: true, ghostLotId: drawGhost(inch) });
         return;
       }
 
@@ -184,6 +215,10 @@ export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
         session = null;
         emit();
       }
+    },
+
+    setTurbo(value: boolean) {
+      turbo = value;
     },
 
     refill() {

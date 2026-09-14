@@ -217,6 +217,37 @@ kbd {
   opacity: 0.65;
 }
 
+/* --- the Ghost Lot ------------------------------------------------------
+   Quiet on purpose. It is information about a round that is already over, and
+   it must never read as a taunt. */
+.ghost {
+  margin: 0;
+  font-size: var(--t-body);
+  color: var(--tallow);
+  opacity: 0.62;
+}
+
+.ghost__label {
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ghost__lot {
+  color: var(--oxblood);
+  font-size: 1.05rem;
+}
+
+.ghost__note {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  color: var(--tallow);
+  opacity: 0.38;
+}
+
 /* --- stake -------------------------------------------------------------- */
 .stake {
   display: grid;

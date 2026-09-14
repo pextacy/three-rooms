@@ -410,7 +410,24 @@ that this is the last lot.
 
 **Sound carries information:** the pitch of the pin drop rises with the face value
 of the lot being offered, so a practised player hears a good lot land before reading
-it. Unmuted by default with a one-key toggle (`M`); nothing that matters is
+it. The spread is **logarithmic**, because pitch is perceived logarithmically and a
+linear ramp would bunch every interesting lot into the bottom eighth of the range:
+
+| lot | face | pin drop |
+|---|---|---|
+| Empty crate | 0.00× | **196 Hz** — the floor, reserved, so "nothing" has its own note |
+| Ship's stores | 0.50× | 245 Hz |
+| Cordage | 1.00× | 340 Hz |
+| Sailcloth | 2.00× | 473 Hz |
+| Ordnance | 5.00× | 731 Hz |
+| *Sarah Christiana* | 25.00× | 1568 Hz |
+
+`test/voice.spec.ts` asserts every neighbouring pair is at least a musical third
+apart, so the difference is audible rather than theoretical.
+
+Unmuted by default with a one-key toggle (`M`). A browser will not start an
+`AudioContext` without a gesture, so the context is created on the first key or
+click — the *setting* is unmuted, the *context* waits, and nothing that matters is
 audio-only.
 
 ### 6.2b One light model, two render targets
@@ -432,8 +449,57 @@ No information in this game is carried by colour alone.
 
 ### 6.3 Keyboard
 `Space` / `Enter` claim · `B` or `↓` let it burn · `Enter` deal again on a settled
-board · `?` the paytable panel · `M` sound · `T` turbo animation. Every control is
-printed on the switch it belongs to.
+board · `?` the paytable panel · `M` sound · `T` turbo. Every control is printed on
+the switch it belongs to.
+
+**Turbo collapses the waiting, never the deciding.** It scales every dwell by
+0.35 and changes nothing else. An autoplayer would be an admission that the
+decision is fake (`claude.md` §7); this is not one, and there is no "turbo through
+100 rounds".
+
+### 6.4 The Ghost Lot — why it is a client draw
+
+After a settled round the game shows the lot that *would* have come next. Three
+properties are required and only two of them can be had on chain at once:
+
+| | leaks nothing | verifiable on chain | keeps the payout safe |
+|---|---|---|---|
+| derive from the settling word | ✗ — the word is public before the decision | ✓ | ✓ |
+| one more VRF word at settlement | ✓ | ✓ | **✗** |
+| **draw it in the client, after settlement** | ✓ | ✗ | ✓ |
+
+The second row is the trap. Putting the ghost on chain means the session sits in
+`WAITING_RANDOMNESS` *after* the player has claimed, and `cancelStuckRandomness`
+pays `session.escrowedStake` — the wager, not the claim value
+(`LocalCasinoHost.sol:232`). A stuck word after a 25× claim would refund the stake
+and wipe out the win. No retention loop is worth that.
+
+So the ghost is drawn locally, once the round is already settled, through the same
+`rng.ts` and the same paytable — its distribution is the real one, measured at
+67.0% empty crates against a paytable that says 66.9%. It changes no payout, and
+the UI states that it changed nothing.
+
+It is **null after a gutter**: at the fifth inch there was no next lot, and showing
+one would be an invention.
+
+**It is never dramatised.** No exclamation marks, no "you were one inch away", no
+comparison with what was claimed. `test/ghost.spec.ts` walks every string in
+`copy.ts` and fails on any of it, so `claude.md` §7 is enforced rather than
+intended.
+
+### 6.5 Pacing
+
+> "Hold longer on a lot that sits near the threshold, move fast through empty
+> crates. Derive the timing from the numbers, don't script it."
+
+`dwellMs(faceBp, inch)` asks the DP how far this lot's face value sits from the
+claim threshold at this inch, and interpolates between 260 ms and 1,150 ms. So the
+timing cannot drift from the maths: change the paytable and the pacing follows.
+
+Measured over 20,000 rounds: **45.4%** of the waiting is spent on the **33.0%** of
+offers that are a real decision, and the knife edge — the 0.50× at the third inch,
+0.01392 from its threshold — is held **4.2×** longer than an empty crate. It is the
+longest hold in the game, and it is found by `knifeEdge()` rather than typed in.
 
 ---
 

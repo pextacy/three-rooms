@@ -15,6 +15,7 @@ import { formatAmount, formatFace, formatWax, parseAmount } from './format';
 import { HelpPanel } from './HelpPanel';
 import { Scene, applySceneLight } from './Scene';
 import { useCandleHost } from './useHost';
+import { useCandleAudio } from './useAudio';
 import { lotById } from '../game/paytable';
 import { INCHES, payoutBase, waxBpAt } from '../game/wax';
 import type { LotFace } from '../render/scene';
@@ -24,7 +25,9 @@ export function App() {
   const { host, view } = useCandleHost();
   const [helpOpen, setHelpOpen] = useState(false);
   const [stakeText, setStakeText] = useState<string | null>(null);
-  const [soundOn, setSoundOn] = useState(true); // phase 4 wires the graphs
+  // Unmuted by default, with a visible one-key toggle (claude.md §5).
+  const [soundOn, setSoundOn] = useState(true);
+  const [turbo, setTurbo] = useState(false);
 
   const decimals = view?.tokenDecimals ?? 18;
   const stakeBase = useMemo(() => {
@@ -109,13 +112,27 @@ export function App() {
     void host.revealOutcome().then(() => host.dealAgain());
   }, [host, settled]);
 
-  useKeyboard({ helpOpen, setHelpOpen, canAct, forced, settled, session: !!session, act, again, deal, setSoundOn });
+  useCandleAudio(soundOn, session);
+
+  useEffect(() => {
+    host?.setTurbo?.(turbo);
+  }, [host, turbo]);
+
+  useKeyboard({ helpOpen, setHelpOpen, canAct, forced, settled, session: !!session, act, again, deal, setSoundOn, setTurbo });
 
   if (!view) return <main className="table table--loading" />;
 
   return (
     <main className="table" data-theme={view.theme}>
-      <TopBar view={view} host={host} soundOn={soundOn} onSound={() => setSoundOn(v => !v)} onHelp={() => setHelpOpen(true)} />
+      <TopBar
+        view={view}
+        host={host}
+        soundOn={soundOn}
+        onSound={() => setSoundOn(v => !v)}
+        turbo={turbo}
+        onTurbo={() => setTurbo(v => !v)}
+        onHelp={() => setHelpOpen(true)}
+      />
 
       <section className="stage">
         <Scene
@@ -195,12 +212,34 @@ export function App() {
 function Settled({ session, onAgain }: { session: NonNullable<HostView['session']>; onAgain: () => void }) {
   const guttered = session.inch >= INCHES;
   const nothing = session.payoutBase === 0n;
+  const ghost = session.ghostLotId !== null ? lotById(session.ghostLotId) : null;
+
   return (
     <div className="settled">
       <p className="settled__line">
         {guttered ? COPY.gutteredAt() : COPY.claimedAt(session.inch)}
         {nothing ? ` ${COPY.tookNothing}` : ''}
       </p>
+
+      {/*
+        The Ghost Lot. One beat, stated flatly, never dramatised: no "you were so
+        close", no comparison, no exclamation mark. The round is over and the
+        player made their call (claude.md §6, §7; prd.md §10).
+      */}
+      <p className="ghost">
+        {ghost ? (
+          <>
+            <span className="ghost__label">{COPY.ghostLabel}</span>{' '}
+            <span className="ghost__lot">
+              {ghost.name} {formatFace(ghost.faceBp)}
+            </span>
+          </>
+        ) : (
+          <span className="ghost__label">{COPY.ghostNone}</span>
+        )}
+      </p>
+      <p className="ghost__note">{COPY.ghostNote}</p>
+
       <button className="btn btn--claim" onClick={onAgain} autoFocus>
         {COPY.dealAgain} <kbd>{COPY.dealAgainKey}</kbd>
       </button>
@@ -270,12 +309,16 @@ function TopBar({
   host,
   soundOn,
   onSound,
+  turbo,
+  onTurbo,
   onHelp,
 }: {
   view: HostView;
   host: CandleHost | null;
   soundOn: boolean;
   onSound: () => void;
+  turbo: boolean;
+  onTurbo: () => void;
   onHelp: () => void;
 }) {
   return (
@@ -295,7 +338,10 @@ function TopBar({
         </>
       ) : null}
       <span className="top__spacer" />
-      <button className="btn btn--ghost" onClick={onSound}>
+      <button className="btn btn--ghost" onClick={onTurbo} aria-pressed={turbo}>
+        {turbo ? COPY.turboOn : COPY.turboOff} <kbd>{COPY.turboKey}</kbd>
+      </button>
+      <button className="btn btn--ghost" onClick={onSound} aria-pressed={soundOn}>
         {soundOn ? COPY.soundOn : COPY.soundOff} <kbd>{COPY.soundKey}</kbd>
       </button>
       <button className="btn btn--ghost" onClick={onHelp}>
@@ -317,8 +363,9 @@ function useKeyboard(args: {
   again: () => void;
   deal: () => void;
   setSoundOn: (update: (value: boolean) => boolean) => void;
+  setTurbo: (update: (value: boolean) => boolean) => void;
 }) {
-  const { helpOpen, setHelpOpen, canAct, forced, settled, session, act, again, deal, setSoundOn } = args;
+  const { helpOpen, setHelpOpen, canAct, forced, settled, session, act, again, deal, setSoundOn, setTurbo } = args;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -337,6 +384,10 @@ function useKeyboard(args: {
       if (helpOpen) return;
       if (event.key === 'm' || event.key === 'M') {
         setSoundOn(value => !value);
+        return;
+      }
+      if (event.key === 't' || event.key === 'T') {
+        setTurbo(value => !value);
         return;
       }
       if (typing) return; // the stake field owns its own keys
@@ -365,5 +416,5 @@ function useKeyboard(args: {
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [helpOpen, setHelpOpen, canAct, forced, settled, session, act, again, deal, setSoundOn]);
+  }, [helpOpen, setHelpOpen, canAct, forced, settled, session, act, again, deal, setSoundOn, setTurbo]);
 }

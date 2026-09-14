@@ -16,6 +16,7 @@ import { App } from '../src/ui/App';
 import { COPY } from '../src/ui/copy';
 import { LOTS } from '../src/game/paytable';
 import { INCHES } from '../src/game/wax';
+import { DWELL_SLOW_MS } from '../src/audio/voice';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -24,12 +25,28 @@ const text = () => container.textContent ?? '';
 const buttonSaying = (needle: string) =>
   Array.from(container.querySelectorAll('button')).find(b => (b.textContent ?? '').includes(needle)) ?? null;
 
-const settle = async () => {
-  // Let the demo host's scheduled reveal land.
-  await act(async () => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-  });
+/**
+ * Waits for the demo host's scheduled reveal.
+ *
+ * The pacing is DERIVED from how close a lot sits to its claim threshold, so a
+ * reveal takes anywhere from 260 ms to DWELL_SLOW_MS. Polling rather than
+ * sleeping keeps the common case fast and the knife-edge case correct — a fixed
+ * sleep either raced the slow lots or paid for them on every single reveal.
+ */
+const CEILING_MS = DWELL_SLOW_MS + 400;
+
+const settle = async (until?: () => boolean) => {
+  const deadline = Date.now() + CEILING_MS;
+  for (;;) {
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 40));
+    });
+    if (until ? until() : Date.now() >= deadline) return;
+    if (Date.now() >= deadline) return;
+  }
 };
+
+const settledBoard = () => /Claimed at the|The candle guttered/.test(text());
 
 const press = async (key: string, init: KeyboardEventInit = {}) => {
   await act(async () => {
@@ -47,7 +64,7 @@ beforeEach(async () => {
   await act(async () => {
     root.render(<App />);
   });
-  await settle();
+  await settle(() => text().includes(COPY.stake));
 });
 
 afterEach(async () => {
@@ -91,7 +108,7 @@ describe('the loop', () => {
     await act(async () => {
       buttonSaying(COPY.lightTheCandle)?.click();
     });
-    await settle();
+    await settle(() => text().includes(COPY.lotOnTable));
   };
 
   it('deals a lot with a face value and a payout-if-claimed-now', async () => {
@@ -116,7 +133,7 @@ describe('the loop', () => {
     await act(async () => {
       buttonSaying(COPY.burn)?.click();
     });
-    await settle();
+    await settle(() => text().includes(COPY.inchOf(2)));
     expect(text()).toContain(COPY.inchOf(2));
   });
 
@@ -125,7 +142,7 @@ describe('the loop', () => {
     await act(async () => {
       buttonSaying(COPY.claim)?.click();
     });
-    await settle();
+    await settle(settledBoard);
     expect(text()).toMatch(/Claimed at the|The candle guttered/);
     expect(buttonSaying(COPY.dealAgain)).not.toBeNull();
   });
@@ -137,7 +154,7 @@ describe('the loop', () => {
       await act(async () => {
         buttonSaying(COPY.burn)?.click();
       });
-      await settle();
+      await settle(() => text().includes(COPY.inchOf(inch + 1)) || settledBoard());
     }
     // The fifth inch settles as it is revealed, so the board is already done.
     expect(text()).toContain(COPY.dealAgain);
@@ -149,11 +166,11 @@ describe('the loop', () => {
     await act(async () => {
       buttonSaying(COPY.claim)?.click();
     });
-    await settle();
+    await settle(settledBoard);
     await act(async () => {
       buttonSaying(COPY.dealAgain)?.click();
     });
-    await settle();
+    await settle(() => text().includes(COPY.stake));
     expect(text()).toContain(COPY.stake);
   });
 });
@@ -161,31 +178,31 @@ describe('the loop', () => {
 describe('the keyboard path (docs.md §6.3)', () => {
   it('Enter deals, Space claims, Enter deals again', async () => {
     await press('Enter');
-    await settle();
+    await settle(() => text().includes(COPY.lotOnTable));
     expect(text()).toContain(COPY.lotOnTable);
 
     await press(' ');
-    await settle();
+    await settle(settledBoard);
     expect(text()).toContain(COPY.dealAgain);
 
     await press('Enter');
-    await settle();
+    await settle(() => text().includes(COPY.stake));
     expect(text()).toContain(COPY.stake);
   });
 
   it('B lets it burn', async () => {
     await press('Enter');
-    await settle();
+    await settle(() => text().includes(COPY.lotOnTable));
     await press('B');
-    await settle();
+    await settle(() => text().includes(COPY.inchOf(2)));
     expect(text()).toContain(COPY.inchOf(2));
   });
 
   it('ArrowDown lets it burn too', async () => {
     await press('Enter');
-    await settle();
+    await settle(() => text().includes(COPY.lotOnTable));
     await press('ArrowDown');
-    await settle();
+    await settle(() => text().includes(COPY.inchOf(2)));
     expect(text()).toContain(COPY.inchOf(2));
   });
 

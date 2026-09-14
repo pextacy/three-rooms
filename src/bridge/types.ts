@@ -32,6 +32,21 @@ export type SessionView = {
   readonly payoutBase: bigint;
   /** True once the round has settled and the payout may be shown. */
   readonly isSettled: boolean;
+  /**
+   * The Ghost Lot: the lot that WOULD have come next, had the player let the
+   * candle burn one more inch (prd.md §2).
+   *
+   * Drawn only once the round is already settled, so it cannot have influenced
+   * the decision, and it changes no payout. Null on a round that guttered — at
+   * the fifth inch there is no next lot, and inventing one would be a lie.
+   *
+   * **It is drawn in the client, not on chain, and the UI says so.** The
+   * alternative — one more VRF word at settlement — would put the payout behind a
+   * randomness fulfilment, and `cancelStuckRandomness` refunds only the
+   * ESCROWED STAKE. A stuck word after a 25x claim would therefore destroy the
+   * win. No retention loop is worth that. See docs.md §6.4.
+   */
+  readonly ghostLotId: LotId | null;
   /** Set when a step failed; the UI surfaces it instead of hanging. */
   readonly error: string | null;
 };
@@ -83,6 +98,12 @@ export type CandleHost = {
   revealOutcome(): Promise<void>;
   /** Clear a settled round so the next one can be dealt. */
   dealAgain(): void;
+  /**
+   * Collapse the pacing. Turbo changes how long the game waits, never what the
+   * player has to decide — an autoplayer would be an admission that the decision
+   * is fake (claude.md §7), and this is not one.
+   */
+  setTurbo?(turbo: boolean): void;
   /** Demo only — restores the opening purse. Absent inside a host. */
   refill?(): void;
   destroy(): void;

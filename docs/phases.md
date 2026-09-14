@@ -15,7 +15,7 @@ looks full.
 
 **Status legend:** ⬜ not started · 🟡 in progress · ✅ gate passed · ❌ gate failed
 
-**Current phase: 4 — Make it feel real.** Phases 0–3 closed 2026-09-14.
+**Current phase: 5 — Ship.** Phases 0–4 closed 2026-09-14.
 
 ---
 
@@ -330,20 +330,121 @@ on broadband either way. Logged in `LATER.md`.
 
 ---
 
-## Phase 4 — Make it feel real  ·  D4 (Thu 09-18)  ·  ⬜
+## Phase 4 — Make it feel real  ·  D4 (Thu 09-18)  ·  ✅
 
-| # | Deliverable |
-|---|---|
-| 4.1 | `src/audio/graphs.ts` — room, wax, event. Zero files |
-| 4.2 | Pin-drop pitch rises with the face value of the lot being offered |
-| 4.3 | Gavel on claim, flare sting at inch 5, `M` to toggle |
-| 4.4 | **Ghost Lot** — drawn *after* the decision is locked, stated flatly, never dramatised |
-| 4.5 | Pacing derived from the numbers: hold on a near-threshold lot, move fast past empties |
-| 4.6 | Turbo (`T`) |
-| 4.7 | Frame budget p95 < 12 ms during a burn |
+| # | Deliverable | Status |
+|---|---|---|
+| 4.1 | `src/audio/graphs.ts` — room, wax, event. **Zero files** | ✅ |
+| 4.2 | Pin-drop pitch rises with the face value of the lot being offered | ✅ |
+| 4.3 | Gavel on claim, flare at the last inch, `M` to toggle | ✅ |
+| 4.4 | **Ghost Lot** — drawn after the decision is locked, stated flatly | ✅ |
+| 4.5 | Pacing derived from the numbers, not scripted | ✅ |
+| 4.6 | Turbo (`T`) | ✅ |
+| 4.7 | Frame budget p95 < 12 ms during a burn | ✅ |
 
-**Exit gate:** **play 100 rounds with sound on.** If you are still arguing with yourself
-about the 0.50× at the third inch, the game works.
+**Exit gate — result**
+
+> *"Play 100 rounds with sound on. If you are still arguing with yourself about
+> the 0.50× at the third inch, the game works."*
+
+Whether it sounds right is a judgement for ears, so the standalone build is
+published, playable, sound on:
+**https://claude.ai/code/artifact/099e5052-86b0-42d0-adcc-c99f60937009**
+
+What can be measured, is. `npm run play -- 100`:
+
+```
+share of the waiting spent on a real choice : 45.4%
+share of the OFFERS that are a real choice  : 33.0%
+knife edge: 0.50x at inch 3, 0.01392 from the threshold, held 1102 ms
+empty crate, any inch                       :  260 ms
+```
+
+**The pacing answers phase 2's complaint.** The auctioneer now spends 45.4% of its
+waiting on the 33.0% of offers that are a real decision, and **4.2× longer** on the
+knife edge than on an empty crate. None of it is scripted: `dwellMs` asks the DP
+how far this lot sits from its claim threshold at this inch, so the timing cannot
+drift from the maths. The 0.50× at the third inch is the longest hold in the
+game — found by `knifeEdge()`, not typed in.
+
+**The Ghost Lot, measured over 20,000 rounds**
+
+```
+shown after                              : 69.5% of rounds   (never after a gutter)
+…and was an empty crate                  : 67.0%             the paytable says 66.9%
+…and was worth more than what was claimed:  6.4%
+```
+
+It is honest rather than a tease: the ghost's distribution is the paytable's, so
+two thirds of the time the lot you passed up was nothing at all. **The regret rate
+is 6.4%** — small, true, and stated once.
+
+### The Ghost Lot is drawn in the client, and `prd.md` §2 was wrong to promise otherwise
+
+`prd.md` §2 claims the ghost's randomness is *"drawn after the decision is locked,
+so it leaks nothing and is fully verifiable"*. Both halves cannot hold at once:
+
+- Deriving it from the settling VRF word **leaks**. That word is public the moment
+  the lot is revealed, so a player could compute the ghost *before* deciding and
+  play against it.
+- Requesting one more VRF word at settlement **is verifiable and cannot leak** —
+  but it puts the payout behind a randomness fulfilment. `cancelStuckRandomness`
+  refunds only `session.escrowedStake`, so a stuck word after a 25× claim would
+  refund the stake and **destroy the win**. Verified in `LocalCasinoHost.sol:232`.
+
+No retention loop is worth a mechanism that can eat a player's jackpot. So the
+ghost is drawn locally, after settlement, from the same paytable and the same
+rejection sampler — and the UI says plainly that it changed nothing. `prd.md` §2
+corrected; `docs.md` §6.4 records the reasoning.
+
+**Defence in depth on the one mechanic that could turn nasty.** `test/ghost.spec.ts`
+asserts the ghost is null at every point before settlement, is null after a gutter
+(there was no next lot, and inventing one would be a lie), never alters a payout,
+and — walking *every string in `copy.ts`* — that nothing anywhere carries an
+exclamation mark, "so close", "almost", "you were", "unlucky" or "try again".
+`claude.md` §7 forbids near-miss theatre; now it is enforced rather than intended.
+
+**Audio: three graphs, zero files**
+
+| graph | how | keyed to |
+|---|---|---|
+| room | brown noise, lowpassed at 620 Hz with a peak at 340 | `roomGain(wax)` — the same ladder as the light |
+| wax | bandpassed noise bursts at Poisson intervals | `crackleDensityHz(wax)` |
+| event | pin drop, gavel, flare, burn | the round |
+
+The pin drop spreads the paytable **logarithmically** — 196 Hz for an empty crate,
+245 / 340 / 473 / 731 / 1568 Hz up to the *Sarah Christiana*. A linear ramp would
+bunch every interesting lot into the bottom eighth of the range; the test asserts
+each neighbouring pair is at least a musical third apart, so a practised player can
+genuinely hear one lot from the next. The empty crate owns the floor exactly, so
+"nothing" never sounds like a quiet "something".
+
+**Frame budget — `npm run frame-budget`**
+
+| case | p50 | p95 | p99 | worst |
+|---|---|---|---|---|
+| a burn at the flare, 1080p | 0.004 | **0.007** | 0.010 | 0.234 |
+| the flare, a phone | 0.004 | 0.005 | 0.011 | 0.096 |
+| an empty crate, first inch | 0.004 | 0.005 | 0.007 | 0.101 |
+| waiting for a word | 0.003 | 0.003 | 0.007 | 0.091 |
+
+Against a 12 ms budget, with three orders of magnitude spare. One check earns its
+place beyond the budget: **every lot costs about the same to draw (1.4×)**, so a
+rich lot cannot stutter into a tell the way a slow frame would.
+
+**A defect the pacing exposed.** The UI tests slept a fixed 400 ms for each reveal.
+Once dwell became a function of the lot, a knife edge took 1,102 ms and the tests
+raced it. They now poll for the state they expect, which made the suite both
+correct *and* twice as fast (16 s → 8 s) — a fixed sleep was paying the worst case
+on every single reveal.
+
+**Carried into phase 5**
+
+- `npm run bundle:single` emits a self-contained HTML build (the jam widget
+  stripped, since a preview is not the entry and must not report engagement).
+  Useful for the demo video and for anyone without a bundler.
+- The bundle is now 86.9 KB gzipped. Still inside the 150 KB budget, but the
+  `preact/compat` lever in `LATER.md` is worth more now than it was on D3.
 
 ---
 

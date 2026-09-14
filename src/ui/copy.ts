@@ -105,9 +105,22 @@ export const COPY = {
     ['Enter', 'deal again, once settled'],
     ['?', 'this panel'],
     ['M', 'sound'],
+    ['T', 'turbo — the same decisions, less waiting'],
   ] as ReadonlyArray<readonly [string, string]>,
 
   soundOn: 'SOUND ON',
   soundOff: 'SOUND OFF',
   soundKey: 'M',
+
+  // --- the Ghost Lot ------------------------------------------------------
+  // Stated flatly and once. Never "you were so close" — the round is over, the
+  // player made their call, and the game does not editorialise about it
+  // (claude.md §6, §7; prd.md §10).
+  ghostLabel: 'The next lot would have been',
+  ghostNone: 'The candle was out. There was no next lot.',
+  ghostNote: 'Drawn after your claim was locked in. It changed nothing.',
+
+  turboOn: 'TURBO',
+  turboOff: 'TURBO',
+  turboKey: 'T',
 } as const;

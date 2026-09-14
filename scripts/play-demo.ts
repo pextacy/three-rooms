@@ -11,10 +11,12 @@
  */
 import { createDemoHost, DEMO_OPENING_PURSE } from '../src/bridge/demoHost';
 import type { CandleHost, HostView } from '../src/bridge/types';
-import { lotById, LOTS } from '../src/game/paytable';
+import { LOTS } from '../src/game/paytable';
 import { INCHES, payoutBase, waxBpAt } from '../src/game/wax';
 import { solve, optimalPolicy } from '../src/game/solve';
-import { COPY, ordinalInch } from '../src/ui/copy';
+import { COPY } from '../src/ui/copy';
+import { dwellMs, tension, knifeEdge, pinDropHz } from '../src/audio/voice';
+import { lotById } from '../src/game/paytable';
 import { formatAmount, formatFace, formatWax } from '../src/ui/format';
 import * as R from '../src/game/rational';
 
@@ -69,12 +71,17 @@ type Tally = {
   trivial: number; // an empty crate: no choice at all
   roundsWithADecision: number; // rounds where the player was asked ANYTHING
   refills: number; // how often the purse ran out
+  dwellMsTotal: number; // how long the auctioneer held, summed
+  dwellMsOnDecisions: number; // …and how much of that was on a real choice
+  ghostsShown: number;
+  ghostsBetter: number; // the ghost was worth more than what was claimed
+  ghostsEmpty: number;
   byPayout: Map<string, number>;
 };
 
 async function play(policy: Policy, rounds: number, transcribe: boolean): Promise<Tally> {
   const host = createDemoHost({ seed: [0x1728, 0xc4, 0x5e, 0x11], randomnessDelayMs: 0 });
-  const tally: Tally = { rounds: 0, staked: 0n, returned: 0n, inches: 0, zero: 0, realDecisions: 0, trivial: 0, roundsWithADecision: 0, refills: 0, byPayout: new Map() };
+  const tally: Tally = { rounds: 0, staked: 0n, returned: 0n, inches: 0, zero: 0, realDecisions: 0, trivial: 0, roundsWithADecision: 0, refills: 0, dwellMsTotal: 0, dwellMsOnDecisions: 0, ghostsShown: 0, ghostsBetter: 0, ghostsEmpty: 0, byPayout: new Map() };
 
   for (let round = 0; round < rounds; round++) {
     const lines: string[] = [];
@@ -96,6 +103,13 @@ async function play(policy: Policy, rounds: number, transcribe: boolean): Promis
       if (session.isSettled) {
         tally.rounds += 1;
         if (decisionsThisRound > 0) tally.roundsWithADecision += 1;
+        if (session.ghostLotId !== null) {
+          tally.ghostsShown += 1;
+          const ghost = lotById(session.ghostLotId);
+          const claimed = session.lotId !== null ? lotById(session.lotId) : null;
+          if (ghost.faceBp === 0) tally.ghostsEmpty += 1;
+          if (claimed && ghost.faceBp > claimed.faceBp) tally.ghostsBetter += 1;
+        }
         tally.returned += session.payoutBase;
         tally.inches += session.inch;
         if (session.payoutBase === 0n) tally.zero += 1;
@@ -114,6 +128,10 @@ async function play(policy: Policy, rounds: number, transcribe: boolean): Promis
           lines.push(
             `    ${guttered ? COPY.gutteredAt() : COPY.claimedAt(session.inch)} ${session.payoutBase === 0n ? COPY.tookNothing : `${COPY.paid} ${formatAmount(session.payoutBase, DECIMALS)} CHIPS`}`,
           );
+          if (session.ghostLotId !== null) {
+            const ghost = lotById(session.ghostLotId);
+            lines.push(`    ${D(`${COPY.ghostLabel} ${ghost.name} ${formatFace(ghost.faceBp)}`)}`);
+          }
           console.log(`  ${B(`Round ${round + 1}`)}`);
           for (const line of lines) console.log(line);
         }
@@ -125,8 +143,11 @@ async function play(policy: Policy, rounds: number, transcribe: boolean): Promis
       const lot = lotById(session.lotId);
       const action = decides(policy, lot.faceBp, session.inch);
       if (session.inch < INCHES) {
+        const held = dwellMs(lot.faceBp, session.inch);
+        tally.dwellMsTotal += held;
         if (lot.faceBp > 0) {
           tally.realDecisions += 1;
+          tally.dwellMsOnDecisions += held;
           decisionsThisRound += 1;
         } else {
           tally.trivial += 1;
@@ -134,10 +155,12 @@ async function play(policy: Policy, rounds: number, transcribe: boolean): Promis
       }
 
       if (transcribe) {
+        const held = dwellMs(lot.faceBp, session.inch);
         lines.push(
           `    ${COPY.inchOf(session.inch)} · ${COPY.waxRemaining} ${formatWax(waxBpAt(session.inch))} · ${lot.name} ${formatFace(lot.faceBp)} · ` +
             `${COPY.ifClaimedNow} ${formatAmount(payoutBase(session.stakeBase, lot.faceBp, session.inch), DECIMALS)} ` +
-            D(`-> ${action === 'CLAIM' ? COPY.claim : COPY.burn}`),
+            D(`· ${Math.round(pinDropHz(lot.faceBp))} Hz · held ${held} ms`) +
+            ` ${D(`-> ${action === 'CLAIM' ? COPY.claim : COPY.burn}`)}`,
         );
       }
       await host.submitAction(action);
@@ -175,7 +198,23 @@ console.log(`  offers below the last inch that are a real choice : ${pct(sample.
 console.log(`  offers that are an empty crate — no choice at all : ${pct(sample.trivial, offers)}  ${D(`${sample.trivial} of ${offers}`)}`);
 console.log(`  ${B('rounds in which the player is asked anything')}     : ${B(pct(sample.roundsWithADecision, sample.rounds))}  ${D(`${sample.roundsWithADecision} of ${sample.rounds}`)}`);
 console.log(`  rounds that are pure dead air                     : ${pct(sample.rounds - sample.roundsWithADecision, sample.rounds)}`);
-console.log(D(`\n  ${ordinalInch(3)}-inch knife edge: a 0.50x lot against a ${R.toFixed(solution.threshold[3] ?? R.ZERO, 5)} threshold`));
+const edge = knifeEdge();
+console.log(`\n${B('Did the pacing do its job?')}`);
+const heldOnDecisions = sample.dwellMsOnDecisions / Math.max(sample.dwellMsTotal, 1);
+console.log(`  ${B('share of the waiting spent on a real choice')} : ${B(pct(sample.dwellMsOnDecisions, sample.dwellMsTotal))}`);
+console.log(`  share of the OFFERS that are a real choice   : ${pct(sample.realDecisions, offers)}`);
+console.log(
+  D(`  The auctioneer spends ${(heldOnDecisions / (sample.realDecisions / offers)).toFixed(2)}x longer per decision than per empty crate.`),
+);
+console.log(
+  D(`  knife edge: ${edge ? `${(edge.faceBp / 100).toFixed(2)}x at inch ${edge.inch}, ${R.toFixed(edge.gap, 5)} from the threshold, held ${dwellMs(edge.faceBp, edge.inch)} ms (tension ${tension(edge.faceBp, edge.inch).toFixed(2)})` : 'none'}`),
+);
+
+console.log(`\n${B('The Ghost Lot')}`);
+console.log(`  shown after                                 : ${pct(sample.ghostsShown, sample.rounds)} of rounds  ${D('(never after a gutter)')}`);
+console.log(`  …and was an empty crate                      : ${pct(sample.ghostsEmpty, sample.ghostsShown)}  ${D('the paytable says 66.9%')}`);
+console.log(`  …and was worth more than what was claimed    : ${pct(sample.ghostsBetter, sample.ghostsShown)}`);
+console.log(D('  Stated flatly, once, and it changes no payout.'));
 console.log(
   D(`  demo RTP over ${sample.rounds.toLocaleString('en-US')} rounds: ${((Number(sample.returned) / Number(sample.staked)) * 100).toFixed(2)}% ` +
     `vs ${R.toPercent(solution.rtp, 2)}% closed form\n`),

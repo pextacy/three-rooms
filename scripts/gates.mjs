@@ -57,6 +57,19 @@ check(
 );
 
 // A framework preset or a stray file can reintroduce it; grep the whole repo.
+//
+// The pattern matches the header being SET, not merely named. An earlier version
+// flagged any occurrence, which meant the rule could not be written down: it
+// failed on gates.mjs for forbidding it, and then on the README generator for
+// documenting it. A rule has to be documentable in the files it governs.
+const SETS_XFO = [
+  /["']x-frame-options["']\s*[:,]/i, // a header key in JSON or an object literal
+  /setHeader\s*\(\s*["']x-frame-options/i, // an explicit setHeader call
+  /^\s*x-frame-options\s*:/im, // a _headers / .htaccess style line
+  /http-equiv=["']x-frame-options["']/i, // a <meta> tag
+];
+// Backticks are markdown, not header syntax: `X-Frame-Options` in prose is a
+// mention, and comments are stripped before matching for the same reason.
 const repoFiles = (await walk(ROOT)).filter(
   f => !f.includes('/node_modules/') && !f.includes('/dist/') && !f.includes('/.git/') && !f.includes('/sdk/'),
 );
@@ -64,11 +77,10 @@ const xfoOffenders = [];
 for (const f of repoFiles) {
   if (!['.json', '.ts', '.tsx', '.js', '.mjs', '.html', '.toml', '.yml', '.yaml'].includes(extname(f))) continue;
   const text = await readFile(f, 'utf8').catch(() => '');
-  // gates.mjs names the header in order to forbid it; skip itself.
-  if (f.endsWith('scripts/gates.mjs')) continue;
-  if (/x-frame-options/i.test(text)) xfoOffenders.push(f.replace(ROOT, ''));
+  const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  if (SETS_XFO.some(pattern => pattern.test(code))) xfoOffenders.push(f.replace(ROOT, ''));
 }
-check('no X-Frame-Options anywhere in the repo', xfoOffenders.length === 0, xfoOffenders.join(', '));
+check('nothing in the repo SETS X-Frame-Options', xfoOffenders.length === 0, xfoOffenders.join(', '));
 
 // ---------------------------------------------------------------- widget tag
 console.log('\n\x1b[1mjam widget — raw HTML\x1b[0m');
@@ -122,6 +134,35 @@ check(
   manifest.capabilities?.submitAction === true,
   'BURN is an on-chain player action',
 );
+
+// ---------------------------------------------------------------- generated docs
+console.log('\n\x1b[1mgenerated documents\x1b[0m');
+{
+  // README.md and DEMO.md are written from the DP and from captured runs. A
+  // stale one is worse than none, because a reviewer who spots a mismatch
+  // cannot tell whether the build is wrong or the document is (claude.md §8).
+  const readme = await readFile(join(ROOT, 'README.md'), 'utf8').catch(() => '');
+  check('README.md exists and is marked generated', /GENERATED FILE — DO NOT EDIT/.test(readme));
+  check(
+    'README.md carries the declared RTP as an exact rational',
+    readme.includes('7577820426157 / 7812500000000'),
+    'the one number a judge will check',
+  );
+  check('README.md publishes the whole strategy band, not just the flattering end', readme.includes('93.577%'));
+
+  const demoDoc = await readFile(join(ROOT, 'DEMO.md'), 'utf8').catch(() => '');
+  check('DEMO.md exists and is marked generated', /GENERATED FILE — DO NOT EDIT/.test(demoDoc));
+  // Deliberately NOT "does it contain GATES GREEN": DEMO.md captures this very
+  // command, so that check could never pass on a first run and could never fail
+  // afterwards. Look for captured output that does not depend on this gate.
+  check(
+    'DEMO.md pastes real expected output, not a description of it',
+    demoDoc.includes('VERIFIED  declared RTP') && /\n\s+5\s+40%\s+1500K/.test(demoDoc),
+    'the verify:rtp headline and a verify:light row, both as captured',
+  );
+
+  check('a licence is present, so the source can actually be shared', existsSync(join(ROOT, 'LICENSE')));
+}
 
 // ---------------------------------------------------------------- build output
 if (!headersOnly) {

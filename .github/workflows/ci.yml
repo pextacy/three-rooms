@@ -34,8 +34,26 @@ jobs:
       - name: build
         run: npm run build
 
+      # README.md and DEMO.md are generated from the DP and from captured runs.
+      # Regenerating and diffing is what stops a published number going stale.
+      - name: generated docs are current
+        run: |
+          npm run gen:constants
+          npm run gen:readme
+          git diff --exit-code -- README.md contracts/generated/ \
+            || (echo "::error::generated files are stale — run npm run gen:readme && npm run gen:constants" && exit 1)
+
       - name: gates
         run: npm run gates
+
+      - name: embeddable
+        run: npm run gates:iframe
+
+      - name: frame budget
+        run: npm run frame-budget
+
+      - name: cold open
+        run: npm run cold-open
 
   # I8 is the trap that silently costs the gallery preview, so the live origin is
   # re-read after every deploy rather than trusted from vercel.json.

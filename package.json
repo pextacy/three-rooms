@@ -28,7 +28,13 @@
     "verify:light": "vite-node scripts/verify-light.ts",
     "cold-open": "vite-node scripts/cold-open.ts",
     "frame-budget": "vite-node scripts/frame-budget.ts",
-    "bundle:single": "node scripts/bundle-single.mjs"
+    "bundle:single": "node scripts/bundle-single.mjs",
+    "gen:readme": "vite-node scripts/gen-readme.ts",
+    "gen:demo": "vite-node scripts/gen-demo.ts",
+    "gates:iframe": "node scripts/iframe-check.mjs",
+    "deploy": "vercel deploy --prod",
+    "verify:live": "node scripts/gates.mjs --headers-only --origin",
+    "ship": "node scripts/ship.mjs"
   },
   "dependencies": {
     "penpal": "^7.0.6",

@@ -131,8 +131,23 @@ r <  9980  -> lot 4 (5.00x)
 else       -> lot 5 (25.00x)
 ```
 
-`test/rng.spec.ts` runs a chi-square uniformity test over 10⁷ draws and asserts the
-TS and Solidity implementations agree on a fixed corpus of 4,096 words.
+`test/rng.spec.ts` runs a chi-square uniformity test over **10⁶** draws, and
+`test/parity.spec.ts` asserts the TS and Solidity implementations agree on a fixed
+corpus of **4,096 words** — including a word that rejects all sixteen windows and
+forces the keccak rehash.
+
+> **Adjusted on D1.** This said 10⁷ draws inside the spec. At 10⁷ the two
+> keccak-backed uniformity tests alone take ~100 s, which is a suite nobody runs.
+> The 10⁷ claim now lives in `npm run bench` (§7), which does 10⁷ draws **and**
+> 10⁷ simulated rounds in ~20 s by generating its word stream from a fast PRNG
+> instead of keccak — the mapping is what is under test there, not the VRF.
+
+**One deliberate asymmetry.** `src/game/` carries no hash implementation, because
+it must stay pure (`claude.md` §3). The rehash on window exhaustion is therefore
+an **injected** function: the contract uses `keccak256(abi.encodePacked(seed))`,
+the parity tests inject exactly that, and `demoHost` injects a fresh word from its
+seeded PRNG. Distributionally identical; byte-identical only where keccak is
+injected. The path is reached with probability ≈ 1.4 × 10⁻¹⁸.
 
 ### 2.5 `round.ts` — the state machine
 
@@ -392,8 +407,8 @@ printed on the switch it belongs to.
 | Exhaustive DP | The declared RTP is recomputed from the paytable across all 30 reachable `(inch, lot)` states — not read from a constant | `npm run verify:rtp` |
 | Strategy band | Every listed policy's RTP matches §9 and the sensible band sits inside 93–98% | `npm test` |
 | Parity | TS core and Solidity agree on all 30 states and on a 4,096-word RNG corpus | `npm test` |
-| RNG uniformity | Chi-square over 10⁷ draws; no `% n` anywhere in either implementation | `npm test` |
-| Monte Carlo | 10⁷ simulated rounds under optimal play land within tolerance of the closed form | `npm run bench` |
+| RNG uniformity | Chi-square over 10⁶ draws, **and** a proof that the forbidden `word % n` fails the same test | `npm test` |
+| Monte Carlo | 10⁷ draws **and** 10⁷ simulated rounds land within 5σ of the closed form — RTP, P(0), P(≥1×), P(25×), mean length and standard deviation | `npm run bench` |
 | Caps | The 25× win pays the facet cap to the base unit and does not revert | `npm test` |
 | SDK spike | Every SDK symbol used is exercised end-to-end against the local simulator | `npm run spike` |
 | Gates | Bundle size, one widget tag, `frame-ancestors *`, no `X-Frame-Options`, manifest parses, cold-open budget | `npm run gates` |
@@ -726,7 +741,15 @@ Reach probability by inch   : 100% / 76.90% / 59.14% / 45.48% / 30.42%
 | Claim ≥ 0.50× (anything non-empty) | 93.577% |
 | Hold for ≥ 2.00× | 78.308% |
 | Hold for ≥ 5.00× | 52.959% |
-| Claim the first lot regardless (unreachable — nobody claims an empty crate) | 46.500% |
+| Claim the first lot regardless (unreachable — nobody claims an empty crate) | **44.000%** |
+
+> **Corrected on D1.** This row read **46.500%**, as does `prd.md` §4.5. Claiming
+> whatever is on the table at the first inch is worth `E[face] × wax(1) = 0.44 ×
+> 1.00 = 0.44` exactly — 44.000%. An exhaustive scan over 200,000 per-inch
+> policies found none worth 46.500%, so the old figure corresponds to no policy at
+> all. It is a floor on nothing and the argument does not need it: the row exists
+> only to show that the degenerate baseline is unreachable, which 44.000% says
+> just as well.
 
 ### 9.6 Hand-checkable identities
 

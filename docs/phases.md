@@ -15,7 +15,7 @@ looks full.
 
 **Status legend:** ⬜ not started · 🟡 in progress · ✅ gate passed · ❌ gate failed
 
-**Current phase: 1 — Math & contract.** Phase 0 closed 2026-09-14.
+**Current phase: 2 — Playable.** Phase 0 and 1 closed 2026-09-14.
 
 ---
 
@@ -83,23 +83,69 @@ origin once `PRODUCTION_ORIGIN` is set. **This is the one open item in phase 0.*
 
 ---
 
-## Phase 1 — Math & contract  ·  D1 (Mon 09-15)  ·  ⬜
+## Phase 1 — Math & contract  ·  D1 (Mon 09-15)  ·  ✅
 
 The part a judge will actually read. Pure, exact, reproducible.
 
-| # | Deliverable |
-|---|---|
-| 1.1 | `src/game/paytable.ts`, `src/game/wax.ts` — constants from `docs.md` §9 |
-| 1.2 | `src/game/solve.ts` — the DP in exact BigInt rationals, never floats |
-| 1.3 | `npm run verify:rtp` prints **96.9961%** and the five thresholds, recomputed |
-| 1.4 | `src/game/rng.ts` — rejection sampling, 16-bit windows, reject ≥ 60000 |
-| 1.5 | `src/game/round.ts` — the state machine; illegal transitions rejected, not ignored |
-| 1.6 | `npm run gen:constants` → `contracts/generated/Paytable.sol` |
-| 1.7 | `contracts/Candle.sol` — five hooks, one `_payout()`, per-inch draws |
-| 1.8 | Tests: `rtp`, `strategy-band`, `rng` (chi-square, 10⁷), `parity` (30 states + 4,096 words), `caps` |
+| # | Deliverable | Status |
+|---|---|---|
+| 1.1 | `src/game/paytable.ts`, `src/game/wax.ts` — constants from `docs.md` §9 | ✅ |
+| 1.2 | `src/game/solve.ts` + `rational.ts` — the DP in exact BigInt rationals, never floats | ✅ |
+| 1.3 | `npm run verify:rtp` prints **96.9961%** and the five thresholds, recomputed | ✅ |
+| 1.4 | `src/game/rng.ts` — rejection sampling, 16-bit windows, reject ≥ 60000 | ✅ |
+| 1.5 | `src/game/round.ts` — the state machine; illegal transitions rejected, not ignored | ✅ |
+| 1.6 | `npm run gen:constants` → `contracts/generated/Paytable.sol` | ✅ |
+| 1.7 | `contracts/Candle.sol` — five hooks, one `_payout()`, per-inch draws | ✅ |
+| 1.8 | Tests: rtp, strategy-band, rng, round, parity, caps — **107 passing** | ✅ |
 
-**Exit gate:** a real round settles in the simulator — stake in, three inches burned, claim,
-payout correct **to the base unit**. The game is not playable and that is fine.
+**Exit gate — result**
+
+✅ A real round settles in the simulator. `npm run round-trip`: stake 100 chUSD in,
+three inches burned, claim at the fourth on a 1.00× lot, payout
+**55000000000000000000 wei** — `100 × 100 × 5500 / 1e6`, exact to the base unit,
+and equal to what the pure core computed in lockstep.
+
+**What the numbers came out at**
+
+```
+Declared RTP (optimal play) : 96.9961%   = 7577820426157 / 7812500000000
+House edge                  :  3.0039%
+Thresholds                  : 0.75418 / 0.64664 / 0.51392 / 0.32000 / forced
+P(payout >= 1x)             : 36.4741%     P(payout = 0) : 20.3531%
+Standard deviation          :  1.7568      Mean length   : 3.12 inches
+Strategy band               : 93.577% … 96.996%, every sensible policy in range
+```
+
+Every figure above is reproduced by `npm run verify:rtp` and asserted in
+`test/rtp.spec.ts` against the DP, not against a constant.
+
+**One more spec error found and corrected**
+
+`docs.md` §9.5 and `prd.md` §4.5 put the degenerate "claim the first lot
+regardless" baseline at **46.500%**. It is **44.000%** — `E[face] × wax(1) = 0.44
+× 1.00`. An exhaustive scan over 200,000 per-inch policies found none worth
+46.500%, so the old number corresponds to no policy at all. Corrected in both.
+
+**Two deliberate deviations from the spec, both recorded in `docs.md`**
+
+1. The chi-square in `test/rng.spec.ts` runs **10⁶** draws, not 10⁷. At 10⁷ the
+   keccak-backed uniformity tests take ~100 s and nobody runs the suite. The 10⁷
+   claim moved to `npm run bench`, which does 10⁷ draws **and** 10⁷ rounds in 20 s.
+2. `src/game/` carries no hash implementation, because it must stay pure. The
+   rehash on window exhaustion (p ≈ 1.4 × 10⁻¹⁸) is injected: keccak in the
+   contract and the parity tests, a fresh PRNG word in `demoHost`.
+
+**Carried into phase 2**
+
+- `payoutIfClaimedNow()` and `waxNow()` on the round state are what the UI reads;
+  the UI holds no game logic of its own.
+- The 4-byte `gameState` codec lives in `test/helpers/chain.ts` today. Phase 2
+  needs it in `src/bridge/`, because the guest decodes `raw.gameState` from the
+  host snapshot to recover a round after a reload.
+- `spikes/` stays as the phase-0 record, and its contracts are out of the
+  simulator's watch folder. `test/parity.spec.ts` and `test/caps.spec.ts` now cover
+  everything the spikes proved, against the real contract — so phase 2 repurposes
+  `npm run spike` into the SDK-symbol exerciser `plan.md` D2 asks for.
 
 ---
 

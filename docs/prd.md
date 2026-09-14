@@ -203,7 +203,8 @@ engineered to fit entirely inside the window:
 Every policy a human being would plausibly adopt sits between **93.58%** and
 **97.00%**. Only deliberately perverse play falls out of band, and that is true of
 blackjack and video poker too. Nobody claims an empty crate, so the degenerate
-"always take the first lot" baseline (46.5%) is unreachable in practice.
+"always take the first lot" baseline (**44.0%**, corrected on D1 from 46.5% —
+see `docs.md` §9.5) is unreachable in practice.
 
 ### 4.6 Outcome distribution under optimal play
 

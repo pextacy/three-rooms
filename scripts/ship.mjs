@@ -14,8 +14,11 @@ import { execFileSync, execSync } from 'node:child_process';
 const ROOT = new URL('..', import.meta.url).pathname;
 const run = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, { cwd: ROOT, stdio: 'inherit', ...opts });
+const ANSI = new RegExp(String.fromCharCode(27) + '\\[[0-9;?]*[A-Za-z]', 'g');
 const capture = (cmd, args) =>
-  execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }).trim();
+  execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] })
+    .replace(ANSI, '')
+    .trim();
 
 const B = s => `\x1b[1m${s}\x1b[0m`;
 const D = s => `\x1b[2m${s}\x1b[0m`;
@@ -50,7 +53,15 @@ if (url) {
   console.log(D(`  PRODUCTION_ORIGIN is set — skipping the deploy and verifying ${url}`));
 } else {
   try {
-    url = capture('npx', ['--yes', 'vercel', 'deploy', '--prod', '--yes']).split('\n').filter(Boolean).pop() ?? null;
+    // Vercel prints progress and an "Aliased" line to stdout too, so the URL is
+    // pulled out by pattern rather than by taking the last line.
+    const out = capture('npx', ['--yes', 'vercel', 'deploy', '--prod', '--yes']);
+    const aliased = /Aliased\s+(https:\/\/\S+)/.exec(out)?.[1];
+    const production = /Production\s+(https:\/\/\S+)/.exec(out)?.[1];
+    const bare = out.split(/\s+/).filter(w => w.startsWith('https://')).pop();
+    // Prefer the alias: the deployment-specific URL sits behind Vercel's SSO
+    // deployment protection, which would 302 every check that follows.
+    url = aliased ?? production ?? bare ?? null;
   } catch (error) {
     console.error(`\n\x1b[31mThe deploy failed.\x1b[0m ${error instanceof Error ? error.message : ''}`);
     console.error('\nIf this is an auth problem, run `npx vercel login` and try again.');

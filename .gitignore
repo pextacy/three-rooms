@@ -8,3 +8,4 @@ dist/
 sdk/
 spikes/node_modules
 spikes/dbg.mjs
+.vercel

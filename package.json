@@ -34,7 +34,8 @@
     "gates:iframe": "node scripts/iframe-check.mjs",
     "deploy": "vercel deploy --prod",
     "verify:live": "node scripts/gates.mjs --headers-only --origin",
-    "ship": "node scripts/ship.mjs"
+    "ship": "node scripts/ship.mjs",
+    "vercel-build": "node scripts/fetch-sdk.mjs && vite build"
   },
   "dependencies": {
     "penpal": "^7.0.6",

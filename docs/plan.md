@@ -165,11 +165,14 @@ is improvement, not rescue.
 
 ## D6 — Saturday 09-20 · Polish & stop
 
-- [ ] Fresh-eyes test: hand the URL to someone who has never seen it. Watch them,
-      say nothing. Fix whatever they get wrong in the first thirty seconds.
+- [x] Fresh-eyes test — **found a real one**: the page opened on a stake form, not
+      on a lot. Free play now deals the first round itself, so the first frame is
+      the game. `claude.md` §5's "zero clicks to comprehension" is now a test.
 - [ ] A 60–90 second demo video: one round claimed early, one round ridden to the
-      gutter, one 25×.
-- [ ] Final README pass. Link the video.
+      gutter, one 25×. — **material ready**: `?seed=198` gives exactly that
+      sequence, ending on a 25× at the first inch. Recording needs a human.
+- [x] Final README pass — the live URL is in it, read from `package.json`.
+      The video link goes in once the video exists.
 - [ ] Resubmit / update the entry if anything changed.
 - [ ] **18:00 UTC — hands off.** Six hours of slack, unspent.
 

@@ -15,7 +15,7 @@ looks full.
 
 **Status legend:** ⬜ not started · 🟡 in progress · ✅ gate passed · ❌ gate failed
 
-**Current phase: 5 — Ship.** Phases 0–4 closed; the build is live, the submission is not made.
+**Current phase: 6 — Polish & stop.** Phases 0–5 closed. The build is live; the video and the submission are human steps.
 
 ---
 
@@ -526,16 +526,86 @@ is not mine to fill in. Everything it needs is ready:
 
 ---
 
-## Phase 6 — Polish & stop  ·  D6 (Sat 09-20)  ·  ⬜
+## Phase 6 — Polish & stop  ·  D6 (Sat 09-20)  ·  🟡  *shipped; the submission is the last step*
 
-| # | Deliverable |
+| # | Deliverable | Status |
+|---|---|---|
+| 6.1 | Fresh-eyes test — fix whatever they get wrong in the first thirty seconds | ✅ **found a real one** |
+| 6.2 | A 60–90 s demo video: an early claim, a ride to the gutter, a 25× | 🟡 material ready, recording needs a human |
+| 6.3 | Final README pass | ✅ |
+| 6.4 | Resubmit / update the entry | ⬜ **needs a human** |
+
+### 6.1 — the page opened on a form
+
+The most visible thing in the project was wrong. `claude.md` §5 and `prd.md` §2
+both require:
+
+> **Zero clicks to comprehension.** On load the player sees: the lot on the table,
+> its face value, the candle with five pins, the payout if claimed now, and two
+> buttons. No tutorial, no modal, no connect-wallet.
+
+The build opened on a stake input and a **LIGHT THE CANDLE** button. A judge with
+90 seconds and twelve tabs open gets one look, and that look was a form.
+
+Free play now deals the first round itself. The first frame reads:
+
+```
+Lot on the table · Cordage 1.00× · Inch 1 of 5 · Wax remaining 100%
+Claim now and take 20 CHIPS   [CLAIM  Space]   [LET IT BURN  B]
+```
+
+**Only free play.** Inside a host a wager is real money and needs intent, so the
+stake control stays the way in there. Between rounds the stake sits on the settled
+board beside `DEAL AGAIN` — changing it is a decision and is never hidden. An empty
+purse no longer throws; the board stays put with `REFILL` in reach.
+
+`test/ui.spec.tsx` gained an explicit **ZERO CLICKS TO COMPREHENSION** test, so the
+law is enforced rather than remembered. Five tests that asserted the old
+form-first behaviour now assert the law instead — they had been *certifying the
+bug*.
+
+### A second defect, in the tests themselves
+
+`parity` and `caps` checked whether the deployment **file** existed. That file
+outlives the stack, so stopping the simulator turned into **24 red tests** —
+exactly the failure the skip was built to prevent. They now ping the RPC:
+
+```
+with a chain     189 passed
+without a chain  161 passed · 28 skipped, and it says why
+```
+
+### 6.2 — the material for the video
+
+A 25× at the first inch is one round in five hundred, so waiting for one on camera
+is not a plan. `?seed=<n>` makes free play deterministic — free play only; inside a
+host the contract's VRF is the only authority and nothing client-side can reach it.
+
+`npm run find:seed` searches for a sequence matching the brief and returns:
+
+```
+seed 198
+  round 1    2.00× at inch 3   claimed at the third inch
+  round 2    5.00× at inch 5   rode it to the gutter
+  round 3    1.00× at inch 1   claimed at the first inch
+  round 4   25.00× at inch 1   the Sarah Christiana — 25×
+```
+
+Four rounds, building to the jackpot at the inch where 25× is actually 25×.
+Record at **https://candle-ashen-tau.vercel.app/?seed=198**.
+
+### What is left
+
+**Recording the video, and submitting at jam.chain.wtf.** Both are human steps.
+Everything they need exists:
+
+| | |
 |---|---|
-| 6.1 | Fresh-eyes test: hand over the URL, say nothing, watch. Fix the first thirty seconds |
-| 6.2 | 60–90 s demo video: one early claim, one ride to the gutter, one 25× |
-| 6.3 | Final README pass; link the video |
-| 6.4 | Resubmit if anything changed |
-
-**Exit gate: 18:00 UTC — hands off.** Six hours of slack, unspent.
+| Live URL | `https://candle-ashen-tau.vercel.app` |
+| Demo sequence | `?seed=198` |
+| Declared RTP | **96.9961%** = `7577820426157 / 7812500000000` |
+| Source | this repository, MIT |
+| Reviewer runbook | `DEMO.md` |
 
 ---
 

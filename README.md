@@ -13,7 +13,7 @@ A provably-fair on-chain wagering game for **Chain Jam Vol. 1**. Take the lot in
 front of you, or let the candle burn an inch and see the next one — knowing the
 next one is worth less by construction.
 
-### ▸ Play it: **https://candle-ashen-tau.vercel.app**
+### ▸ Play it: **https://candle-ashen-tau.vercel.app/candle/**
 
 Free play. No wallet, no modal, no splash — the first lot is already on the table
 when the page loads.

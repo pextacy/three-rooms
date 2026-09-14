@@ -30,7 +30,7 @@ import * as R from '../src/games/candle/core/rational';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, '../README.md');
-const manifest = JSON.parse(readFileSync(resolve(here, '../public/game.manifest.json'), 'utf8')) as {
+const manifest = JSON.parse(readFileSync(resolve(here, '../public/candle/game.manifest.json'), 'utf8')) as {
   gameId: string;
   locales: Record<string, { name: string; description: string }>;
 };

@@ -97,7 +97,7 @@ console.log(`\x1b[2mCandleGame ${game.address}\x1b[0m\n`);
 // ---------------------------------------------------------------- manifest
 console.log(B('manifest.ts'));
 {
-  const manifest = JSON.parse(readFileSync(new URL('../public/game.manifest.json', import.meta.url), 'utf8'));
+  const manifest = JSON.parse(readFileSync(new URL('../public/candle/game.manifest.json', import.meta.url), 'utf8'));
   const result = validateCasinoGameManifest(manifest);
   check('validateCasinoGameManifest accepts our manifest', result.ok, result.ok ? manifest.gameId : result.reason);
   check('canonicalCasinoGameId agrees for contract and manifest', canonicalCasinoGameId('CandleGame') === canonicalCasinoGameId(manifest.gameId), `both -> "${canonicalCasinoGameId('CandleGame')}"`);

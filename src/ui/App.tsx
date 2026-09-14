@@ -96,21 +96,26 @@ export function App() {
 
   const deal = useCallback(() => {
     if (!host || !view || session || stakeError) return;
-    void host.openSession(stakeBase);
+    // The bridge surfaces its own failures through `session.error`; this catch is
+    // for the ones it cannot, so a rejected promise is never silent.
+    void host.openSession(stakeBase).catch(() => {});
   }, [host, view, session, stakeError, stakeBase]);
 
   const act = useCallback(
     (action: 'CLAIM' | 'BURN') => {
       if (!host || !canAct) return;
       if (action === 'BURN' && forced) return;
-      void host.submitAction(action);
+      void host.submitAction(action).catch(() => {});
     },
     [host, canAct, forced],
   );
 
   const again = useCallback(() => {
     if (!host || !settled || !view) return;
-    void host.revealOutcome().then(() => {
+    void host
+      .revealOutcome()
+      .catch(() => {})
+      .then(() => {
       host.dealAgain();
       // Free play keeps dealing; the host path returns to the stake control,
       // because opening a real session is the player's to trigger.
@@ -120,7 +125,7 @@ export function App() {
         // the honest outcome of a purse that has run out.
         void host.openSession(stakeBase).catch(() => {});
       }
-    });
+      });
   }, [host, settled, view, stakeError, stakeBase]);
 
   useCandleAudio(soundOn, session);

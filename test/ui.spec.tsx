@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { App } from '../src/ui/App';
+import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { COPY } from '../src/ui/copy';
 import { LOTS } from '../src/game/paytable';
 import { INCHES } from '../src/game/wax';
@@ -257,5 +258,47 @@ describe('the ? panel publishes the math', () => {
     expect(body).toContain(COPY.bandTitle);
     // The careless end of the band is published too — we do not hide it.
     expect(body).toContain('93.577%');
+  });
+});
+
+describe('the last line of defence', () => {
+  it('shows the room, not a blank page, when something throws', async () => {
+    const Boom = () => {
+      throw new Error('the wick snapped');
+    };
+    const holder = document.createElement('div');
+    document.body.appendChild(holder);
+    const crashRoot = createRoot(holder);
+
+    // React logs the caught error; that is the point of it, but it is noise here.
+    const consoleError = console.error;
+    console.error = () => {};
+    try {
+      await act(async () => {
+        crashRoot.render(
+          <ErrorBoundary>
+            <Boom />
+          </ErrorBoundary>,
+        );
+      });
+
+      const body = holder.textContent ?? '';
+      expect(body, 'the page is not blank').not.toBe('');
+      expect(body).toContain(COPY.title);
+      expect(body).toContain(COPY.crashed);
+      expect(body, 'the error is shown, not swallowed').toContain('the wick snapped');
+
+      const reload = Array.from(holder.querySelectorAll('button')).find(b => (b.textContent ?? '').includes(COPY.crashReload));
+      expect(reload, 'offers the one action that helps').not.toBeNull();
+    } finally {
+      console.error = consoleError;
+      await act(async () => crashRoot.unmount());
+      holder.remove();
+    }
+  });
+
+  it('says nothing that could be mistaken for a lost stake', () => {
+    expect(COPY.crashed).toContain('already settled on chain');
+    expect(/!/.test(COPY.crashed)).toBe(false);
   });
 });

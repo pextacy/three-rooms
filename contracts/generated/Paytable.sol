@@ -63,4 +63,19 @@ library CandlePaytable {
     if (inch == 5) return 4_000;
     revert('candle: inch out of range');
   }
+
+  /// @notice Is `faceBp` one of this paytable's face values?
+  /// @dev Defence in depth. `gameState` reaches the contract as calldata the
+  ///      player echoes back; the facet's keccak commitment is what actually
+  ///      stops it being forged, but the game should not multiply a stake by a
+  ///      number it never issued even if that commitment were ever weakened.
+  function isFaceBp(uint256 faceBp) internal pure returns (bool) {
+    if (faceBp ==    0) return true; // 0.00x  Empty crate
+    if (faceBp ==   50) return true; // 0.50x  Ship's stores
+    if (faceBp ==  100) return true; // 1.00x  Cordage
+    if (faceBp ==  200) return true; // 2.00x  Sailcloth
+    if (faceBp ==  500) return true; // 5.00x  Ordnance
+    if (faceBp == 2500) return true; // 25.00x  The Sarah Christiana
+    return false;
+  }
 }

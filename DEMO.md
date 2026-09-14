@@ -221,6 +221,14 @@ manifest
   ✓ capabilities.openSession is true
   ✓ capabilities.submitAction is true (CANDLE is multi-action)  BURN is an on-chain player action
 
+contract
+  ✓ the ICasinoGameV2 interface is vendored beside the game  so a standard toolchain can compile it
+  ✓ and is byte-identical to the SDK once comments are stripped
+  ✓ Candle.sol imports the interface by a path that resolves anywhere
+  ✓ the generated paytable is never hand-edited
+  ✓ the contract declares no constructor arguments  the SDK deploys it without any
+  ✓ every hook is view, so the game holds no storage
+
 generated documents
   ✓ README.md exists and is marked generated
   ✓ README.md carries the declared RTP as an exact rational  the one number a judge will check
@@ -230,12 +238,12 @@ generated documents
   ✓ a licence is present, so the source can actually be shared
 
 bundle
-  ✓ bundle < 150 KB gzipped  87.1 KB gzipped
+  ✓ bundle < 150 KB gzipped  87.7 KB gzipped
   ✓ zero audio files (everything synthesised)
   ✓ no image over 8 KB
   ✓ dist/game.manifest.json is served at the origin
 
-GATES GREEN  24 passed, 0 failed
+GATES GREEN  30 passed, 0 failed
 ```
 
 And the frame budget, against a 12 ms p95:
@@ -243,17 +251,17 @@ And the frame budget, against a 12 ms p95:
 ```
 
   case                                p50      p95      p99    worst
-  a burn at the flare, 1080p        0.004    0.006    0.012    0.193
-  the flare, a phone                0.004    0.005    0.007    0.086
-  an empty crate, first inch        0.004    0.005    0.006    0.066
-  waiting for a word                0.003    0.003    0.004    0.058
+  a burn at the flare, 1080p        0.004    0.006    0.009    0.197
+  the flare, a phone                0.004    0.005    0.008    0.072
+  an empty crate, first inch        0.004    0.005    0.006    0.079
+  waiting for a word                0.003    0.003    0.004    0.066
 
 Verdict
   ✓ a burn at the flare, 1080p: p95 under 12 ms  0.006 ms
   ✓ the flare, a phone: p95 under 12 ms  0.005 ms
   ✓ an empty crate, first inch: p95 under 12 ms  0.005 ms
   ✓ waiting for a word: p95 under 12 ms  0.003 ms
-  ✓ even p99 stays inside the 60 fps frame at 16.7 ms  0.012 ms
+  ✓ even p99 stays inside the 60 fps frame at 16.7 ms  0.009 ms
 ```
 
 ---

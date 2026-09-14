@@ -135,6 +135,36 @@ check(
   'BURN is an on-chain player action',
 );
 
+// ---------------------------------------------------------------- the contract
+console.log('\n\x1b[1mcontract\x1b[0m');
+{
+  const vendored = await readFile(join(ROOT, 'contracts', 'ICasinoGameV2.sol'), 'utf8').catch(() => null);
+  check('the ICasinoGameV2 interface is vendored beside the game', vendored !== null, 'so a standard toolchain can compile it');
+
+  // A vendored interface that drifts from the SDK's is a contract that compiles
+  // and then fails against the real facet. Diff the DECLARATIONS, ignoring the
+  // header note the copy carries.
+  const upstreamPath = join(ROOT, 'sdk', 'casino-sdk', 'solidity', 'ICasinoGameV2.sol');
+  if (vendored !== null && existsSync(upstreamPath)) {
+    const upstream = await readFile(upstreamPath, 'utf8');
+    const strip = text =>
+      text
+        .replace(/\/\/[^\n]*/g, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    check('and is byte-identical to the SDK once comments are stripped', strip(vendored) === strip(upstream));
+  } else {
+    console.log(`  \x1b[2m· SDK absent, skipping the drift check (npm run sdk:fetch)\x1b[0m`);
+  }
+
+  const candle = await readFile(join(ROOT, 'contracts', 'Candle.sol'), 'utf8').catch(() => '');
+  check('Candle.sol imports the interface by a path that resolves anywhere', /from '\.\/ICasinoGameV2\.sol'/.test(candle));
+  check('the generated paytable is never hand-edited', /GENERATED FILE — DO NOT EDIT/.test(await readFile(join(ROOT, 'contracts', 'generated', 'Paytable.sol'), 'utf8').catch(() => '')));
+  check('the contract declares no constructor arguments', !/constructor\s*\([^)]+\)/.test(candle), 'the SDK deploys it without any');
+  check('every hook is view, so the game holds no storage', (candle.match(/external\s+pure\s+returns/g) ?? []).length >= 5);
+}
+
 // ---------------------------------------------------------------- generated docs
 console.log('\n\x1b[1mgenerated documents\x1b[0m');
 {

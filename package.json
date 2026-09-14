@@ -38,7 +38,9 @@
     "vercel-build": "node scripts/fetch-sdk.mjs && vite build",
     "find:seed": "vite-node scripts/find-demo-seed.ts",
     "postinstall": "node scripts/fetch-sdk.mjs --soft",
-    "pretest": "node scripts/require-sdk.mjs"
+    "pretest": "node scripts/require-sdk.mjs",
+    "deploy:contract": "node scripts/deploy-contract.mjs",
+    "contracts:build": "forge build"
   },
   "dependencies": {
     "penpal": "^7.0.6",

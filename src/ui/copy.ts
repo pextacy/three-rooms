@@ -120,6 +120,11 @@ export const COPY = {
   ghostNone: 'The candle was out. There was no next lot.',
   ghostNote: 'Drawn after your claim was locked in. It changed nothing.',
 
+  // The auctioneer's voice holds even here: say what happened, offer the one
+  // thing that helps, and do not apologise at length.
+  crashed: 'The candle went out. Nothing was staked that is not already settled on chain.',
+  crashReload: 'LIGHT IT AGAIN',
+
   turboOn: 'TURBO',
   turboOff: 'TURBO',
   turboKey: 'T',

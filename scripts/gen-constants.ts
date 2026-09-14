@@ -43,6 +43,8 @@ const branches = lotRows
 const last = lotRows[lotRows.length - 1];
 if (last === undefined) throw new Error('empty paytable');
 
+const faceChecks = LOTS.map(lot => `    if (faceBp == ${String(lot.faceBp).padStart(4)}) return true; // ${(lot.faceBp / FACE_DENOM).toFixed(2)}x  ${lot.name}`).join('\n');
+
 const waxBranches = WAX_BP.map(
   (bp, i) => `    if (inch == ${i + 1}) return ${bp.toLocaleString('en-US').replace(/,/g, '_')};`,
 ).join('\n');
@@ -103,6 +105,16 @@ ${branches}
   function waxBpAt(uint256 inch) internal pure returns (uint256) {
 ${waxBranches}
     revert('candle: inch out of range');
+  }
+
+  /// @notice Is \`faceBp\` one of this paytable's face values?
+  /// @dev Defence in depth. \`gameState\` reaches the contract as calldata the
+  ///      player echoes back; the facet's keccak commitment is what actually
+  ///      stops it being forged, but the game should not multiply a stake by a
+  ///      number it never issued even if that commitment were ever weakened.
+  function isFaceBp(uint256 faceBp) internal pure returns (bool) {
+${faceChecks}
+    return false;
   }
 }
 `;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { ICasinoGameV2, SessionContext, SessionPhase, StepResult } from '../../solidity/ICasinoGameV2.sol';
+import { ICasinoGameV2, SessionContext, SessionPhase, StepResult } from './ICasinoGameV2.sol';
 import { CandlePaytable } from './generated/Paytable.sol';
 
 /**
@@ -124,6 +124,12 @@ contract CandleGame is ICasinoGameV2 {
     faceBp = (uint16(uint8(s[1])) << 8) | uint16(uint8(s[2]));
     hasLot = uint8(s[3]) == 1;
     if (inch == 0 || inch > CandlePaytable.INCHES) revert Candle__CorruptState();
+    // Defence in depth: never multiply a stake by a face value this paytable
+    // never issued. The facet's keccak commitment over the session snapshot is
+    // what actually prevents a forged gameState, but a game that would happily
+    // price a 65,535 bp "lot" is one weakened commitment away from an exploit.
+    if (hasLot && !CandlePaytable.isFaceBp(faceBp)) revert Candle__CorruptState();
+    if (!hasLot && faceBp != 0) revert Candle__CorruptState();
   }
 
   // ==========================================================================

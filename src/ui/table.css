@@ -307,6 +307,46 @@ kbd {
   color: var(--oxblood);
 }
 
+/* --- the crash screen --------------------------------------------------- */
+.crash {
+  min-height: 100svh;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 1rem;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 2rem clamp(1rem, 4vw, 2.5rem);
+}
+
+.crash__mark {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.3em;
+  color: var(--tallow);
+}
+
+.crash__line {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--tallow);
+  opacity: 0.8;
+}
+
+.crash .btn {
+  width: auto;
+}
+
+.crash__detail {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  font-family: var(--font-num);
+  font-size: 0.6875rem;
+  color: var(--oxblood);
+  opacity: 0.85;
+}
+
 /* --- the ? panel -------------------------------------------------------- */
 .panel {
   position: fixed;

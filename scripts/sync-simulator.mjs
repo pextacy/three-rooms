@@ -19,7 +19,7 @@ if (!existsSync(target)) {
   process.exit(1);
 }
 
-const files = ['Candle.sol', 'generated/Paytable.sol'];
+const files = ['Candle.sol', 'ICasinoGameV2.sol', 'generated/Paytable.sol'];
 for (const file of files) {
   const from = resolve(root, 'contracts', file);
   const to = resolve(target, file);

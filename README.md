@@ -176,10 +176,26 @@ inline.
 
 ---
 
+## The contract
+
+```sh
+npm run contracts:build                                   # forge, solc 0.8.30, viaIR
+RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract
+```
+
+No constructor arguments, no storage — every hook is `view` and session state
+travels in four bytes of `gameState` that the facet emits and takes back. The
+deployed bytecode is **2,568 bytes**, a tenth of the EIP-170 limit.
+
+`deploy:contract` has no default chain on purpose, and reads the contract back
+after deploying: a contract that deployed but answers differently is worse than
+one that failed, because nothing tells you.
+
 ## How it is built
 
 ```
 contracts/Candle.sol      ICasinoGameV2. Five hooks, one _payout(), one VRF word per inch.
+contracts/ICasinoGameV2.sol  Vendored from the SDK, so a standard toolchain can build it.
 contracts/generated/      Mirrored from src/game/paytable.ts. Never hand-edited.
 src/game/                 PURE core: paytable, wax ladder, exact-rational DP, RNG, state machine.
 src/render/               The light model, and one canvas. Nothing else draws.

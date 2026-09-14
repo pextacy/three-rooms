@@ -15,7 +15,7 @@ looks full.
 
 **Status legend:** ⬜ not started · 🟡 in progress · ✅ gate passed · ❌ gate failed
 
-**Current phase: 6 — Polish & stop.** Phases 0–5 closed. The build is live; the video and the submission are human steps.
+**Phases 0–6 closed.** The build is live and audited for production. The video, the contract deployment and the submission are human steps.
 
 ---
 
@@ -606,6 +606,81 @@ Everything they need exists:
 | Declared RTP | **96.9961%** = `7577820426157 / 7812500000000` |
 | Source | this repository, MIT |
 | Reviewer runbook | `DEMO.md` |
+
+---
+
+## Production readiness — the audit after phase 6
+
+A pass over everything a phase gate does not cover, because "it works on this
+machine, in this session" is not the same as production ready. Five real gaps.
+
+### 1. A clean clone did not build
+
+`npm run build` **failed on a fresh clone**. The SDK is downloaded rather than
+vendored, and only `vercel-build` fetched it — so the command in the README and in
+`DEMO.md` was broken for the first person to try it, which is a reviewer.
+
+`postinstall` now restores the SDK (soft-failing, so no network never breaks
+`npm install`), and `build`/`test` fail with a sentence rather than an ENOENT deep
+inside rollup. Verified by cloning into a temp directory and running every
+documented command: `npm ci` → build → typecheck → test → verify:rtp → verify:light
+→ gates → frame-budget → cold-open, all green from nothing.
+
+### 2. The contract could only be compiled by its own simulator
+
+`Candle.sol` imported `../../solidity/ICasinoGameV2.sol` — the path the SDK's local
+node resolves, which from this repository points **outside the tree**. No standard
+toolchain could build it, which makes it unauditable and undeployable.
+
+The interface is now vendored beside the game, so `./ICasinoGameV2.sol` resolves in
+both places, and `npm run gates` diffs it against the SDK's copy so it cannot
+drift. `foundry.toml` builds with the same settings the simulator uses (solc
+0.8.30, viaIR, optimizer 200), so what is audited is what runs.
+
+**Deployed bytecode: 2,568 bytes** — 10.4% of the EIP-170 limit.
+
+### 3. A forged face value would have been priced
+
+`_decodeState` validated the inch but **not the face value**. The facet's keccak
+commitment over the session snapshot is what actually stops a forged `gameState`,
+but the game would happily have multiplied a stake by a `65535 bp` lot — 655×,
+twenty-six times the declared maximum — if that commitment were ever weakened.
+
+The contract now rejects any face value the paytable never issued, and
+`test/adversarial.spec.ts` proves it by calling the contract **directly, bypassing
+the facet** — which is exactly the attacker's position. 14 tests: forged faces,
+out-of-range inches, malformed lengths, incoherent states, extreme wagers,
+unknown action bytes.
+
+### 4. A render throw showed a blank page
+
+No error boundary. One throw anywhere in the tree and a judge sees white — which
+is indistinguishable from a site that is down. There is now a boundary that stays
+in the room's palette, says what happened in the auctioneer's voice, prints the
+error rather than swallowing it, and offers the one action that helps.
+
+### 5. Every host promise was unhandled
+
+`void host.openSession(…)` and friends had no `catch`, so a rejected step became
+an unhandled rejection and nothing at all on screen.
+
+### Settled, not found: the double-call of `onSessionStart`
+
+Production calls `onSessionStart` twice, once as a simulation. If both
+`reservedProfitDelta` values were applied, the reserve would be 48× against a 24×
+cap and **every session would revert at `openSession`**. The SDK's own documented
+multi-action pattern does exactly what CANDLE does —
+`reservedProfitDelta = int256(maxPayout - wagerBase)`, once, at session start — so
+the simulation result is not applied. Checked against the reference rather than
+assumed.
+
+### What is left, and it is not code
+
+| | |
+|---|---|
+| Record the 60–90 s video | `?seed=198` — an early claim, a ride to the gutter, a 25× at the first inch |
+| Deploy the contract to the target chain | `RPC_URL=… DEPLOYER_KEY=… npm run deploy:contract` — the chain and the gas are the entrant's |
+| Submit at jam.chain.wtf | a form, under the entrant's name |
 
 ---
 

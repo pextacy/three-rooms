@@ -540,10 +540,9 @@ kbd {
   }
 }
 
-/* Respect a player who has asked for less motion: the flame stops dancing. */
-@media (prefers-reduced-motion: reduce) {
-  .scene {
-    /* The scene still redraws on state changes; only the idle flicker stops. */
-    animation: none;
-  }
-}
+/*
+  `prefers-reduced-motion` is honoured in the render loop (src/render/scene.ts),
+  not here: the flame's flicker is drawn, not animated by CSS, so there is no CSS
+  animation to switch off. The light model is untouched either way, so a player
+  who asks for less motion loses nothing they need to read.
+*/

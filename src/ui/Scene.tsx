@@ -67,13 +67,9 @@ export function Scene(props: SceneProps) {
   }, [props.inch, props.lot, props.burnedLot, props.payoutText, props.settled]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="scene"
-      role="img"
-      aria-label={props.label}
-      // The scene is decorative to a screen reader; the live region says it all.
-      aria-hidden={false}
-    />
+    // `role="img"` with a label rather than `aria-hidden`: the scene carries real
+    // information (which inch, which lot), and the readout beside it repeats the
+    // same facts in text. Neither is the only source.
+    <canvas ref={canvasRef} className="scene" role="img" aria-label={props.label} />
   );
 }

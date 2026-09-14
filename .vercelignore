@@ -1,0 +1,8 @@
+# The SDK is restored at build time by `vercel-build`, so uploading ~1 MB of it
+# on every deploy is wasted time. Everything else here is local-only.
+sdk/
+spikes/
+contracts/out/
+cache/
+docs/
+dist/

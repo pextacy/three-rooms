@@ -6,7 +6,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { keccak256 } from 'viem';
-import { draw, drawLot, wordFromHex, wordToHex, wordToBytes, wordFromBytes, RNG_LIMIT, WINDOWS, REHASH_UNSUPPORTED, type Rehash } from '../src/game/rng';
+import { draw, drawLot, wordFromHex, wordToHex, wordToBytes, wordFromBytes, RNG_LIMIT, WINDOWS, MAX_REHASHES, REHASH_UNSUPPORTED, type Rehash } from '../src/game/rng';
+import { readFileSync } from 'node:fs';
 import { WEIGHT_DENOM, LOTS, CUMULATIVE_WEIGHTS, lotForDraw } from '../src/game/paytable';
 
 /** The contract's rehash: keccak256 over the raw 32 bytes. */
@@ -62,6 +63,31 @@ describe('rejection sampling', () => {
     expect(result.value).toBeLessThan(WEIGHT_DENOM);
     expect(result.rejected).toBe(WINDOWS);
     expect(result.word).not.toBe(exhausted);
+  });
+
+  it('gives up after a bounded number of rehashes, in BOTH languages', () => {
+    // claude.md §3 forbids unbounded loops, and this one is in the settlement
+    // path: a call that never returns reverts the whole settlement and its gas
+    // cannot be reasoned about. So the rehash is capped — and the cap has to be
+    // the SAME number on both sides, or the two implementations disagree on a
+    // word neither will ever see.
+    const solidity = readFileSync(new URL('../contracts/Candle.sol', import.meta.url), 'utf8');
+    const declared = /MAX_REHASHES\s*=\s*(\d+)/.exec(solidity)?.[1];
+    expect(declared, 'the contract declares a bound').toBeDefined();
+    expect(Number(declared), 'and it is the same bound as the TS mirror').toBe(MAX_REHASHES);
+
+    // A rehash that never finds a usable window makes the draw give up rather
+    // than spin. Reaching this needs all 16 x (MAX_REHASHES + 1) windows to be
+    // rejected, which is (5536/65536)^64 ~ 4e-69 — hence the fake rehash.
+    const exhausted = (1n << 256n) - 1n;
+    const neverHelps: Rehash = () => exhausted;
+    expect(() => draw(exhausted, 0, neverHelps)).toThrow(/exhausted/);
+  });
+
+  it('the contract reverts on that same exhaustion rather than looping', () => {
+    const solidity = readFileSync(new URL('../contracts/Candle.sol', import.meta.url), 'utf8');
+    expect(solidity, 'a named error, not a silent spin').toContain('Candle__RandomnessExhausted');
+    expect(solidity, 'no unbounded while(true) left in the draw').not.toMatch(/while\s*\(true\)/);
   });
 
   it('threads the cursor so a second draw from one word is independent', () => {

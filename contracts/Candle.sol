@@ -35,6 +35,11 @@ import { CandlePaytable } from './generated/Paytable.sol';
  *      a session is sixteen window reads.
  */
 contract CandleGame is ICasinoGameV2 {
+  /// @dev How many times a word may be rehashed before the draw gives up.
+  ///      Three rehashes is 64 windows; all of them being rejected has
+  ///      probability (5536/65536)^64 ~ 4e-69.
+  uint256 private constant MAX_REHASHES = 3;
+
   // --- actions, as they arrive in `actionData` ------------------------------
   uint8 private constant ACTION_CLAIM = 0;
   uint8 private constant ACTION_BURN = 1;
@@ -50,6 +55,7 @@ contract CandleGame is ICasinoGameV2 {
   error Candle__NoLotOnTable();
   error Candle__LotAlreadyOnTable();
   error Candle__CorruptState();
+  error Candle__RandomnessExhausted();
 
   // ==========================================================================
   //  The one payout rule
@@ -87,25 +93,33 @@ contract CandleGame is ICasinoGameV2 {
    *      (claude.md I3).
    *
    *      Per-window rejection is 5536/65536 ~ 8.45%, so a draw consumes ~1.09
-   *      windows. Exhausting all sixteen has probability ~1.4e-18 and rehashes
-   *      rather than reverting, so the path is total.
+   *      windows. Exhausting all sixteen has probability ~1.4e-18; the word is
+   *      then rehashed and read again.
+   *
+   *      BOUNDED, deliberately. claude.md §3 forbids unbounded loops, and this
+   *      one sits in the settlement path: a call that never returns reverts the
+   *      whole settlement and the gas cost cannot be reasoned about. So the
+   *      rehash is capped at MAX_REHASHES. Reaching that cap needs every one of
+   *      16 x (MAX_REHASHES + 1) windows to land above the limit, which is
+   *      (5536/65536)^64 ~ 4e-69 — far rarer than a keccak collision, and it
+   *      reverts loudly instead of spinning.
    *
    *      Mirrors `draw` in src/game/rng.ts window for window (I11).
    */
   function _draw(bytes32 word, uint256 cursor) private pure returns (uint256) {
     bytes32 seed = word;
     uint256 idx = cursor;
-    while (true) {
-      if (idx < CandlePaytable.RNG_WINDOWS) {
+
+    for (uint256 pass = 0; pass <= MAX_REHASHES; pass++) {
+      while (idx < CandlePaytable.RNG_WINDOWS) {
         uint256 v = (uint256(seed) >> (240 - idx * 16)) & 0xFFFF;
         idx++;
         if (v < CandlePaytable.RNG_LIMIT) return v % CandlePaytable.WEIGHT_DENOM;
-        continue;
       }
       seed = keccak256(abi.encodePacked(seed));
       idx = 0;
     }
-    revert Candle__CorruptState(); // unreachable; the loop only exits by return
+    revert Candle__RandomnessExhausted();
   }
 
   // ==========================================================================

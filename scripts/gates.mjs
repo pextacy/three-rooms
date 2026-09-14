@@ -41,6 +41,8 @@ const walk = async dir => {
   return out;
 };
 
+const srcHtml = await readFile(join(ROOT, 'index.html'), 'utf8');
+
 // ---------------------------------------------------------------- header config
 console.log('\n\x1b[1mheaders — vercel.json\x1b[0m');
 const vercelRaw = await readFile(join(ROOT, 'vercel.json'), 'utf8');
@@ -84,7 +86,6 @@ check('nothing in the repo SETS X-Frame-Options', xfoOffenders.length === 0, xfo
 
 // ---------------------------------------------------------------- widget tag
 console.log('\n\x1b[1mjam widget — raw HTML\x1b[0m');
-const srcHtml = await readFile(join(ROOT, 'index.html'), 'utf8');
 const countIn = text => (text.match(new RegExp(WIDGET_TAG.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) ?? []).length;
 check('index.html contains the widget tag exactly once', countIn(srcHtml) === 1, `${countIn(srcHtml)} occurrence(s)`);
 check(
@@ -98,6 +99,22 @@ if (existsSync(join(DIST, 'index.html'))) {
   check('dist/index.html contains the widget tag exactly once', countIn(builtHtml) === 1, `${countIn(builtHtml)} occurrence(s)`);
 } else if (!headersOnly) {
   check('dist/index.html exists (run `npm run build`)', false);
+}
+
+// ---------------------------------------------------------------- the document
+console.log('\n\x1b[1mdocument head\x1b[0m');
+{
+  const head = existsSync(join(DIST, 'index.html')) ? await readFile(join(DIST, 'index.html'), 'utf8') : srcHtml;
+  const favicon = /rel="icon"\s+href="(data:image\/svg\+xml,[^"]+)"/.exec(head);
+  check(
+    'a favicon is inlined, so nothing 404s in a console a judge has open',
+    favicon !== null,
+    favicon ? `${Buffer.byteLength(favicon[1] ?? '')} bytes, no extra request` : '',
+  );
+  check('it is well under the 8 KB image budget', Buffer.byteLength(favicon?.[1] ?? '') < 8 * 1024);
+  check('the page says what it is when its URL is pasted somewhere', /og:title/.test(head) && /og:description/.test(head));
+  check('a theme colour is set, so browser chrome matches the room', /name="theme-color"/.test(head));
+  check('the document declares a language', /<html[^>]+lang="/.test(head));
 }
 
 // ---------------------------------------------------------------- no storage

@@ -19,6 +19,16 @@ export type Word = bigint;
 /** Sixteen 16-bit windows in a 256-bit word. */
 export const WINDOWS = 16;
 
+/**
+ * How many times a word may be rehashed before the draw gives up.
+ *
+ * The contract bounds this too, and by the same number: an unbounded loop in the
+ * settlement path cannot have its gas reasoned about (claude.md §3). Reaching the
+ * cap needs all 16 x (MAX_REHASHES + 1) windows to be rejected, which is
+ * (5536/65536)^64 ~ 4e-69 — rarer than a keccak collision.
+ */
+export const MAX_REHASHES = 3;
+
 /** The largest multiple of `WEIGHT_DENOM` that fits in 16 bits. */
 export const RNG_LIMIT = 60_000;
 
@@ -76,20 +86,21 @@ export function draw(word: Word, cursor = 0, rehash: Rehash = REHASH_UNSUPPORTED
   let index = cursor;
   let rejected = 0;
 
-  // Bounded only by the rehash budget; each pass consumes 16 windows.
-  for (;;) {
-    if (index < WINDOWS) {
+  for (let pass = 0; pass <= MAX_REHASHES; pass++) {
+    while (index < WINDOWS) {
       const v = windowAt(current, index);
       index++;
       if (v < RNG_LIMIT) {
         return { value: v % WEIGHT_DENOM, cursor: index, word: current, rejected };
       }
       rejected++;
-      continue;
     }
     current = rehash(current);
     index = 0;
   }
+
+  // Unreachable at p ~ 4e-69, and loud rather than silent if the impossible happens.
+  throw new Error(`randomness exhausted after ${MAX_REHASHES} rehashes`);
 }
 
 /** The same draw, mapped through the paytable's cumulative weights. */

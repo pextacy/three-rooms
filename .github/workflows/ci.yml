@@ -4,44 +4,52 @@ on:
   push:
   pull_request:
 
+# A superseded run tells you nothing and costs a runner.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Everything that needs no chain. Fast, and the first thing to go red.
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
+      # postinstall restores the SDK, which the build aliases rather than
+      # reimplementing. No separate step needed.
       - run: npm ci
-
-      # The SDK is downloaded, not vendored; the build aliases its guest source.
-      - name: restore the SDK
-        run: npm run sdk:fetch && npm run sdk:install
 
       - name: typecheck
         run: npm run typecheck
 
-      - name: test
-        run: npm test
-
-      # Phase 1 onwards: recomputes the DP from the paytable, never reads a constant.
+      # The declared RTP, recomputed from the paytable. NOT continue-on-error:
+      # a silent pass here is the one failure that would reach a judge intact.
       - name: verify:rtp
         run: npm run verify:rtp
-        continue-on-error: true # until phase 1 lands the DP
+
+      - name: verify:light
+        run: npm run verify:light
+
+      - name: test
+        run: npm test
 
       - name: build
         run: npm run build
 
-      # README.md and DEMO.md are generated from the DP and from captured runs.
-      # Regenerating and diffing is what stops a published number going stale.
-      - name: generated docs are current
+      # README.md and the Solidity constants are generated. A stale one is a
+      # published number that no longer matches the code.
+      - name: generated files are current
         run: |
           npm run gen:constants
           npm run gen:readme
           git diff --exit-code -- README.md contracts/generated/ \
-            || (echo "::error::generated files are stale — run npm run gen:readme && npm run gen:constants" && exit 1)
+            || { echo "::error::run npm run gen:readme && npm run gen:constants"; exit 1; }
 
       - name: gates
         run: npm run gates
@@ -55,18 +63,74 @@ jobs:
       - name: cold open
         run: npm run cold-open
 
-  # I8 is the trap that silently costs the gallery preview, so the live origin is
-  # re-read after every deploy rather than trusted from vercel.json.
+  # The contract, against a real chain and a real VRF node. Slower, and the only
+  # place parity, caps and the adversarial suite actually RUN rather than skip.
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - run: npm ci
+
+      # Compiles with the same settings the simulator uses, so what CI checks is
+      # what the simulator deploys.
+      - name: build the contract
+        run: npm run contracts:build
+
+      - name: install the SDK workspaces
+        run: npm run sdk:install
+
+      - name: start the local chain, the VRF node and the casino
+        run: npm run sdk:stack &
+
+      - name: wait for the chain
+        run: |
+          for i in $(seq 1 90); do
+            curl -s -o /dev/null http://127.0.0.1:8545 && exit 0
+            sleep 2
+          done
+          echo "::error::the local chain never came up"; exit 1
+
+      - name: deploy the contract into the simulator
+        run: |
+          npm run sync:simulator
+          for i in $(seq 1 30); do
+            grep -q CandleGame sdk/casino-sdk/simulator/local-node/deployed.json && exit 0
+            sleep 2
+          done
+          echo "::error::CandleGame never deployed"; exit 1
+
+      # parity, caps and adversarial now run instead of skipping.
+      - name: test against the chain
+        run: npm test
+
+      - name: a real round settles
+        run: npm run round-trip
+
+      - name: every SDK symbol
+        run: npm run spike
+
+  # The header contract is the trap that silently costs the gallery preview, so
+  # the live origin is re-read after every push to main.
   live-origin:
     runs-on: ubuntu-latest
-    needs: verify
+    timeout-minutes: 10
+    needs: [verify]
     if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ORIGIN != ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: re-read the live origin
-        run: npm run gates -- --headers-only --origin "${{ vars.PRODUCTION_ORIGIN }}"
+        run: |
+          npm run gates -- --headers-only --origin "${{ vars.PRODUCTION_ORIGIN }}"
+          node scripts/iframe-check.mjs "${{ vars.PRODUCTION_ORIGIN }}"

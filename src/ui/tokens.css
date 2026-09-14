@@ -1,0 +1,41 @@
+/*
+  The four inks (claude.md §5). No fifth colour is approved.
+  Phase 3 drives luminance from WAX_BP[k]; these are the full-flame anchors.
+*/
+:root {
+  --ink: #0c0a07; /* the room */
+  --ink-raised: #16120c;
+  --tallow: #f6e6c4; /* the flame, live values */
+  --tallow-dim: #b9a07a;
+  --brass: #c8963c; /* the lot on the table */
+  --oxblood: #6d211b; /* a lot you let burn */
+
+  /* Fixed type scale — hierarchy is carried by luminance, never by size. */
+  --t-lot: 2.75rem;
+  --t-body: 0.9375rem;
+  --t-label: 0.75rem;
+
+  --font: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-num: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--tallow);
+  font-family: var(--font);
+  font-size: var(--t-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "gameId": "CandleGame",
+  "apiVersion": 1,
+  "defaultLocale": "en",
+  "locales": {
+    "en": {
+      "name": "Candle",
+      "description": "A lot is on the table. The candle is burning. Take it, or let an inch burn and see the next one — knowing the next one is worth less."
+    }
+  },
+  "presentation": {
+    "mode": "full-iframe",
+    "hostPanels": {
+      "openSession": false,
+      "history": false,
+      "status": false
+    }
+  },
+  "capabilities": {
+    "openSession": true,
+    "submitAction": true,
+    "forfeitExpiredSession": true,
+    "cancelStuckRandomness": true,
+    "resize": true
+  }
+}

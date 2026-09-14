@@ -1,0 +1,37 @@
+{
+  "name": "candle",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A lot is on the table, the candle is burning, and every inch you wait is worth less.",
+  "scripts": {
+    "dev": "vite --port 3200 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --port 3200 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "verify:rtp": "node scripts/verify-rtp.mjs",
+    "gen:constants": "node scripts/gen-constants.mjs",
+    "serve:headers": "node scripts/serve-with-headers.mjs",
+    "gates": "node scripts/gates.mjs",
+    "gates:headers": "node scripts/gates.mjs --headers-only",
+    "spike": "node spikes/spike-multidraw.mjs && node spikes/spike-maxpayout.mjs && node spikes/spike-coinflip.mjs",
+    "sdk:stack": "npm --prefix sdk/casino-sdk start",
+    "sdk:fetch": "node scripts/fetch-sdk.mjs",
+    "sdk:install": "npm --prefix sdk/casino-sdk install"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.0",
+    "viem": "^2.21.0"
+  }
+}

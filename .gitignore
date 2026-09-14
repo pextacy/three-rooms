@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+*.local
+.DS_Store
+
+# The SDK is downloaded, not vendored — `npm run sdk:fetch` restores it.
+sdk/
+spikes/node_modules
+spikes/dbg.mjs

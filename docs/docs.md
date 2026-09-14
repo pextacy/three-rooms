@@ -1,0 +1,749 @@
+# DOCS — CANDLE technical reference
+
+**v1.0 · 2026-09-14**
+Companion to `prd.md` (what & why), `claude.md` (working rules), `plan.md` (schedule).
+
+---
+
+## 1. System overview
+
+```
+┌─ Player browser ───────────────────────┐
+│  ui/           React shell, no logic   │
+│  render/       one canvas scene        │
+│  audio/        three Web Audio graphs  │
+│  game/         PURE core (mirror)      │
+│  bridge/       useCasinoHost | demoHost│
+└───────────┬────────────────────────────┘
+            │ penpal postMessage
+┌───────────▼─ chain.wtf host ───────────┐
+│  SDK bridge — session lifecycle        │
+│  CasinoGameFacet — escrow, risk caps   │
+└───────────┬────────────────────────────┘
+            │
+┌───────────▼─ on-chain ─────────────────┐
+│  Candle.sol  (ICasinoGameV2)           │
+│  Verify Network VRF  ──> bytes32 word  │
+└────────────────────────────────────────┘
+
+standalone path:  ui  ──>  demoHost (seeded PRNG, labelled DEMO)  ──>  game/
+```
+
+Two absolute rules about where truth lives:
+
+- **With a host present, the contract is the only authority on outcomes.** The
+  client never recomputes a result; it animates what it is told.
+- **Without a host, `demoHost` synthesises the same message shapes** from a seeded
+  PRNG, so the UI has exactly one code path. The demo is visibly labelled.
+
+---
+
+## 2. Game core (`src/game/`)
+
+Pure TypeScript. No React, no DOM, no `window`, no `Date.now()`, no ambient
+randomness. Everything is `(state, input) -> state`.
+
+### 2.1 `paytable.ts` — single source of truth
+
+```ts
+export const WEIGHT_DENOM = 10_000;
+
+// face value in basis points of the stake (100 bp = 1.00x)
+export const LOTS = [
+  { id: 0, faceBp:     0, weight: 6690 },  // empty crate
+  { id: 1, faceBp:    50, weight: 1000 },  // ship's stores   0.50x
+  { id: 2, faceBp:   100, weight: 1600 },  // cordage         1.00x
+  { id: 3, faceBp:   200, weight:  550 },  // sailcloth       2.00x
+  { id: 4, faceBp:   500, weight:  140 },  // ordnance        5.00x
+  { id: 5, faceBp:  2500, weight:   20 },  // the Sarah Christiana 25.00x
+] as const;
+```
+
+Weights sum to exactly `WEIGHT_DENOM`. This is asserted at module load and in CI.
+
+`npm run gen:constants` emits the matching Solidity constants into
+`contracts/generated/Paytable.sol`. **Never hand-edit that file.**
+
+### 2.2 `wax.ts` — the discount ladder
+
+```ts
+export const INCHES = 5;
+export const WAX_BP = [10_000, 8_500, 7_000, 5_500, 4_000] as const; // per inch
+```
+
+Payout in stake basis points at inch `k` (1-indexed) for a lot with face `f`:
+
+```
+payoutBp = faceBp * WAX_BP[k-1] / 10_000
+```
+
+All integer arithmetic. `faceBp * waxBp` maxes at `2500 * 10000 = 25e6`, nowhere
+near overflow in either language.
+
+### 2.3 `solve.ts` — the dynamic program
+
+```
+A(INCHES) = WAX_BP[INCHES-1] * E[face]
+A(k)      = Σ_lots  p(lot) * max( face(lot) * WAX_BP[k-1] , A(k+1) )
+RTP       = A(1)
+threshold(k) = A(k+1) / WAX_BP[k-1]
+```
+
+Computed in exact rationals (BigInt numerator/denominator) — never floats. This is
+what `npm run verify:rtp` runs, and what the tests compare the declared constants
+against. The constants in the README and the UI are *generated from this function*,
+not typed by hand.
+
+Results are in §9.
+
+### 2.4 `rng.ts` — bytes32 to a uniform lot
+
+**`word % 10000` is forbidden** and is explicitly on the reviewer's checklist.
+`2^256` is not a multiple of 10,000, so the modulo is biased. We use rejection
+sampling over the sixteen 16-bit windows of the word, mirroring the contract
+exactly:
+
+```
+draw(word, cursor):
+  loop over 16-bit windows starting at `cursor`:
+      v = window value                    # uniform on [0, 65536)
+      if v < 60000:                       # 60000 = 6 * 10000, a clean multiple
+          return (v % 10000, cursor+1)    # exactly uniform on [0, 10000)
+      cursor++                            # reject, take the next window
+  # all sixteen windows rejected: P = (5536/65536)^16 ≈ 1.4e-18
+  # rehash and continue: word = keccak256(word)
+```
+
+The rejection probability per window is `5536 / 65536 ≈ 8.45%`, so the expected
+number of windows consumed per draw is ≈ 1.09. A single VRF word comfortably
+supplies one lot with 16 windows of headroom; exhausting all sixteen has
+probability ≈ 1.4 × 10⁻¹⁸ and is handled by rehashing rather than by a `revert`,
+so the path is total.
+
+The uniform value `r ∈ [0, 10000)` is mapped to a lot by cumulative weights:
+
+```
+r <  6690  -> lot 0 (0.00x)
+r <  7690  -> lot 1 (0.50x)
+r <  9290  -> lot 2 (1.00x)
+r <  9840  -> lot 3 (2.00x)
+r <  9980  -> lot 4 (5.00x)
+else       -> lot 5 (25.00x)
+```
+
+`test/rng.spec.ts` runs a chi-square uniformity test over 10⁷ draws and asserts the
+TS and Solidity implementations agree on a fixed corpus of 4,096 words.
+
+### 2.5 `round.ts` — the state machine
+
+```
+          stake set
+              │
+              ▼
+        ┌───────────┐   word_k
+        │    LIT    │──────────────┐
+        └───────────┘              ▼
+                              ┌──────────┐
+              ┌───────────────│ OFFERED  │
+              │  CLAIM        │  inch k  │
+              ▼               └────┬─────┘
+        ┌───────────┐   BURN       │ (k < 5)
+        │  CLAIMED  │◀─────────────┘
+        └───────────┘        k := k+1, request word_{k+1}
+              ▲
+              │ (k == 5, automatic)
+        ┌───────────┐
+        │ GUTTERED  │
+        └───────────┘
+              │
+              ▼
+        ghost lot revealed, round SETTLED
+```
+
+Legal transitions only. `CLAIM` from `OFFERED` settles at the current inch.
+`BURN` from `OFFERED` at `k == 5` is **illegal** — the fifth inch has no exit but a
+claim. Every other input is rejected, not ignored, and rejection is a test case.
+
+---
+
+## 3. The contract (`contracts/Candle.sol`)
+
+Solidity 0.8.30. No constructor arguments. No unbounded loops — the heaviest
+operation in a session is five iterations.
+
+### 3.1 `ICasinoGameV2` surface
+
+| Hook | Contract obligation |
+|---|---|
+| `onSessionStart(sessionId, player, wagerBase, gameData)` | **Pure function of `(wagerBase, gameData)`.** Production calls it twice, once as a simulation with `sessionId == 0`, so it must be idempotent. Validates the stake, initialises the session at inch 1, requests the first word. |
+| `quoteCaps(...)` | Reports the maximum payout this game can produce: **25 × wager**. |
+| `quoteRiskParams(...)` | Reports the reserve the facet must hold. |
+| `onRandomness(sessionId, word)` | Consumes a VRF word, draws the lot for the current inch, or — if the session is settling — computes the payout. Returns **`reservedProfitDelta = 0`**. |
+
+Three integration details that are easy to get wrong and expensive to get wrong:
+
+1. **`quoteCaps`, `quoteRiskParams` and `onRandomness` must all route through one
+   `_payout()` helper.** The facet caps payout at `escrowedStake + reservedProfit`
+   with **zero slack**: an independent re-derivation that differs by a single base
+   unit reverts every 25× win. One function, one rounding rule, one truth.
+2. **`onRandomness` returns `reservedProfitDelta = 0`.** The host applies the delta
+   *before* finalising. Releasing reserve there collapses the cap to the wager and
+   reverts every win above 1×.
+3. **`onSessionStart` must not write anything that a second identical call would
+   corrupt.** Guard on `sessionId == 0` for the simulation path.
+
+### 3.2 Session lifecycle and per-inch randomness
+
+The critical property (invariant **I4** in `claude.md`):
+
+> The player's decision at inch *k* is committed **before** the randomness for
+> inch *k+1* exists.
+
+Implementation: one VRF request per inch. `BURN` is an on-chain action that
+requests the next word. The word for inch *k+1* is therefore causally after the
+burn that asked for it, and cannot be read, predicted or front-run by the player.
+
+**This is the single riskiest assumption in the project.** It must be proven with a
+spike against the local simulator before any other contract work starts. See §7.4
+for the fallback if the SDK turns out to be single-shot.
+
+### 3.3 Payout
+
+```solidity
+// stake in base units, faceBp from the paytable, waxBp from the ladder
+payout = stake * faceBp * waxBp / 1e6;   // 1e2 (faceBp) * 1e4 (waxBp)
+```
+
+> **Corrected on D0.** This read `/ 1e8  // 1e4 * 1e4` until the phase-0 spike.
+> That is wrong: §2.1 defines `faceBp` as the multiplier × **100** ("100 bp =
+> 1.00×"), not × 10,000. With `1e8` the 25× lot pays **0.25×**, `quoteCaps`
+> returns `maxReservedProfit = 0`, and `onSessionStart` reverts with an
+> arithmetic underflow — which is exactly how the spike found it. The two
+> denominators are `100` for `faceBp` and `10_000` for `waxBp`, so the product
+> is `1e6`. §2.2 was always right; only this line was wrong. See §7.3.
+
+Integer division floors. The stake is an integer and both factors are exact, so the
+only value given up is the final floor — at most one base unit per round. Documented
+rather than hidden.
+
+Maximum payout: `faceBp = 2500`, `waxBp = 10000` → `25 × stake`. This is the number
+`quoteCaps` must reserve, and it is only reachable at the first inch.
+
+### 3.4 Hard timeout
+
+If a session sits in `OFFERED` past the facet's action deadline
+(`ACTION_TIMEOUT_BLOCKS`, default **43,200 blocks**), anyone may call
+`forfeitExpiredSession`. The facet asks the game for `quoteForfeitPayout(ctx)` and
+pays **90 %** of it — `FORFEIT_WINNINGS_CUT_BPS` is 1,000 and is deducted
+unconditionally. The game cannot waive it.
+
+CANDLE quotes **the claim value of the lot currently on the table**:
+
+```
+quoteForfeitPayout = stake * faceBp * waxBp / 1e6     // at the current inch
+```
+
+That is a legitimate quote rather than an adverse-selection hole, because the lot
+is *already revealed*: mid-round value depends on no unresolved randomness and no
+hidden state, which is exactly the mines-style case the SDK permits. Abandoning can
+never beat claiming — 90 % of the claim value is strictly worse — so there is
+nothing to farm.
+
+> **Corrected on D0.** This section claimed a timed-out session "settles by
+> claiming the lot currently on the table" at **full** value, and called that
+> player-favourable. The facet takes 10 % regardless. Measured, not assumed —
+> §7.3 Spike B. The design intent survives (an abandoned session with a live lot
+> in front of the player never resolves to zero), but any number we print must
+> say 90 %.
+
+If the session is instead stuck in `WAITING_RANDOMNESS` past
+`RANDOMNESS_TIMEOUT_BLOCKS`, `cancelStuckRandomness` returns the player's **full
+escrowed stake**. A slow VRF node cannot cost the player anything.
+
+---
+
+## 4. Bridge (`src/bridge/`)
+
+### 4.1 `useCasinoHost.ts`
+
+`penpal`-based guest connection to the chain.wtf host. Responsibilities:
+
+- `openSession(wagerBase, gameData)` → session id
+- subscribe to randomness / settlement events
+- read the host's **bet limits** and clamp the stake control to them
+- read the host's **`ui.theme` snapshot** and follow it
+
+**Theme rule:** inside a dark host, follow the host. Opened directly, keep CANDLE's
+own identity. The candlelit scene is dark by nature, so the adaptation is limited to
+chrome (frame, buttons, type colour), never to the scene's light model.
+
+**Balance rule:** inside the host, the *host* owns and draws the balance. The game
+does not render a second balance. During a reveal the host's display is clamped
+downward-only so it cannot leak the result before the animation lands.
+
+### 4.2 `demoHost.ts`
+
+Implements the identical interface with a seeded PRNG (`xoshiro128**`, seeded from
+`crypto.getRandomValues` once per page load). Behaviour:
+
+- opens with a **2,000 play-chip purse**, default stake 20
+- the purse exists for **one page load**; `localStorage` and `sessionStorage` are
+  forbidden (see `claude.md` §7)
+- a `REFILL` control restores the opening purse whenever the player is down
+- the whole surface is visibly badged **DEMO — PLAY CHIPS**
+- draws use the *same* `rng.ts` path, so the demo's distribution is the production
+  distribution
+
+---
+
+## 5. Manifest, widget and hosting
+
+### 5.1 Manifest
+Served at the origin as **`/game.manifest.json`** — that exact filename, on the
+same origin as the iframe. Fork the shape from the coinflip example and do not
+invent fields: the host validates it against a zod schema
+(`validateCasinoGameManifest`) and **rejects unknown shapes**.
+
+The schema is small — `schemaVersion`, `apiVersion`, `gameId`, `defaultLocale`,
+`locales`, `presentation`, `capabilities`, optional `assets`. `capabilities.submitAction`
+**must be `true`**: `BURN` is an on-chain player action, and a manifest that says
+otherwise describes a different game. CI fetches the manifest from the live origin
+after deploy and asserts it parses.
+
+> **Corrected on D0.** Called `public/manifest.json` here, in `claude.md` §3 and
+> in `plan.md` D5 — the SDK reads `game.manifest.json`. This section also said the
+> manifest "declares the contract address, the declared RTP and the max
+> multiplier"; **it has no such fields**. Those numbers live in the README, the
+> `?` panel and the contract. The manifest is routing and catalog metadata only.
+
+### 5.2 Jam widget
+Exactly **one** `<script>` tag, present in the **raw HTML** of `index.html` — not
+injected by JavaScript, because the gallery reads the served document. A CI grep
+asserts the count is exactly 1 on the built `dist/index.html` *and* on the live
+origin.
+
+### 5.3 Headers — the trap
+
+```json
+// vercel.json
+{ "headers": [{ "source": "/(.*)", "headers": [
+  { "key": "Content-Security-Policy", "value": "frame-ancestors *" }
+]}]}
+```
+
+Set `frame-ancestors *` and **nothing else**. Do not set `X-Frame-Options` anywhere.
+A stray `SAMEORIGIN` from a framework preset wins in some browsers and silently
+costs the gallery's live preview — the entry still "works" but shows pitch text
+instead of the game. CI re-reads the live origin after every deploy and fails on any
+`X-Frame-Options` header.
+
+### 5.4 Build & deploy
+Static build (Vite). Any static host. CI pipeline: `typecheck → test → verify:rtp →
+gates → build → deploy → re-read live origin`.
+
+---
+
+## 6. Rendering and audio
+
+### 6.1 One renderer
+A single canvas scene. Nothing else draws.
+
+The light model is the product. One emitter (the flame) at a fixed position; scene
+luminance is a direct function of `WAX_BP[k]`. Consequences that must hold:
+
+- The room at inch 5 is genuinely dim. The player reads decay without reading text.
+- Tallow shifts **down the blackbody curve** as luminance falls (warm white →
+  amber → deep amber). An LED-like constant hue is wrong and is a visible tell of
+  a fake light model.
+- Four inks: **tallow** (flame, live values), **brass** (the lot on the table),
+  **oxblood** (a lot let burn), **ink** (the room). No fifth.
+- Exactly one gradient in the entire build: the flame's own falloff.
+- Hierarchy by luminance, never by size; the type scale is fixed.
+
+The five pins in the wax are the inch markers. When an inch burns, a pin **falls**
+— the animation and the sound are the same event. At the fifth inch the wick
+**flares** before it dies (Pepys' tell): a short, bright, unmistakable telegraph
+that this is the last lot.
+
+### 6.2 Audio — three graphs, zero files
+
+| Graph | Content |
+|---|---|
+| `room` | Filtered noise bed, coffee-house murmur. Gain follows flame intensity. |
+| `wax` | Crackle: short filtered noise bursts, density keyed to the flame. |
+| `event` | Pin drop, gavel on claim, the flare at inch 5. |
+
+**Sound carries information:** the pitch of the pin drop rises with the face value
+of the lot being offered, so a practised player hears a good lot land before reading
+it. Unmuted by default with a one-key toggle (`M`); nothing that matters is
+audio-only.
+
+### 6.3 Keyboard
+`Space` / `Enter` claim · `B` or `↓` let it burn · `Enter` deal again on a settled
+board · `?` the paytable panel · `M` sound · `T` turbo animation. Every control is
+printed on the switch it belongs to.
+
+---
+
+## 7. Testing and verification
+
+| Gate | What it proves | Command |
+|---|---|---|
+| Exhaustive DP | The declared RTP is recomputed from the paytable across all 30 reachable `(inch, lot)` states — not read from a constant | `npm run verify:rtp` |
+| Strategy band | Every listed policy's RTP matches §9 and the sensible band sits inside 93–98% | `npm test` |
+| Parity | TS core and Solidity agree on all 30 states and on a 4,096-word RNG corpus | `npm test` |
+| RNG uniformity | Chi-square over 10⁷ draws; no `% n` anywhere in either implementation | `npm test` |
+| Monte Carlo | 10⁷ simulated rounds under optimal play land within tolerance of the closed form | `npm run bench` |
+| Caps | The 25× win pays the facet cap to the base unit and does not revert | `npm test` |
+| SDK spike | Every SDK symbol used is exercised end-to-end against the local simulator | `npm run spike` |
+| Gates | Bundle size, one widget tag, `frame-ancestors *`, no `X-Frame-Options`, manifest parses, cold-open budget | `npm run gates` |
+
+### 7.1 Local stack
+```
+cd sdk/casino-sdk && npm install && npm start
+#   simulator : http://localhost:3300   (point it at the game URL, pick CandleGame)
+#   coinflip  : http://localhost:3100   (the SDK's reference game, for comparison)
+#   chain+VRF : http://127.0.0.1:8545   (in-memory hardhat + a REAL ECVRF node)
+
+npm run dev                             # from the repo root
+#   game UI   : http://localhost:3200
+#   standalone: open http://localhost:3200 directly -> auto DEMO MODE
+#   in-host   : http://localhost:3300/?game=http://localhost:3200
+```
+
+The local node **watches `sdk/casino-sdk/simulator/contracts/`**: any `.sol`
+implementing `ICasinoGameV2` dropped there is compiled with the bundled solc
+(`viaIR`, optimizer 200), deployed, registered on the host and added to the game
+picker within a couple of seconds — no restart, no external toolchain.
+`contracts/Candle.sol` is *copied* there rather than deployed by hand.
+
+### 7.2 Reviewer runbook (`DEMO.md`)
+A one-minute path: install, `npm test`, `npm run verify:rtp`, then a full
+bet → burn → burn → claim → payout round against the bundled simulator, with the
+expected output pasted inline so a mismatch is obvious.
+
+### 7.3 SDK notes
+
+Anything the SDK does that is not obvious from its types gets written down here as
+it is discovered, with the spike that proved it. **Do not guess SDK behaviour —
+spike it and record it.**
+
+---
+
+#### 7.3.0 Phase 0 — what was run
+
+SDK `@chain/casino-sdk` v0.2.0, downloaded from `sdk.chain.wtf/sdk/casino-sdk.zip`
+on 2026-09-14. Sources read in full: `solidity/ICasinoGameV2.sol`,
+`simulator/contracts/LocalCasinoHost.sol`, `simulator/contracts/casino/*`,
+`src/types.ts`, `src/manifest.ts`, `src/guest.ts`, and all of `docs/`.
+
+Everything below was **executed** against the bundled local stack — an in-memory
+hardhat chain, a real ECVRF node, and `LocalCasinoHost`, which the SDK states
+reproduces the production facet's session lifecycle and emits byte-identical
+events. Spike sources live in `spikes/`; run them with `npm run spike` while
+`npm run sdk:stack` is up.
+
+```
+spikes/CandleSpike.sol        throwaway ICasinoGameV2 with CANDLE's real shape
+spikes/CandleSpikeMax.sol     same, forced-jackpot, to settle a real 25x
+spikes/spike-multidraw.mjs    Spike A + B + the caps       -> 22/22 green
+spikes/spike-maxpayout.mjs    a real 25x through the facet ->  5/5  green
+spikes/spike-coinflip.mjs     the reference game, end to end -> 3/3 green
+```
+
+---
+
+#### 7.3.1 Spike A — per-inch randomness: **SUPPORTED** ✅
+
+> **The design as written in `prd.md` §4.1 stands. The §7.4 fallback is NOT taken.**
+
+`StepResult.requestRandomnessNow` may be set from **any non-terminal phase**, any
+number of times in one session. `LocalCasinoHost._processStepResult` routes
+`nextPhase == WAITING_RANDOMNESS` straight to `router.requestRandomness(...)` with
+no per-session counter and no once-only guard. The loop
+`onPlayerAction → WAITING_RANDOMNESS → onRandomness → WAITING_PLAYER_ACTION` is a
+first-class pattern, and the SDK names it: *"Multi-action (blackjack, mines): the
+session stays open across several `onPlayerAction` calls, each optionally
+requesting more randomness."* `HostSnapshotV1.sessions.items[].raw.randomnessRequests`
+exists precisely to give a guest the full list of words for such a session.
+
+Measured: one session consumed **five distinct VRF words**, with a `BURN` action
+between each.
+
+```
+inch 1: word 0x0ddfa9d7… -> empty crate 0.00x
+inch 2: word 0xda529a4a… -> empty crate 0.00x
+inch 3: word 0xc3d928cf… -> ordnance 5.00x
+inch 4: word 0x708842bd… -> cordage 1.00x
+inch 5: word 0x13b0f7db… -> empty crate 0.00x   (gutters, forced claim)
+```
+
+**I4 holds by construction.** The burn is a transaction; the word it requests is
+fulfilled by the VRF node in a *later* transaction. Measured burn → fulfilment
+blocks: `43249→43250  43251→43252  43253→43254  43255→43256`. The player cannot
+read, predict or front-run the word for inch *k+1* at the moment they commit at
+inch *k*, because it does not exist yet.
+
+#### 7.3.2 Spike B — the abandoned session
+
+`forfeitExpiredSession` is callable by **anyone** once `block.number >
+deadlineBlock`, and only from `WAITING_PLAYER_ACTION`. The facet staticcalls
+`quoteForfeitPayout` (gas-capped at 400,000, 32-byte return; any revert or
+malformed return pays **0**), clamps it to `escrowedStake + reservedProfit`, then
+pays `quote * 9000 / 10000`.
+
+Measured: a 1.00× lot on the table at inch 1 with a 100 chUSD stake quoted **100**
+and forfeited for **90**. `docs.md` §3.4 has been corrected accordingly — the
+original claim of a full-value timeout claim was wrong.
+
+`cancelStuckRandomness` (from `WAITING_RANDOMNESS`, past
+`RANDOMNESS_TIMEOUT_BLOCKS`) returns the **full escrowed stake**.
+
+#### 7.3.3 The reserve — the trap that would have cost every win
+
+`session.reservedProfit` starts at **zero**. `quoteCaps.maxReservedProfit` is only a
+*ceiling*; it reserves nothing. At settlement the facet enforces
+
+```
+maxAllowedPayout = escrowedStake + reservedProfit      // LocalCasinoHost._finalizeSession
+```
+
+so a game that never returns a positive `reservedProfitDelta` has a cap of exactly
+**1× the wager** and reverts with `LocalCasinoHost__InvalidPayout` on every win
+above evens.
+
+**Therefore `onSessionStart` must return `reservedProfitDelta = +24 × wager`**, and
+every later step returns `0`. `docs.md` §3.1 note 2 warned about *releasing* the
+reserve but never said to *take* it; that omission is now closed.
+
+| Call | `reservedProfitDelta` | running `reservedProfit` | cap |
+|---|---|---|---|
+| `onSessionStart` | **`+24 × wager`** | 24× | 25× |
+| `onRandomness` (inches 1–4) | `0` | 24× | 25× |
+| `onPlayerAction` (`BURN`) | `0` | 24× | 25× |
+| `onPlayerAction` (`CLAIM`) / gutter | `0` | 24× | 25× |
+
+Do **not** taper the reserve as the wax burns, even though the reachable maximum
+falls with it. The delta is applied *before* the payout is checked, so a step that
+both releases reserve and pays out is checked against the already-lowered cap.
+One reserve, taken once, released never. (Capital efficiency is noted in `LATER.md`,
+not v1.)
+
+#### 7.3.4 `quoteCaps` / `quoteRiskParams` — measured values
+
+For a wager *w*:
+
+| Return | Value | Why |
+|---|---|---|
+| `maxEscrowStake` | `w` | the player posts the stake once; no mid-round escrow increase |
+| `maxReservedProfit` | `24w` | `maxPayout − wager`, no slack (**I5**) |
+| `maxPayout` | `25w` | `faceBp 2500 × waxBp 10000 / 1e6`, first inch only |
+| `probabilityWad` | `2e15` | **top tier only** = P(payout = 25×) = 0.20%. Not "any win". |
+| `expectedPayout` | `w × 7577820426157 / 7812500000000` | optimal play is the supremum over policies, so it is the honest worst case for the vault |
+| `subJackpotVarianceScaled` | `0` | see below |
+
+**CANDLE is not heavy-tailed.** `isHeavyTail` needs `maxPayout / wager >` 100 *and*
+`probabilityWad <` 1e15. We are `25` and `2e15` — **both** conditions fail, so the
+tiered jackpot-reserve path never engages and `subJackpotVarianceScaled` stays 0.
+This is a point in the game's favour commercially (`prd.md` §8): a 25× cap does not
+threaten the bankroll and needs no special reserve machinery.
+
+`probabilityWad > 1e18` reverts with `InvalidRiskProbability`. `maxEscrowStake <
+wager` reverts `openSession` outright.
+
+#### 7.3.5 `onSessionStart` idempotency — free, because the hooks are `view`
+
+Every `ICasinoGameV2` hook is `external view`, reached by `staticcall`. **The game
+contract is stateless**: all session state travels in `ctx.gameState` (`bytes`),
+which the facet emits on every step and takes back as calldata, committing only
+`keccak256(encodedSession)` on chain.
+
+So **I6 costs nothing** — there is no storage a second call could corrupt, and the
+`sessionId == 0` guard `docs.md` §3.1 note 3 asks for is unnecessary. Our
+`onSessionStart` must simply not read `ctx.sessionId`. (Note the *local* host calls
+it once, with a real id; the double-call with `sessionId == 0` is production-only,
+so it cannot be observed locally — which is exactly why statelessness, rather than a
+guard, is the right answer.)
+
+Keep `gameState` small: it is emitted, hashed and echoed on every step at ~30 gas
+per byte. CANDLE uses **4 bytes** — `uint8 inch, uint16 faceBp, uint8 hasLot`.
+
+#### 7.3.6 Timeouts and phases
+
+| Constant | Local | Production default |
+|---|---|---|
+| `ACTION_TIMEOUT_BLOCKS` | 43,200 | 43,200 |
+| `RANDOMNESS_TIMEOUT_BLOCKS` | **15** | 150 |
+
+Phase transitions the facet enforces, which our state machine must not fight:
+
+- `WAITING_RANDOMNESS` **requires** `requestRandomnessNow == true`; omitting it
+  reverts `InvalidStepTransition`.
+- `WAITING_PLAYER_ACTION` and every terminal phase **require**
+  `requestRandomnessNow == false`.
+- `submitAction` is only legal from `WAITING_PLAYER_ACTION`, only by the session
+  player, only before `deadlineBlock`.
+- `escrowDelta > 0` is rejected outright during `onRandomness`
+  (`EscrowIncreaseNotAllowed`) — irrelevant to CANDLE, which never raises escrow.
+
+**The fifth inch needs no on-chain guard against `BURN`.** `onRandomness` at inch 5
+settles the session in the same call that reveals the lot, so the session never
+re-enters `WAITING_PLAYER_ACTION` and `submitAction` cannot be called at all. The
+contract still rejects `BURN` at inch 5 explicitly (belt and braces, and it is a
+test case per §2.5) — verified reverting with `CandleSpike__BurnAtLastInch`.
+
+#### 7.3.7 The 25× win does not revert (`plan.md` R6 closed)
+
+A forced-jackpot variant settled a **real** 25× through the facet's payout path:
+payout `2500` chUSD on a `100` stake, phase `SETTLED`, player balance `+2400` net.
+`payout == escrowedStake + reservedProfit` **exactly** — the cap is met, not
+exceeded, and there is no slack to lose. R6 is closed; `test/caps.spec.ts` in phase 1
+keeps it closed.
+
+#### 7.3.8 Rejection sampling — the SDK agrees with `docs.md` §2.4
+
+`RANDOMNESS_DICE.md` gives the general rule: *"For domain size M and outcome count
+n: `limit = floor(M/n)*n`, reject `>= limit`, then `% n`."* For our 16-bit window
+and 10,000 lots that is `floor(65536/10000)*10000 = 60000` — exactly the constant in
+§2.4. Rehash on exhaustion is `keccak256(abi.encodePacked(seed))` over the raw 32
+bytes, in both languages.
+
+One simplification the design permits: **each inch gets its own fresh VRF word**, so
+the cursor always starts at 0 and never has to be carried across inches in
+`gameState`.
+
+#### 7.3.9 Manifest
+
+Filename is **`game.manifest.json`**, validated by a zod schema that rejects unknown
+shapes. `gameId` is canonicalised by `canonicalCasinoGameId` (strip a trailing
+"Game", lowercase, alphanumerics only), so contract `CandleGame` and manifest
+`CandleGame` both canonicalise to `candle`. `capabilities.submitAction` must be
+`true`.
+
+#### 7.3.10 Guest bridge
+
+`connectGameToHost({ setState })` from `@chain/casino-sdk/guest`; `setState` receives
+the whole `HostSnapshotV1` on every host update. Match a bet to its session row via
+the `sessionKey` returned by `openSession`; the row's `phaseName` going terminal is
+the settle signal; `raw.gameState` carries our 4 bytes so the UI can read the inch
+and the lot. **Always call `revealOutcome({ sessionId })` when the animation lands**
+— until then the host hides the payout so its balance display cannot spoil the
+result, which is exactly the "clamped downward-only" behaviour §4.1 asks for.
+`computeMaxWager(snapshot, { maxMultiplierX: 25 })` turns the live `snapshot.casino`
+risk limits into our stake ceiling. Call `connection.destroy()` on unmount.
+
+### 7.4 Fallback if per-inch randomness is unsupported
+
+> **Not taken.** Spike A passed on D0 (§7.3.1): a session consumes one VRF word per
+> inch, with the player's action committed between each. This section is kept as the
+> record of the parachute we did not need to open.
+
+
+If the spike shows a session can only consume **one** VRF word, the design must not
+derive all five lots from that word at session start — the word is public, so the
+player would see the whole sequence and play perfectly. The documented fallback is:
+
+> **Pre-committed policy mode.** The player sets their thresholds before the
+> candle is lit (a five-step "nerve" dial), one word resolves the whole auction,
+> and the reveal animates the lots arriving against the policy they set.
+
+This preserves the math and the RTP exactly — the same DP, evaluated under the
+player's chosen policy instead of their live choices — but it is a materially worse
+game, because the tension moves from the moment to the setup. Treat it as a
+parachute, not a plan. See `plan.md` §Risks.
+
+---
+
+## 8. Dependencies
+
+Every dependency needs a line here. Budget: 150 KB gzipped total.
+
+| Package | Why |
+|---|---|
+| `react`, `react-dom` | UI shell only |
+| `penpal` | required by the SDK bridge |
+| `@chain/casino-sdk` | the SDK |
+| `vite`, `typescript`, `vitest` | toolchain |
+| `viem` | **devDependency only.** Drives the spikes and the parity tests against the local chain. Deliberately **not** a runtime dependency: `gameData` is empty and `actionData` is a single byte, so the guest needs no ABI encoder and the bundle pays nothing for this. |
+
+No animation library, no state library, no UI kit, no icon pack, no audio library.
+
+---
+
+## 9. Math appendix — the authoritative numbers
+
+All values below are produced by `npm run verify:rtp` in exact rational arithmetic.
+If the code disagrees with this table, the code is wrong or this table is stale —
+either way one commit fixes both.
+
+### 9.1 Paytable
+
+| Lot | Face | Weight /10,000 | Probability |
+|---|---|---|---|
+| Empty crate | 0.00× | 6,690 | 66.90% |
+| Ship's stores | 0.50× | 1,000 | 10.00% |
+| Cordage | 1.00× | 1,600 | 16.00% |
+| Sailcloth | 2.00× | 550 | 5.50% |
+| Ordnance | 5.00× | 140 | 1.40% |
+| *Sarah Christiana* | 25.00× | 20 | 0.20% |
+
+`E[face] = 0.44×`
+
+### 9.2 Wax ladder
+`[1.00, 0.85, 0.70, 0.55, 0.40]`
+
+### 9.3 Continuation values and thresholds
+
+| Inch | Wax | `A(k)` | Claim if face ≥ | In practice |
+|---|---|---|---|---|
+| 1 | 1.00 | 0.969961 | 0.75418 | claim ≥ 1.00× |
+| 2 | 0.85 | 0.754176 | 0.64664 | claim ≥ 1.00× |
+| 3 | 0.70 | 0.549643 | 0.51392 | claim ≥ 1.00× *(0.50× misses by 0.0139)* |
+| 4 | 0.55 | 0.359744 | 0.32000 | claim ≥ 0.50× |
+| 5 | 0.40 | 0.176000 | — | forced |
+
+### 9.4 Headline figures
+
+```
+Declared RTP (optimal play) : 96.9961%
+   exact                    : 7577820426157 / 7812500000000
+House edge                  :  3.0039%
+Max payout                  : 25x stake (first inch only)
+P(payout >= 1x)             : 36.4741%
+P(payout = 0)               : 20.3531%
+P(payout >= 5x)             :  2.0239%
+Standard deviation          :  1.7568
+Mean round length           :  3.12 inches
+Reach probability by inch   : 100% / 76.90% / 59.14% / 45.48% / 30.42%
+```
+
+### 9.5 Strategy band
+
+| Policy | RTP |
+|---|---|
+| Optimal | 96.996% |
+| Claim ≥ 1.00× | 96.546% |
+| Claim ≥ 0.50× (anything non-empty) | 93.577% |
+| Hold for ≥ 2.00× | 78.308% |
+| Hold for ≥ 5.00× | 52.959% |
+| Claim the first lot regardless (unreachable — nobody claims an empty crate) | 46.500% |
+
+### 9.6 Hand-checkable identities
+
+A reviewer can verify the skeleton without running anything:
+
+- `E[face] = 0.5(0.10) + 1(0.16) + 2(0.055) + 5(0.014) + 25(0.002) = 0.44`
+- `A(5) = 0.40 × 0.44 = 0.176`
+- Pass probability at inches 1–3 = `P(0×) + P(0.5×) = 0.6690 + 0.1000 = 0.7690`,
+  which is exactly the reach probability of inch 2; inch 3 is `0.7690²`, inch 4 is
+  `0.7690³`, inch 5 is `0.7690³ × 0.6690`.
+- `P(payout = 25×) = P(25× at inch 1) = 0.002 = 0.2000%`
+
+### 9.7 Historical sources for the theme
+Candle auctions: House of Lords records, 1641 · John Milton, 1652, recommending
+sale "by inch of candle" as the likeliest way to reach the true value of goods ·
+Samuel Pepys' diary, November 1660 and September 1662, the Admiralty selling
+surplus ships by the inch · the pin pushed into the wax at Lloyd's so its fall
+marked the end · the wick's flare just before it dies, which Pepys records a bidder
+using as his cue · surviving annual candle auctions at Tatworth and Chedzoy,
+Somerset.

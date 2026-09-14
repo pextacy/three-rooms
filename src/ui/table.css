@@ -217,6 +217,20 @@ kbd {
   opacity: 0.65;
 }
 
+/* The stake between rounds: present, but never in front of the game. */
+.stakeline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.stake__input--inline {
+  width: 7rem;
+  font-size: 1rem;
+  padding: 0.3rem 0.45rem;
+}
+
 /* --- the Ghost Lot ------------------------------------------------------
    Quiet on purpose. It is information about a round that is already over, and
    it must never read as a taunt. */

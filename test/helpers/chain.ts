@@ -33,6 +33,31 @@ export function candleAddress(): `0x${string}` | null {
   return loadDeployment()?.games.find(g => g.name === 'CandleGame')?.address ?? null;
 }
 
+/**
+ * Is the chain actually reachable?
+ *
+ * `deployed.json` survives the stack being stopped, so its presence proves only
+ * that the stack ran ONCE. Checking the file alone turned "you stopped the
+ * simulator" into 24 red tests, which is exactly the failure mode the skip was
+ * meant to prevent.
+ */
+export async function chainIsUp(deployment: Deployment | null): Promise<boolean> {
+  if (!deployment) return false;
+  try {
+    const response = await fetch(deployment.rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }),
+      signal: AbortSignal.timeout(1_500),
+    });
+    if (!response.ok) return false;
+    const body = (await response.json()) as { result?: string };
+    return typeof body.result === 'string';
+  } catch {
+    return false;
+  }
+}
+
 export function publicClient(deployment: Deployment): PublicClient {
   const chain = {
     id: deployment.chainId,

@@ -9,6 +9,7 @@
  * The UI holds no game logic (claude.md §3). Every number it shows is either
  * read from the host or computed by `src/game/`.
  */
+import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { COPY } from './copy';
 import { formatAmount, formatFace, formatWax, parseAmount } from './format';
@@ -108,11 +109,42 @@ export function App() {
   );
 
   const again = useCallback(() => {
-    if (!host || !settled) return;
-    void host.revealOutcome().then(() => host.dealAgain());
-  }, [host, settled]);
+    if (!host || !settled || !view) return;
+    void host.revealOutcome().then(() => {
+      host.dealAgain();
+      // Free play keeps dealing; the host path returns to the stake control,
+      // because opening a real session is the player's to trigger.
+      const affordable = view.purseBase === null || view.purseBase >= stakeBase;
+      if (view.kind === 'demo' && !stakeError && affordable) {
+        // A refused deal leaves the board empty with REFILL in reach, which is
+        // the honest outcome of a purse that has run out.
+        void host.openSession(stakeBase).catch(() => {});
+      }
+    });
+  }, [host, settled, view, stakeError, stakeBase]);
 
   useCandleAudio(soundOn, session);
+
+  /**
+   * **Zero clicks to comprehension** (claude.md §5, prd.md §2). Someone landing
+   * on the bare URL must see the lot on the table, its face value, the candle and
+   * two switches — not a form. So free play deals the first round itself.
+   *
+   * Only free play. Inside a host a wager is real money and needs intent, so the
+   * stake control stays the way in; that is also why `openSession` is never
+   * called here for `kind === 'chain'`.
+   */
+  const dealtOnLoad = useRef(false);
+  useEffect(() => {
+    if (!host || !view || view.kind !== 'demo' || view.session !== null) return;
+    if (dealtOnLoad.current) return;
+    dealtOnLoad.current = true;
+    void host.openSession(view.defaultStakeBase).catch(() => {
+      // An empty purse is not an error worth shouting about; the stake control
+      // and REFILL are both already on screen.
+      dealtOnLoad.current = false;
+    });
+  }, [host, view]);
 
   useEffect(() => {
     host?.setTurbo?.(turbo);
@@ -152,6 +184,8 @@ export function App() {
         */}
         <div className="readout" aria-live="polite">
           {session === null ? (
+            // Free play never lands here — it deals on load. This is the host
+            // path, where a wager is real money and needs intent.
             <StakeControl
               view={view}
               stakeText={stakeText ?? formatAmount(view.defaultStakeBase, decimals)}
@@ -187,7 +221,18 @@ export function App() {
 
       <section className="switches">
         {session === null ? null : settled ? (
-          <Settled session={session} onAgain={again} />
+          <Settled
+            session={session}
+            onAgain={again}
+            stake={
+              <StakeField
+                view={view}
+                stakeText={stakeText ?? formatAmount(view.defaultStakeBase, decimals)}
+                onStakeText={setStakeText}
+                error={stakeError}
+              />
+            }
+          />
         ) : canAct ? (
           <>
             {forced ? <p className="switches__note">{COPY.guttering}</p> : null}
@@ -209,7 +254,15 @@ export function App() {
   );
 }
 
-function Settled({ session, onAgain }: { session: NonNullable<HostView['session']>; onAgain: () => void }) {
+function Settled({
+  session,
+  onAgain,
+  stake,
+}: {
+  session: NonNullable<HostView['session']>;
+  onAgain: () => void;
+  stake: React.ReactNode;
+}) {
   const guttered = session.inch >= INCHES;
   const nothing = session.payoutBase === 0n;
   const ghost = session.ghostLotId !== null ? lotById(session.ghostLotId) : null;
@@ -240,9 +293,42 @@ function Settled({ session, onAgain }: { session: NonNullable<HostView['session'
       </p>
       <p className="ghost__note">{COPY.ghostNote}</p>
 
+      {stake}
+
       <button className="btn btn--claim" onClick={onAgain} autoFocus>
         {COPY.dealAgain} <kbd>{COPY.dealAgainKey}</kbd>
       </button>
+    </div>
+  );
+}
+
+/** The stake, between rounds. Changing it is a decision, so it is never hidden. */
+function StakeField({
+  view,
+  stakeText,
+  onStakeText,
+  error,
+}: {
+  view: HostView;
+  stakeText: string;
+  onStakeText: (value: string) => void;
+  error: string | null;
+}) {
+  return (
+    <div className="stakeline">
+      <label className="stake__label" htmlFor="stake">
+        {COPY.stake}
+      </label>
+      <input
+        id="stake"
+        className="stake__input stake__input--inline"
+        inputMode="decimal"
+        autoComplete="off"
+        value={stakeText}
+        onChange={event => onStakeText(event.target.value)}
+      />
+      <span className="stake__symbol">{view.tokenSymbol}</span>
+      {error ? <p className="stake__error">{error}</p> : null}
     </div>
   );
 }

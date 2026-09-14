@@ -243,17 +243,17 @@ And the frame budget, against a 12 ms p95:
 ```
 
   case                                p50      p95      p99    worst
-  a burn at the flare, 1080p        0.004    0.006    0.009    0.183
-  the flare, a phone                0.004    0.005    0.008    0.077
+  a burn at the flare, 1080p        0.004    0.006    0.012    0.193
+  the flare, a phone                0.004    0.005    0.007    0.086
   an empty crate, first inch        0.004    0.005    0.006    0.066
-  waiting for a word                0.003    0.003    0.004    0.063
+  waiting for a word                0.003    0.003    0.004    0.058
 
 Verdict
   ✓ a burn at the flare, 1080p: p95 under 12 ms  0.006 ms
   ✓ the flare, a phone: p95 under 12 ms  0.005 ms
   ✓ an empty crate, first inch: p95 under 12 ms  0.005 ms
   ✓ waiting for a word: p95 under 12 ms  0.003 ms
-  ✓ even p99 stays inside the 60 fps frame at 16.7 ms  0.009 ms
+  ✓ even p99 stays inside the 60 fps frame at 16.7 ms  0.012 ms
 ```
 
 ---

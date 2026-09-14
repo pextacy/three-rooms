@@ -13,6 +13,11 @@ A provably-fair on-chain wagering game for **Chain Jam Vol. 1**. Take the lot in
 front of you, or let the candle burn an inch and see the next one — knowing the
 next one is worth less by construction.
 
+### ▸ Play it: **https://candle-ashen-tau.vercel.app**
+
+Free play. No wallet, no modal, no splash — the first lot is already on the table
+when the page loads.
+
 **Declared RTP 96.9961%** under optimal play, exactly
 `7577820426157 / 7812500000000`. Reproduce it in under a minute:
 
@@ -195,10 +200,13 @@ in four bytes of `gameState` that the facet emits and takes back.
 
 ## Playing it
 
-- **Standalone** — open the page. Free play, no wallet, no modal, no splash. The
-  purse lasts one page load and nothing is written to browser storage: a balance
-  that looks like it survives a reload and does not is a worse lie than one that
-  obviously resets.
+- **Standalone** — open the page and the first lot is already on the table. Free
+  play, no wallet, no modal, no splash. The purse lasts one page load and nothing
+  is written to browser storage: a balance that looks like it survives a reload
+  and does not is a worse lie than one that obviously resets.
+- **`?seed=198`** makes free play deterministic, for recording and for
+  reproducing a reported round. Free play only — inside a host the contract's VRF
+  is the only authority on outcomes and nothing client-side can touch it.
 - **In the chain.wtf host** — the host owns the wallet, the balance and the bet
   limits. The contract is the only authority on outcomes; the client animates what
   it is told and never recomputes a result.

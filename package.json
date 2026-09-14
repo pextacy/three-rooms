@@ -35,7 +35,8 @@
     "deploy": "vercel deploy --prod",
     "verify:live": "node scripts/gates.mjs --headers-only --origin",
     "ship": "node scripts/ship.mjs",
-    "vercel-build": "node scripts/fetch-sdk.mjs && vite build"
+    "vercel-build": "node scripts/fetch-sdk.mjs && vite build",
+    "find:seed": "vite-node scripts/find-demo-seed.ts"
   },
   "dependencies": {
     "penpal": "^7.0.6",
@@ -53,5 +54,6 @@
     "viem": "^2.21.0",
     "vite": "^6.0.0",
     "vitest": "^2.1.0"
-  }
+  },
+  "homepage": "https://candle-ashen-tau.vercel.app"
 }

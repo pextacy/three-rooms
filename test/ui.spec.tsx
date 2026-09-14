@@ -64,7 +64,8 @@ beforeEach(async () => {
   await act(async () => {
     root.render(<App />);
   });
-  await settle(() => text().includes(COPY.stake));
+  // Free play deals on load, so the first thing to wait for is a lot.
+  await settle(() => text().includes(COPY.lotOnTable));
 });
 
 afterEach(async () => {
@@ -84,10 +85,27 @@ describe('I10 — the standalone page', () => {
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 
-  it('opens on a stake control and a purse, ready to bet in one click', () => {
-    expect(text()).toContain(COPY.stake);
+  it('ZERO CLICKS TO COMPREHENSION — the design law, on load', () => {
+    // claude.md §5 and prd.md §2: "On load the player sees the lot on the table,
+    // its face value, the candle with five pins, the payout if claimed now, and
+    // two buttons." Not a form. A judge with 90 seconds gets one look.
+    const body = text();
+    expect(body, 'the lot').toContain(COPY.lotOnTable);
+    expect(LOTS.some(lot => body.includes(lot.name)), 'a named lot').toBe(true);
+    expect(body, 'the inch, i.e. the candle').toContain(COPY.inchOf(1));
+    expect(body, 'the wax remaining').toContain(COPY.waxRemaining);
+    expect(body, 'the payout if claimed now').toContain(COPY.ifClaimedNow);
+    expect(buttonSaying(COPY.claim), 'CLAIM').not.toBeNull();
+    expect(buttonSaying(COPY.burn), 'LET IT BURN').not.toBeNull();
+  });
+
+  it('shows no form standing between the player and the game', () => {
+    expect(buttonSaying(COPY.lightTheCandle), 'no LIGHT THE CANDLE gate in free play').toBeNull();
+  });
+
+  it('still shows the purse and the DEMO badge, so free play is never mistaken for real', () => {
     expect(text()).toContain(COPY.purse);
-    expect(buttonSaying(COPY.lightTheCandle)).not.toBeNull();
+    expect(text()).toContain(COPY.demoBadge);
   });
 
   it('offers REFILL, because the purse lasts one page load', () => {
@@ -104,10 +122,8 @@ describe('I10 — the standalone page', () => {
 });
 
 describe('the loop', () => {
+  /** Free play deals on load, so a round is already on the table. */
   const deal = async () => {
-    await act(async () => {
-      buttonSaying(COPY.lightTheCandle)?.click();
-    });
     await settle(() => text().includes(COPY.lotOnTable));
   };
 
@@ -161,7 +177,17 @@ describe('the loop', () => {
     expect(text()).toMatch(/The candle guttered/);
   });
 
-  it('deals again after a settled round', async () => {
+  it('offers the stake on the settled board, so changing it is still a decision', async () => {
+    await deal();
+    await act(async () => {
+      buttonSaying(COPY.claim)?.click();
+    });
+    await settle(settledBoard);
+    expect(text()).toContain(COPY.stake);
+    expect(container.querySelector('#stake')).not.toBeNull();
+  });
+
+  it('deals straight into the next round, without a form in between', async () => {
     await deal();
     await act(async () => {
       buttonSaying(COPY.claim)?.click();
@@ -170,28 +196,26 @@ describe('the loop', () => {
     await act(async () => {
       buttonSaying(COPY.dealAgain)?.click();
     });
-    await settle(() => text().includes(COPY.stake));
-    expect(text()).toContain(COPY.stake);
+    await settle(() => text().includes(COPY.lotOnTable) && !settledBoard());
+    expect(text()).toContain(COPY.lotOnTable);
+    expect(text()).toContain(COPY.inchOf(1));
   });
 });
 
 describe('the keyboard path (docs.md §6.3)', () => {
-  it('Enter deals, Space claims, Enter deals again', async () => {
-    await press('Enter');
+  it('Space claims, Enter deals the next round', async () => {
     await settle(() => text().includes(COPY.lotOnTable));
-    expect(text()).toContain(COPY.lotOnTable);
 
     await press(' ');
     await settle(settledBoard);
     expect(text()).toContain(COPY.dealAgain);
 
     await press('Enter');
-    await settle(() => text().includes(COPY.stake));
-    expect(text()).toContain(COPY.stake);
+    await settle(() => text().includes(COPY.lotOnTable) && !settledBoard());
+    expect(text()).toContain(COPY.lotOnTable);
   });
 
   it('B lets it burn', async () => {
-    await press('Enter');
     await settle(() => text().includes(COPY.lotOnTable));
     await press('B');
     await settle(() => text().includes(COPY.inchOf(2)));
@@ -199,7 +223,6 @@ describe('the keyboard path (docs.md §6.3)', () => {
   });
 
   it('ArrowDown lets it burn too', async () => {
-    await press('Enter');
     await settle(() => text().includes(COPY.lotOnTable));
     await press('ArrowDown');
     await settle(() => text().includes(COPY.inchOf(2)));

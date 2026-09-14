@@ -8,20 +8,21 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { keccak256 } from 'viem';
-import { candleAddress, loadDeployment, publicClient, candleAbi, makeCtx, encodeGameState, decodeGameState, type Deployment } from './helpers/chain';
+import { candleAddress, chainIsUp, loadDeployment, publicClient, candleAbi, makeCtx, encodeGameState, decodeGameState, type Deployment } from './helpers/chain';
 import { LOTS, lotForDraw, WEIGHT_DENOM } from '../src/game/paytable';
 import { INCHES, payoutBase } from '../src/game/wax';
 import { draw, wordToBytes, wordFromBytes, type Rehash } from '../src/game/rng';
 
 const address = candleAddress();
 const deployment = loadDeployment();
-const live = address !== null && deployment !== null;
+// The deployment file outlives the stack, so the CHAIN is what gets checked.
+const live = address !== null && deployment !== null && (await chainIsUp(deployment));
 
 const keccakRehash: Rehash = w => wordFromBytes(wordToBytes(BigInt(keccak256(wordToBytes(w)))));
 
 const describeLive = live ? describe : describe.skip;
 if (!live) {
-  console.warn('\n  parity: CandleGame is not deployed locally — run `npm run sdk:stack`. SKIPPING.\n');
+  console.warn('\n  parity: no local chain — run `npm run sdk:stack`. SKIPPING.\n');
 }
 
 const STAKE = 10n ** 20n; // 100 chUSD at 18 decimals

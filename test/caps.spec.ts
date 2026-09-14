@@ -7,16 +7,17 @@
  * every jackpot. So the assertion is equality, not "less than or equal".
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { candleAddress, loadDeployment, publicClient, candleAbi, makeCtx, encodeGameState, decodeGameState, type Deployment } from './helpers/chain';
+import { candleAddress, chainIsUp, loadDeployment, publicClient, candleAbi, makeCtx, encodeGameState, decodeGameState, type Deployment } from './helpers/chain';
 import { LOTS, MAX_FACE_BP, TOP_TIER_WEIGHT, WEIGHT_DENOM } from '../src/game/paytable';
 import { INCHES, payoutBase } from '../src/game/wax';
 import { solve } from '../src/game/solve';
 
 const address = candleAddress();
 const deployment = loadDeployment();
-const live = address !== null && deployment !== null;
+// The deployment file outlives the stack, so the CHAIN is what gets checked.
+const live = address !== null && deployment !== null && (await chainIsUp(deployment));
 const describeLive = live ? describe : describe.skip;
-if (!live) console.warn('\n  caps: CandleGame is not deployed locally — run `npm run sdk:stack`. SKIPPING.\n');
+if (!live) console.warn('\n  caps: no local chain — run `npm run sdk:stack`. SKIPPING.\n');
 
 const STAKES = [1n, 7n, 1_000n, 10n ** 18n, 10n ** 20n, 123_456_789_987_654_321n];
 const solution = solve();

@@ -25,6 +25,17 @@ export type GameEntry = {
 
 export const GAMES: readonly GameEntry[] = [
   {
+    slug: 'survey',
+    name: 'THE SURVEY',
+    line: 'A ship lies in the roads. Every surveyor you send costs you. When have you seen enough?',
+    primitive: 'Sequential hypothesis testing',
+    provenance:
+      "Wald's problem, with a priced stopping rule. You are not guessing a number and not refusing offers — you are buying evidence, and the only question is when you have bought enough.",
+    rtp: '97.0303%',
+    maxPayout: '20×',
+    status: 'building',
+  },
+  {
     slug: 'candle',
     name: 'CANDLE',
     line: 'A lot is on the table. The candle is burning. Every inch you wait is worth less.',

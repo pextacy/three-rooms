@@ -15,7 +15,7 @@
  */
 import { LOTS, FACE_DENOM, WEIGHT_DENOM, type Lot, type LotId } from './paytable';
 import { INCHES, WAX_BP, WAX_DENOM, waxBpAt } from './wax';
-import { type Rational, rat, ZERO, add, mul, div, max, compare, toNumber } from './rational';
+import { type Rational, rat, ZERO, add, mul, div, max, compare, toNumber } from '../../../shared/math/rational';
 
 /** Probability of drawing this lot, exact. */
 export function lotProbability(lot: Lot): Rational {

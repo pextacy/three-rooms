@@ -18,7 +18,7 @@ import { formatAmount, formatFace } from './format';
 import { lotById, type LotId } from '../../core/paytable';
 import { INCHES } from '../../core/wax';
 import { solve } from '../../core/solve';
-import * as R from '../../core/rational';
+import * as R from '../../../../shared/math/rational';
 
 export type LedgerRow = {
   readonly key: string;

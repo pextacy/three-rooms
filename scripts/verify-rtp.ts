@@ -23,7 +23,7 @@ import {
   lotProbability,
   waxFraction,
 } from '../src/games/candle/core/solve';
-import * as R from '../src/games/candle/core/rational';
+import * as R from '../src/shared/math/rational';
 
 const B = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const D = (s: string) => `\x1b[2m${s}\x1b[0m`;

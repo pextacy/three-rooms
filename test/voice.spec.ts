@@ -23,7 +23,7 @@ import {
 import { LOTS } from '../src/games/candle/core/paytable';
 import { INCHES, WAX_BP, waxBpAt } from '../src/games/candle/core/wax';
 import { solve } from '../src/games/candle/core/solve';
-import * as R from '../src/games/candle/core/rational';
+import * as R from '../src/shared/math/rational';
 
 const SORTED = [...LOTS].sort((a, b) => a.faceBp - b.faceBp);
 

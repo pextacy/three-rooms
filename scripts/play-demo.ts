@@ -18,7 +18,7 @@ import { COPY } from '../src/games/candle/app/ui/copy';
 import { dwellMs, tension, knifeEdge, pinDropHz } from '../src/shared/audio/voice';
 import { lotById } from '../src/games/candle/core/paytable';
 import { formatAmount, formatFace, formatWax } from '../src/games/candle/app/ui/format';
-import * as R from '../src/games/candle/core/rational';
+import * as R from '../src/shared/math/rational';
 
 const ROUNDS = Number(process.argv[2] ?? 50);
 const TRANSCRIBE = 6;

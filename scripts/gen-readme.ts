@@ -26,7 +26,7 @@ import {
 } from '../src/games/candle/core/solve';
 import { knifeEdge, pinDropHz } from '../src/shared/audio/voice';
 import { INKS, relativeLuminance, paletteAtWax, contrastRatio, temperatureForWax } from '../src/shared/render/light';
-import * as R from '../src/games/candle/core/rational';
+import * as R from '../src/shared/math/rational';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, '../README.md');

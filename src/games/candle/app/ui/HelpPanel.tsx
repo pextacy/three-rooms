@@ -13,7 +13,7 @@ import { formatFace, formatWax, formatWeight } from './format';
 import { LOTS, WEIGHT_DENOM, MAX_FACE_BP, FACE_DENOM } from '../../core/paytable';
 import { INCHES, WAX_BP } from '../../core/wax';
 import { solve, strategyBand, evaluate, optimalPolicy } from '../../core/solve';
-import * as R from '../../core/rational';
+import * as R from '../../../../shared/math/rational';
 
 /**
  * Keeps keyboard focus inside the dialog while it is open, and gives it back to

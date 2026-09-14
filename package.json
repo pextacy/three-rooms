@@ -39,7 +39,8 @@
     "postinstall": "node scripts/fetch-sdk.mjs --soft",
     "pretest": "node scripts/require-sdk.mjs",
     "deploy:contract": "node scripts/deploy-contract.mjs",
-    "contracts:build": "forge build"
+    "contracts:build": "forge build",
+    "verify:survey": "vite-node scripts/verify-survey.ts"
   },
   "dependencies": {
     "penpal": "^7.0.6",

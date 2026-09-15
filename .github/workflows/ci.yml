@@ -33,6 +33,11 @@ jobs:
       - name: verify:rtp
         run: npm run verify:rtp
 
+      # The second entry's declared RTP, recomputed from its own manifest. Same
+      # standard, and the same reason: it is the number a judge will check.
+      - name: verify:survey
+        run: npm run verify:survey
+
       - name: verify:light
         run: npm run verify:light
 
@@ -47,9 +52,10 @@ jobs:
       - name: generated files are current
         run: |
           npm run gen:constants
+          npm run gen:survey
           npm run gen:readme
           git diff --exit-code -- README.md contracts/generated/ \
-            || { echo "::error::run npm run gen:readme && npm run gen:constants"; exit 1; }
+            || { echo "::error::run npm run gen:readme && npm run gen:constants && npm run gen:survey"; exit 1; }
 
       - name: gates
         run: npm run gates
@@ -97,21 +103,29 @@ jobs:
           done
           echo "::error::the local chain never came up"; exit 1
 
-      - name: deploy the contract into the simulator
+      - name: deploy both contracts into the simulator
         run: |
           npm run sync:simulator
-          for i in $(seq 1 30); do
-            grep -q CandleGame sdk/casino-sdk/simulator/local-node/deployed.json && exit 0
+          for i in $(seq 1 45); do
+            if grep -q CandleGame sdk/casino-sdk/simulator/local-node/deployed.json \
+              && grep -q SurveyGame sdk/casino-sdk/simulator/local-node/deployed.json; then
+              exit 0
+            fi
             sleep 2
           done
-          echo "::error::CandleGame never deployed"; exit 1
+          echo "::error::one of the game contracts never deployed"; exit 1
 
-      # parity, caps and adversarial now run instead of skipping.
+      # parity, caps, adversarial and survey-parity now run instead of skipping.
       - name: test against the chain
         run: npm test
 
       - name: a real round settles
         run: npm run round-trip
+
+      # And a real voyage, which also checks on chain that the word deciding the
+      # ship arrives only after the call was submitted.
+      - name: a real voyage settles
+        run: npm run round-trip:survey
 
       - name: every SDK symbol
         run: npm run spike

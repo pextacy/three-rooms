@@ -714,8 +714,89 @@ where reduced motion is actually handled.
 |---|---|
 | Record the 60–90 s video | `?seed=198` — an early claim, a ride to the gutter, a 25× at the first inch |
 | Point CI at a remote | the workflow has never run; it needs a `git remote` and `vars.PRODUCTION_ORIGIN` |
-| Deploy the contract to the target chain | `RPC_URL=… DEPLOYER_KEY=… npm run deploy:contract` — the chain and the gas are the entrant's |
-| Submit at jam.chain.wtf | a form, under the entrant's name |
+| Deploy BOTH contracts to the target chain | `RPC_URL=… DEPLOYER_KEY=… npm run deploy:contract -- candle`, then `-- survey` — the chain and the gas are the entrant's |
+| Submit at jam.chain.wtf | two forms, one per entry, under the entrant's name |
+
+---
+
+# Phase 7 — the second game
+
+THE SURVEY had a contract, a dynamic program and five pure core files. This phase
+made it a game: a bridge, a scene, three audio graphs, a desk, a `?` panel, a
+book, and 104 tests. Four things are worth writing down, because three of them
+were only found by building it.
+
+### 1. The strategy band did not fit, and the reason is structural
+
+The first draft declared 97.0303% and paid a player who skips the evidence
+**90.4%**; "survey until the reports are two clear" came out at **89.7%**. I2
+says every reasonable fixed strategy sits inside 93–98%, and two obvious ones did
+not.
+
+This is not a tuning accident, it is the shape of the problem: **the sharper the
+evidence, the further the informed player pulls away from the careless one.** A
+game about buying information has a band whose width is set by how much the
+information is worth. Raising the floor by raising the decline payout or the
+cargo values raises the ceiling with it — a search over the whole space
+(prior × accuracy × decline × premium slope × value scale) found nothing that
+kept a surveyor accurate 3-in-4 inside the window at any price.
+
+So the evidence got weaker and much cheaper:
+
+| | before | after |
+|---|---|---|
+| a surveyor is right | 3 in 4 | **3 in 5** — one report multiplies the odds by 3/2 |
+| a surveyor costs | 6 points of premium | **1.5 points** |
+| declining pays | 0.50× | **0.60×** |
+| declared RTP | 97.0303% | **97.4141%** |
+| worst published policy | 89.684% | **93.295%** |
+| mean surveyors bought | 1.61 | **2.55** |
+
+The game got *better*, not worse: at 3-in-5 no single report settles anything, so
+the player is genuinely running a sequence of tests rather than asking an oracle
+once, and the DP now buys two and a half surveys a voyage instead of one and a
+half. Every number in the repo that depends on these came out of
+`npm run gen:survey` and `npm run gen:readme`.
+
+### 2. A parity bug in the fine draw, found by writing the test for it
+
+`drawFine` **threw** at a word boundary where `Survey.sol` rehashes: a draw that
+began on the last 16-bit window could not complete in TypeScript and completed
+fine in Solidity. Nothing in the game reaches that state today — every call site
+starts at cursor 0 with a fresh word — which is exactly what makes it the kind of
+gap that surfaces in production and nowhere else. The mirror now matches the
+contract window for window, with the same bounded rehash and the same `64 tries`
+cap, and `test/survey-draw.spec.ts` pins the bound to the Solidity.
+
+### 3. The light model could not honestly carry the premium ladder
+
+The obvious move was to light THE SURVEY from its money ladder, the way CANDLE is
+lit from the wax. It is a bad claim: the premium falls **1.5 points per
+surveyor**, a 1.5% change in luminance is invisible to a player, and it is inside
+the rounding error of an 8-bit channel — measuring it showed 0.37% of error
+against a 1.5% step. A claim a reviewer cannot measure is a claim we do not make.
+
+The light follows the **day** instead: a surveyor rows out, sounds her and rows
+back, so each one costs an hour of daylight and the room walks CANDLE's own
+100 → 40% ladder, ending at exactly the brightness the candle gutters at. That is
+visible, it is measurable, and it is true. The money cost is printed as a number
+beside it, where a number belongs.
+
+### 4. Two bugs in CANDLE, found by moving its furniture into `shared/`
+
+- The **type scale and both font stacks were declared inside `[data-theme='light']`**,
+  so the dark room — the default, and the one every player sees — had no scale
+  and no serif at all. Nothing looked broken enough to notice.
+- The candle page's **favicon `href` had raw SVG markup spilled out of it**, loose
+  in the `<head>`. There is a gate for it now.
+
+### What the second game shares with the first
+
+One light model, one set of four inks, one `tokens.css` and `table.css`, one
+exact-rational library, one PRNG, one audio engine, one pacing rule, and one
+bridge: `GameHost<S, A>` plus a `chain.ts` that takes an `encodeAction` and a
+`mapSession` and has never heard of a lot or a cargo. Each game's chain adapter
+is about a hundred lines, and neither game's core knows the other exists.
 
 ---
 
@@ -724,9 +805,10 @@ where reduced motion is actually handled.
 These are checked in **every** phase's gate, not just the one that introduced them
 (`claude.md` §2):
 
-- I1 RTP 96.9961% recomputed from the DP · I2 sensible band inside 93–98%
+- I1 RTP recomputed from each DP — 96.9961% and 97.4141% · I2 sensible band inside 93–98% (and for THE SURVEY, the WHOLE published band)
 - I3 rejection sampling, never `word % n` · I4 decision committed before the next word exists
-- I5 max payout exactly 25×, reserved with no slack · I6 `onSessionStart` pure & idempotent
+- I5 max payout exactly 25× / 20×, reserved with no slack · I6 `onSessionStart` pure & idempotent
 - I7 `onRandomness` returns `reservedProfitDelta = 0` · I8 `frame-ancestors *`, no `X-Frame-Options`
 - I9 widget tag exactly once in raw HTML · I10 playable standalone, no host/wallet/modal
 - I11 contract and client agree bit-for-bit · I12 zero audio files, no image > 8 KB
+- I13 THE SURVEY's ship is decided after the call, never before

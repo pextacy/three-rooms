@@ -67,49 +67,65 @@ try {
     }
   }
 
-  console.log(`\n\x1b[1mCANDLE — embeddability\x1b[0m`);
-  console.log(`\x1b[2m${new URL('/candle/', origin).toString()}\x1b[0m\n`);
+  console.log(`\n\x1b[1mEmbeddability — every entry on the origin\x1b[0m`);
+  console.log(`\x1b[2m${origin}\x1b[0m`);
 
-  // The embeddable thing is the GAME page. `/` is the lobby.
-  const gameUrl = new URL('/candle/', origin).toString();
-  const res = await fetch(gameUrl, { redirect: 'follow' });
-  const html = await res.text();
-  const header = name => res.headers.get(name);
+  // The embeddable things are the GAME pages. `/` is the lobby and is not an
+  // entry — the gallery never frames it, and it carries no widget.
+  const ENTRIES = ['candle', 'survey'];
+  let gameUrl = '';
 
-  check('the game page responds 200', res.status === 200, String(res.status));
+  for (const slug of ENTRIES) {
+    console.log(`\n  \x1b[1m/${slug}/\x1b[0m`);
+    const url = new URL(`/${slug}/`, origin).toString();
+    if (!gameUrl) gameUrl = url;
+    const res = await fetch(url, { redirect: 'follow' });
+    const html = await res.text();
+    const header = name => res.headers.get(name);
 
-  const csp = admitsAnyAncestor(header('content-security-policy'));
-  check('CSP admits any ancestor', csp.ok, csp.why);
+    check(`${slug}: the game page responds 200`, res.status === 200, String(res.status));
 
-  const xfo = header('x-frame-options');
-  check(
-    'no X-Frame-Options is served',
-    xfo === null,
-    xfo ?? 'absent — a stray SAMEORIGIN wins in some browsers and silently costs the gallery preview',
-  );
+    const csp = admitsAnyAncestor(header('content-security-policy'));
+    check(`${slug}: CSP admits any ancestor`, csp.ok, csp.why);
 
-  // A <meta http-equiv> CSP would be applied too, and frame-ancestors is ignored
-  // in meta — worth catching, because it looks like it should work.
-  check(
-    'frame-ancestors is not set via <meta>, where browsers ignore it',
-    !/<meta[^>]+http-equiv=["']content-security-policy["'][^>]*frame-ancestors/i.test(html),
-  );
+    const xfo = header('x-frame-options');
+    check(
+      `${slug}: no X-Frame-Options is served`,
+      xfo === null,
+      xfo ?? 'absent — a stray SAMEORIGIN wins in some browsers and silently costs the gallery preview',
+    );
 
-  check('the document carries a #root for the app to mount into', /<div id="root">/.test(html));
-  check('the jam widget tag is present exactly once', (html.match(/jam\.chain\.wtf\/widget\.js/g) ?? []).length === 1);
+    // A <meta http-equiv> CSP would be applied too, and frame-ancestors is
+    // ignored in meta — worth catching, because it looks like it should work.
+    check(
+      `${slug}: frame-ancestors is not set via <meta>, where browsers ignore it`,
+      !/<meta[^>]+http-equiv=["']content-security-policy["'][^>]*frame-ancestors/i.test(html),
+    );
 
-  const manifest = await fetch(new URL('/candle/game.manifest.json', origin));
-  const parsed = manifest.ok ? await manifest.json().catch(() => null) : null;
-  check('game.manifest.json is served and parses', Boolean(parsed), `${manifest.status}`);
-  check('the manifest declares submitAction — CANDLE is multi-action', parsed?.capabilities?.submitAction === true);
+    check(`${slug}: the document carries a #root for the app to mount into`, /<div id="root">/.test(html));
+    check(`${slug}: the jam widget tag is present exactly once`, (html.match(/jam\.chain\.wtf\/widget\.js/g) ?? []).length === 1);
+
+    // Resolved the way the host resolves it: relative to the GAME's url, not the
+    // origin root. That is the whole reason each entry lives in its own folder.
+    const manifest = await fetch(new URL('game.manifest.json', url));
+    const parsed = manifest.ok ? await manifest.json().catch(() => null) : null;
+    check(`${slug}: game.manifest.json resolves beside the page and parses`, Boolean(parsed), `${manifest.status}`);
+    check(`${slug}: the manifest declares submitAction — it is multi-action`, parsed?.capabilities?.submitAction === true);
+    check(`${slug}: the manifest names its own gameId`, typeof parsed?.gameId === 'string' && parsed.gameId.length > 0, parsed?.gameId);
+  }
 
   // A real cross-origin embed, so the host page is genuinely a different origin.
   if (!target) {
     hostServer = createServer((_req, res2) => {
       res2.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      const frames = ENTRIES.map(
+        slug =>
+          `<figure style="margin:0"><figcaption style="font:12px system-ui;color:#999">/${slug}/</figcaption>` +
+          `<iframe src="${new URL(`/${slug}/`, origin).toString()}" width="420" height="620" style="border:1px solid #333"></iframe></figure>`,
+      ).join('');
       res2.end(`<!doctype html><title>gallery stand-in</title>
-<p>If CANDLE renders below, the headers are right.</p>
-<iframe src="${gameUrl}" width="420" height="620" style="border:1px solid #333"></iframe>`);
+<p style="font:14px system-ui">If both games render below, the headers are right.</p>
+<div style="display:flex;gap:16px;flex-wrap:wrap">${frames}</div>`);
     });
     await new Promise(resolve => hostServer.listen(HOST_PORT, resolve));
     console.log(

@@ -21,6 +21,7 @@
     "sdk:fetch": "node scripts/fetch-sdk.mjs",
     "sdk:install": "npm --prefix sdk/casino-sdk install",
     "round-trip": "vite-node scripts/round-trip.ts",
+    "round-trip:survey": "vite-node scripts/round-trip-survey.ts",
     "bench": "vite-node scripts/bench.ts",
     "sync:simulator": "node scripts/sync-simulator.mjs",
     "play": "vite-node scripts/play-demo.ts",

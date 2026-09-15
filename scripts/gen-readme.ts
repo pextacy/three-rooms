@@ -61,6 +61,30 @@ const surveyManifest = JSON.parse(
 /** The live URL lives in package.json, so it is never retyped into prose. */
 const { homepage } = JSON.parse(readFileSync(resolve(here, '../package.json'), 'utf8')) as { homepage?: string };
 
+/**
+ * Deployed bytecode sizes, MEASURED from the forge artefacts when they are
+ * there. A number typed into a README is a number that goes stale the first time
+ * anyone touches the contract.
+ */
+function bytecodeSize(artifact: string): number | null {
+  try {
+    const out = JSON.parse(readFileSync(resolve(here, `../contracts/out/${artifact}`), 'utf8')) as {
+      deployedBytecode?: { object?: string };
+    };
+    const object = out.deployedBytecode?.object;
+    return object ? object.length / 2 - 1 : null;
+  } catch {
+    return null; // not built in this checkout; the sentence below adapts
+  }
+}
+const candleBytes = bytecodeSize('Candle.sol/CandleGame.json');
+const surveyBytes = bytecodeSize('Survey.sol/SurveyGame.json');
+const sizeSentence =
+  candleBytes && surveyBytes
+    ? `The deployed bytecode is **${candleBytes.toLocaleString('en-US')} bytes** for CANDLE and ` +
+      `**${surveyBytes.toLocaleString('en-US')} bytes** for THE SURVEY — between a tenth and a sixth of the EIP-170 limit.`
+    : 'Run `npm run contracts:build` to see the deployed sizes against the EIP-170 limit.';
+
 const solution = solve();
 const optimal = optimalPolicy(solution);
 const pct = (r: R.Rational, p = 4) => `${R.toPercent(r, p)}%`;
@@ -103,9 +127,14 @@ const lightRows = WAX_BP.map((bp, i) => {
 // ---------------------------------------------------------------------------
 
 const survey = solveSurvey();
+let CARGOES_REACHABLE = 0;
+for (let k = 0; k <= MAX_SURVEYS; k++) for (let m = -k; m <= k; m += 2) CARGOES_REACHABLE += 1;
 const surveyPolicy = surveyOptimal(survey);
 const surveyDist = surveyDistribution(surveyPolicy);
 const surveyEdge = surveyKnifeEdge();
+/** Reachable `(surveys, margin)` states per cargo, times the manifest. */
+const surveyStates =
+  CARGOES_REACHABLE * SURVEY_CARGOES.length;
 const ORDINALS = ['no', 'one', 'two', 'three', 'four', 'five'];
 
 const manifestRows = SURVEY_CARGOES.map(
@@ -456,55 +485,76 @@ was nobody left to send.
 
 | Command | What it proves |
 |---|---|
-| \`npm run verify:rtp\` | The declared RTP, recomputed from the paytable across all ${INCHES * LOTS.length} reachable \`(inch, lot)\` states in exact rationals. Nothing read from a constant. |
-| \`npm test\` | Unit, parity, strategy band, RNG, light model, scene, pacing, the Ghost Lot, and the UI driven through a whole round. |
-| \`npm run bench\` | 10⁷ draws and 10⁷ simulated rounds, within 5σ of the closed form. |
-| \`npm run verify:light\` | Luminance is exactly the wax ladder; the blackbody walk; WCAG contrast at every inch. |
-| \`npm run frame-budget\` | p95 frame time during a burn, against a 12 ms budget. |
-| \`npm run cold-open\` | Critical path and time to first playable frame. |
-| \`npm run gates\` | Bundle size, one widget tag, \`frame-ancestors *\`, no \`X-Frame-Options\`, manifest, no browser storage. |
-| \`npm run spike\` | Every SDK symbol used, exercised end to end against a local chain and a real VRF node. |
+| \`npm run verify:rtp\` | CANDLE's declared RTP, recomputed across all ${INCHES * LOTS.length} reachable \`(inch, lot)\` states in exact rationals. Nothing read from a constant. |
+| \`npm run verify:survey\` | THE SURVEY's, across all ${surveyStates} reachable \`(cargo, surveys, margin)\` states — including the belief table the contract mirrors as fractions, never as rounded probabilities. |
+| \`npm test\` | ~300 tests: both DPs, both parities, the strategy bands, the RNG, the light model, both scenes, the pacing, both ghosts, and both UIs driven through a whole round. |
+| \`npm run bench\` | 10⁷ draws and 10⁷ rounds for CANDLE; 10⁶ voyages for THE SURVEY, with every report checked against the predictive distribution at the margin it was drawn at. |
+| \`npm run verify:light\` | Luminance is exactly each game's own ladder; the blackbody walk; WCAG contrast at every rung; and the fog table, where the ship is drawn at exactly the confidence. |
+| \`npm run frame-budget\` | p95 frame time for both scenes, against a 12 ms budget. |
+| \`npm run cold-open\` | Critical path and time to first playable frame, for both pages — and how much of it the second page already has in cache. |
+| \`npm run gates\` | Bundle size, one widget tag per entry, \`frame-ancestors *\`, no \`X-Frame-Options\`, a manifest beside each page, no browser storage. |
+| \`npm run round-trip\` · \`round-trip:survey\` | A real round and a real voyage settled by the real facet against a local chain and a real VRF node — including, for THE SURVEY, that the word deciding the ship arrives only after the call. |
+| \`npm run play\` · \`play:survey\` | Either loop played in a terminal, worded exactly as its UI words it. |
+| \`npm run spike\` | Every SDK symbol used, exercised end to end. |
 
 See [DEMO.md](./DEMO.md) for a one-minute reviewer runbook with the expected output
 inline.
 
 ---
 
-## The contract
+## The contracts
 
 \`\`\`sh
 npm run contracts:build                                   # forge, solc 0.8.30, viaIR
-RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract
+RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract -- candle
+RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract -- survey
 \`\`\`
 
-No constructor arguments, no storage — every hook is \`view\` and session state
-travels in four bytes of \`gameState\` that the facet emits and takes back. The
-deployed bytecode is **2,568 bytes**, a tenth of the EIP-170 limit.
+Two contracts, one interface, the same discipline: no constructor arguments, no
+storage, every hook \`view\`, no unbounded loops. Session state travels in four
+bytes of \`gameState\` for CANDLE and five for THE SURVEY, which the facet emits
+and takes back. ${sizeSentence}
 
-\`deploy:contract\` has no default chain on purpose, and reads the contract back
-after deploying: a contract that deployed but answers differently is worse than
-one that failed, because nothing tells you.
+\`deploy:contract\` has no default chain on purpose, and reads each contract back
+after deploying — against that game's own generated constants, so a retuned
+manifest cannot leave a stale assertion behind. A contract that deployed but
+answers differently is worse than one that failed, because nothing tells you.
+
+**THE SURVEY's contract is the one to read.** It is where the reversed generative
+order lives, and the comment at the top says why a \`view\`-only game that emits
+its whole state can still hide whether a ship is sound.
 
 ## How it is built
 
 \`\`\`
-contracts/Candle.sol      ICasinoGameV2. Five hooks, one _payout(), one VRF word per inch.
+contracts/Candle.sol         ICasinoGameV2. Five hooks, one _payout(), one word per inch.
+contracts/Survey.sol         The same, and the reversed generative order.
 contracts/ICasinoGameV2.sol  Vendored from the SDK, so a standard toolchain can build it.
-contracts/generated/      Mirrored from src/game/paytable.ts. Never hand-edited.
-src/game/                 PURE core: paytable, wax ladder, exact-rational DP, RNG, state machine.
-src/render/               The light model, and one canvas. Nothing else draws.
-src/audio/                Three Web Audio graphs. Zero audio files.
-src/bridge/               The chain.wtf host, and a free-play host with the same interface.
-src/ui/                   A thin React layer holding no game logic.
+contracts/generated/         Mirrored from each game's core. Never hand-edited.
+
+src/shared/                  What both games use, and nothing that knows which is calling.
+  bridge/host.ts             GameHost<S, A> — generic over whatever a session holds.
+  bridge/chain.ts            The whole penpal path. Two game-shaped holes: encode an
+                             action byte, read your own session out of a row.
+  render/light.ts            The measurable light model. Takes a level in basis points.
+  audio/engine.ts            Context, master gain, beds, Poisson grains. No files.
+  audio/pacing.ts            One pacing rule, two games.
+  math/rational.ts           Exact BigInt rationals. No float touches a declared number.
+  ui/                        tokens.css + table.css: the room and the furniture.
+
+src/games/<slug>/core/       PURE: that game's own maths. No React, no DOM, no clock.
+src/games/<slug>/app/        Its bridge adapter, its canvas, its voice, its React layer.
 \`\`\`
 
-**One VRF word per inch.** \`LET IT BURN\` is an on-chain action that requests the
-next word, so the word for inch *k+1* is causally after the burn that asked for it
-and cannot be read, predicted or front-run. Randomness is mapped by **rejection
-sampling** over 16-bit windows — \`word % n\` is biased and is not used anywhere.
+**One VRF word per step, and the step is always an on-chain action.** \`LET IT
+BURN\` requests the next lot; \`SEND A SURVEYOR\` requests the next report;
+\`UNDERWRITE\` requests the word that decides the ship. In every case the word is
+causally after the action that asked for it and cannot be read, predicted or
+front-run. Randomness is mapped by **rejection sampling** over 16-bit windows —
+\`word % n\` is biased and is not used anywhere, in either language.
 
-The contract holds **no storage**: every hook is \`view\`, and session state travels
-in four bytes of \`gameState\` that the facet emits and takes back.
+Neither contract holds storage: every hook is \`view\`, and session state travels
+in the \`gameState\` bytes the facet emits and takes back.
 
 ---
 
@@ -526,13 +576,19 @@ Keyboard: \`Space\`/\`Enter\` claim · \`B\`/\`↓\` let it burn · \`Enter\` de
 
 ## Responsible design
 
-The mechanics were chosen partly because they behave well. The game **cannot lose
-more than the stake**, has no bust state, no accumulating sunk-cost ladder, no
-autoplay and no near-miss theatre. The Ghost Lot — the lot that would have come
-next — is drawn only once the round has settled, changes no payout, and is stated
-once and flatly; there is a test that walks every string in the game and fails on
-an exclamation mark or a "you were so close". No loss-chasing prompts, no
-escalating bet suggestions. The standalone build is free play and says so.
+The mechanics were chosen partly because they behave well. Neither game **can
+lose more than the stake**, neither has a bust state, an accumulating sunk-cost
+ladder, autoplay, or near-miss theatre. In THE SURVEY the worst case is not even
+a total loss on most rounds: declining is always there, and it always pays.
+
+Each game shows a ghost — the lot that would have come next, the report the
+surveyor nobody sent would have made. Both are drawn only once the call is locked
+in, both change no payout, and both are stated once and flatly. There is a test
+per game that walks **every string in the UI** and fails on an exclamation mark,
+a "you were so close", or a "try again". No loss-chasing prompts, no escalating
+bet suggestions, no timers. The logs report your realised return against the
+declared RTP and say plainly that a short session proves nothing. The standalone
+builds are free play and say so on every screen.
 
 ---
 

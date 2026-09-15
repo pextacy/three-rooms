@@ -380,16 +380,16 @@ And the frame budget, against a 12 ms p95:
 ```
 
   case                                p50      p95      p99    worst
-  a burn at the flare, 1080p        0.004    0.006    0.015    0.179
-  the flare, a phone                0.004    0.005    0.010    0.154
-  an empty crate, first inch        0.003    0.004    0.005    0.081
-  waiting for a word                0.002    0.003    0.003    0.065
+  a burn at the flare, 1080p        0.003    0.005    0.010    0.165
+  the flare, a phone                0.004    0.005    0.006    0.082
+  an empty crate, first inch        0.003    0.004    0.005    0.093
+  waiting for a word                0.002    0.003    0.003    0.064
 
   case                                p50      p95      p99    worst
-  the roads, fog and a boat, 1080p    0.005    0.009    0.013    0.084
-  the roads, a phone                0.005    0.006    0.008    0.097
-  a settled voyage, no fog          0.004    0.005    0.008    0.079
-  waiting for the manifest          0.004    0.005    0.006    0.068
+  the roads, fog and a boat, 1080p    0.005    0.009    0.013    0.108
+  the roads, a phone                0.005    0.007    0.011    0.100
+  a settled voyage, no fog          0.004    0.005    0.009    0.089
+  waiting for the manifest          0.004    0.005    0.006    0.078
 
 ```
 

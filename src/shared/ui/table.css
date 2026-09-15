@@ -1,7 +1,12 @@
 /*
-  Phase 2 layout: deliberately plain (plan.md D2). The candlelight scene lands in
-  phase 3 and replaces the look, not the structure. Four inks only — no fifth
-  colour is approved (claude.md §5).
+  The table: the layout every game on this origin is played on.
+
+  One room, one chrome, one set of switches — CANDLE's auction table and THE
+  SURVEY's underwriting desk are the same furniture seen from a different chair,
+  and a player who learns one already knows where everything is on the other.
+  Each game adds only what is its own (`games/<slug>/app/ui/*.css`).
+
+  Four inks only — no fifth colour is approved (claude.md §5).
 */
 
 /* The frame follows the host; the stage inside it never does. */
@@ -43,7 +48,7 @@
   font-size: var(--t-label);
   letter-spacing: 0.1em;
   color: var(--oxblood);
-  border: 1px solid var(--oxblood-text);
+  border: 1px solid rgb(from var(--oxblood) r g b / 0.55);
   border-radius: 2px;
   padding: 0.15rem 0.4rem;
 }

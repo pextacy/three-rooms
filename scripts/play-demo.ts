@@ -15,7 +15,7 @@ import { LOTS } from '../src/games/candle/core/paytable';
 import { INCHES, payoutBase, waxBpAt } from '../src/games/candle/core/wax';
 import { solve, optimalPolicy } from '../src/games/candle/core/solve';
 import { COPY } from '../src/games/candle/app/ui/copy';
-import { dwellMs, tension, knifeEdge, pinDropHz } from '../src/shared/audio/voice';
+import { dwellMs, tension, knifeEdge, pinDropHz } from '../src/games/candle/app/audio/voice';
 import { lotById } from '../src/games/candle/core/paytable';
 import { formatAmount, formatFace, formatWax } from '../src/games/candle/app/ui/format';
 import * as R from '../src/shared/math/rational';

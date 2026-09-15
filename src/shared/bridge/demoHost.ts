@@ -15,7 +15,7 @@
 import {lotById, lotForDraw, type LotId, drawLot} from '../../games/candle/core/paytable';
 import { INCHES, payoutBase } from '../../games/candle/core/wax';
 import { createPrng, seedFromCrypto, type Prng } from './prng';
-import { dwellWithTurbo } from '../audio/voice';
+import { dwellWithTurbo } from '../../games/candle/app/audio/voice';
 import type { CandleHost, HostView, PlayerAction, SessionView } from './types';
 
 /** 18 decimals, like the production token, so the arithmetic matches exactly. */

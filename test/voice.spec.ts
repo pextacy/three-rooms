@@ -19,7 +19,7 @@ import {
   DWELL_FAST_MS,
   DWELL_SLOW_MS,
   TURBO_SCALE,
-} from '../src/shared/audio/voice';
+} from '../src/games/candle/app/audio/voice';
 import { LOTS } from '../src/games/candle/core/paytable';
 import { INCHES, WAX_BP, waxBpAt } from '../src/games/candle/core/wax';
 import { solve } from '../src/games/candle/core/solve';

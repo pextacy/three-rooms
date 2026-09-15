@@ -1,0 +1,77 @@
+/*
+  The four inks (claude.md §5). No fifth colour is approved.
+
+  Shared by every game on this origin: one room, one light model, one type
+  scale. A game's own stylesheet lays out its table; none of them redefines a
+  colour.
+*/
+:root {
+  /*
+    Opening values only — these are the four inks AT FULL FLAME. From the first
+    frame on, each game's `applySceneLight` overwrites them from `paletteAtWax`
+    at its own level (CANDLE's wax ladder, THE SURVEY's premium ladder), so the
+    chrome dims with the room instead of floating above it in a fixed palette.
+    There is one light model, not two (src/shared/render/light.ts).
+  */
+  --ink: #0c0a07; /* the room */
+  --ink-raised: #16120c;
+  --tallow: #f6e6c4; /* the flame, live values */
+  --brass: #e0b463; /* the lot on the table, the cargo on the manifest */
+  --oxblood: #8d3a30; /* what you let go — never load-bearing text */
+  --wax: 1;
+
+  /*
+    Fixed type scale — hierarchy is carried by luminance, never by size
+    (claude.md §5). These belong to every theme: they were briefly declared
+    inside the light-theme block only, which left the dark room — the default,
+    and the one everybody sees — with no scale and no serif at all.
+  */
+  --t-lot: 2.75rem;
+  --t-body: 0.9375rem;
+  --t-label: 0.75rem;
+
+  --font: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-num: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /*
+    Chrome tokens. Distinct from the four inks on purpose: inside a light host
+    the FRAME adapts and the SCENE does not (docs.md §4.1). A candlelit room is
+    dark by nature — repainting it for a light theme would be repainting the
+    game, and the light model is the product.
+  */
+  --chrome-bg: var(--ink);
+  --chrome-ink: var(--tallow);
+  --chrome-rule: rgb(from var(--tallow) r g b / 0.12);
+  --chrome-field: var(--ink-raised);
+}
+
+/*
+  A light host. Only the frame changes: the canvas keeps its own room, and
+  `applySceneLight` keeps overwriting the four inks from the game's own ladder
+  either way, so nothing here can touch what the player reads decay from.
+*/
+[data-theme='light'] {
+  --chrome-bg: #efe7d7;
+  --chrome-ink: #2b2118;
+  --chrome-rule: rgb(43 33 24 / 0.16);
+  --chrome-field: #f7f1e5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--tallow);
+  font-family: var(--font);
+  font-size: var(--t-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100%;
+}

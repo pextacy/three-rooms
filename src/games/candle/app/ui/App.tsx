@@ -20,7 +20,7 @@ import { useCandleHost } from './useHost';
 import { useCandleAudio } from './useAudio';
 import { lotById } from '../../core/paytable';
 import { INCHES, payoutBase, waxBpAt } from '../../core/wax';
-import type { LotFace } from '../../../../shared/render/scene';
+import type { LotFace } from '../render/scene';
 import type { CandleHost, HostView } from '../../../../shared/bridge';
 
 export function App() {

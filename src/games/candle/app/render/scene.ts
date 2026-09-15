@@ -10,8 +10,8 @@
  * This file owns pixels only. It computes no game state, reaches for no host,
  * and is handed everything it draws.
  */
-import { INCHES, waxBpAt } from '../../games/candle/core/wax';
-import { cssAlpha, paletteAtWax, css, type Rgb } from './light';
+import { INCHES, waxBpAt } from '../../core/wax';
+import { cssAlpha, paletteAtWax, css, type Rgb } from '../../../../shared/render/light';
 
 /** Everything the scene needs to draw a frame. Nothing it can derive itself. */
 export type SceneState = {

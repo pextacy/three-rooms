@@ -24,7 +24,7 @@ import {
   standardDeviation,
   lotProbability,
 } from '../src/games/candle/core/solve';
-import { knifeEdge, pinDropHz } from '../src/shared/audio/voice';
+import { knifeEdge, pinDropHz } from '../src/games/candle/app/audio/voice';
 import { INKS, relativeLuminance, paletteAtWax, contrastRatio, temperatureForWax } from '../src/shared/render/light';
 import * as R from '../src/shared/math/rational';
 

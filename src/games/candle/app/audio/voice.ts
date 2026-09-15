@@ -8,10 +8,10 @@
  *
  * Same split as `render/light.ts`: the decision is checkable, the plumbing is not.
  */
-import { FACE_DENOM, LOTS, MAX_FACE_BP } from '../../games/candle/core/paytable';
-import { WAX_DENOM, INCHES, waxBpAt } from '../../games/candle/core/wax';
-import { solve, faceValue } from '../../games/candle/core/solve';
-import { compare, sub, toNumber, rat, type Rational } from '../math/rational';
+import { FACE_DENOM, LOTS, MAX_FACE_BP } from '../../core/paytable';
+import { WAX_DENOM, INCHES, waxBpAt } from '../../core/wax';
+import { solve, faceValue } from '../../core/solve';
+import { compare, sub, toNumber, rat, type Rational } from '../../../../shared/math/rational';
 
 /** The pin drop for an empty crate. Low, dull, unmistakable. */
 export const PIN_HZ_MIN = 196;

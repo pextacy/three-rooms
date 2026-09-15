@@ -14,7 +14,29 @@
  * something 40% as bright; sRGB is encoded with a ~2.2 gamma, so the naive
  * version lands near 69% of the light and the claim would be false.
  */
-import { WAX_DENOM, waxBpAt } from '../../games/candle/core/wax';
+/**
+ * The light model is SHARED, so it must not know which game is lighting it.
+ *
+ * CANDLE hands it the wax ladder (100 -> 40%); THE SURVEY hands it the premium
+ * ladder (100 -> 70%). Both are a level in basis points out of `LEVEL_DENOM`,
+ * which is all this file has ever actually used — it read the numbers out of
+ * `candle/core/wax.ts` only because there was one game when it was written.
+ */
+
+/** Brightness is expressed in basis points of full flame. 100% = 10000. */
+export const LEVEL_DENOM = 10_000;
+
+/** A full flame: the brightest any scene gets. */
+export const LEVEL_FULL = 10_000;
+
+/**
+ * The dimmest a room is allowed to get, and the anchor of the blackbody walk.
+ *
+ * It is CANDLE's gutter (40%) rather than a free choice: the two games share one
+ * room, so a survey lit at 70% has to be visibly brighter than a candle at its
+ * last inch, and it is — the same ladder measures both.
+ */
+export const LEVEL_FLOOR = 4_000;
 
 export type Rgb = { readonly r: number; readonly g: number; readonly b: number };
 
@@ -104,13 +126,11 @@ export const FLAME_KELVIN_FULL = 2000;
 export const FLAME_KELVIN_GUTTER = 1500;
 
 /**
- * Colour temperature at a given wax level. Linear in the wax, so the hue walks
- * down the curve at the same pace the room dims.
+ * Colour temperature at a given brightness. Linear in the level, so the hue
+ * walks down the curve at the same pace the room dims.
  */
 export function temperatureForWax(waxBp: number): number {
-  const full = waxBpAt(1);
-  const gutter = waxBpAt(5);
-  const t = (waxBp - gutter) / (full - gutter); // 0 at the gutter, 1 at full
+  const t = (waxBp - LEVEL_FLOOR) / (LEVEL_FULL - LEVEL_FLOOR); // 0 at the gutter, 1 at full
   return FLAME_KELVIN_GUTTER + clamp01(t) * (FLAME_KELVIN_FULL - FLAME_KELVIN_GUTTER);
 }
 
@@ -123,7 +143,7 @@ export function temperatureForWax(waxBp: number): number {
  * This is the whole "brightness is the multiplier" claim, in one line.
  */
 export function sceneLuminance(waxBp: number): number {
-  return waxBp / WAX_DENOM;
+  return waxBp / LEVEL_DENOM;
 }
 
 /**
@@ -178,7 +198,7 @@ export function inkAtWax(name: InkName, waxBp: number): Rgb {
   const scale = sceneLuminance(waxBp);
 
   const now = flameHue(temperatureForWax(waxBp));
-  const full = flameHue(temperatureForWax(waxBpAt(1)));
+  const full = flameHue(temperatureForWax(LEVEL_FULL));
 
   // 1. hue shift, relative to the first inch
   const shifted: [number, number, number] = [0, 0, 0];

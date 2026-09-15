@@ -1,37 +1,23 @@
 /**
- * The one shape the UI knows about (docs.md §1).
+ * CANDLE's own session, and the four bytes the contract carries it in.
  *
- * With a host present the contract is the only authority on outcomes; without
- * one, `demoHost` synthesises the same message shapes from a seeded PRNG. Both
- * implement `CandleHost`, so the UI has exactly ONE code path and the demo
- * cannot quietly drift into being a different game.
+ * The game-agnostic half — the wallet, the token, the purse, the `GameHost`
+ * interface itself — lives in `host.ts` and is shared with THE SURVEY. What is
+ * here is only what an auction by the inch needs: which inch it is, which lot is
+ * on the table, and the Ghost Lot.
  */
 import type { LotId } from '../../games/candle/core/paytable';
+import type { BaseSessionView, GameHost, HostViewOf } from './host';
 
-export type HostKind = 'chain' | 'demo';
+export type { HostKind, SessionPhase, WalletStatus } from './host';
+export { createViewStore, toBigInt } from './host';
 
-/** Mirrors `SessionPhase` in ICasinoGameV2, plus a local pre-chain state. */
-export type SessionPhase =
-  | 'opening'
-  | 'waiting-randomness'
-  | 'waiting-player'
-  | 'settled'
-  | 'forfeited'
-  | 'cancelled';
-
-export type SessionView = {
-  readonly sessionKey: string;
-  readonly sessionId: string | null;
-  readonly phase: SessionPhase;
+export type SessionView = BaseSessionView & {
   /** 1..INCHES. */
   readonly inch: number;
   /** The lot on the table, or null while a word is in flight. */
   readonly lotId: LotId | null;
-  readonly stakeBase: bigint;
-  /** Meaningful once the phase is terminal. */
-  readonly payoutBase: bigint;
-  /** True once the round has settled and the payout may be shown. */
-  readonly isSettled: boolean;
+
   /**
    * The Ghost Lot: the lot that WOULD have come next, had the player let the
    * candle burn one more inch (prd.md §2).
@@ -51,63 +37,11 @@ export type SessionView = {
   readonly error: string | null;
 };
 
-export type WalletStatus = 'ready' | 'disconnected' | 'setup-required' | 'session-key-mismatch';
-
-export type HostView = {
-  readonly kind: HostKind;
-  /**
-   * True once a host has actually answered — the penpal handshake resolved, or
-   * a snapshot arrived. Distinct from `canBet`: a host can be connected and
-   * still have no wallet ready to bet with.
-   */
-  readonly connected: boolean;
-  /** False until the bridge has a host and a wallet that can bet. */
-  readonly canBet: boolean;
-  readonly walletStatus: WalletStatus;
-  readonly tokenSymbol: string;
-  readonly tokenDecimals: number;
-  /**
-   * Play-chip purse. **Demo only.** Inside a host the HOST owns and draws the
-   * balance and the game must not render a second one (docs.md §4.1).
-   */
-  readonly purseBase: bigint | null;
-  readonly minStakeBase: bigint;
-  /** Clamped to what `openSession` would accept right now, or null if unknown. */
-  readonly maxStakeBase: bigint | null;
-  readonly defaultStakeBase: bigint;
-  readonly theme: 'light' | 'dark' | 'system';
-  readonly session: SessionView | null;
-  /** Present only when the host cannot be reached at all. */
-  readonly fatal: string | null;
-};
+export type HostView = HostViewOf<SessionView>;
 
 export type PlayerAction = 'CLAIM' | 'BURN';
 
-export type CandleHost = {
-  readonly kind: HostKind;
-  /** Pushes a new view on every change. Returns an unsubscribe. */
-  subscribe(listener: (view: HostView) => void): () => void;
-  snapshot(): HostView;
-  openSession(stakeBase: bigint): Promise<void>;
-  submitAction(action: PlayerAction): Promise<void>;
-  /**
-   * Tell the host the reveal animation has landed. Until this is called the host
-   * hides the payout from its balance display so the top bar cannot spoil the
-   * result (docs.md §7.3.10). Harmless no-op in demo.
-   */
-  revealOutcome(): Promise<void>;
-  /** Clear a settled round so the next one can be dealt. */
-  dealAgain(): void;
-  /**
-   * Collapse the pacing. Turbo changes how long the game waits, never what the
-   * player has to decide — an autoplayer would be an admission that the decision
-   * is fake (claude.md §7), and this is not one.
-   */
-  setTurbo?(turbo: boolean): void;
-  /** Demo only — restores the opening purse. Absent inside a host. */
-  refill?(): void;
-  destroy(): void;
-};
+export type CandleHost = GameHost<SessionView, PlayerAction>;
 
 /**
  * `abi.encodePacked(uint8 inch, uint16 faceBp, uint8 hasLot)` — the 4-byte

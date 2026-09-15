@@ -9,7 +9,7 @@
  * gesture, so the first key or click unlocks it.
  */
 import { useEffect, useRef } from 'react';
-import { createAudio, type CandleAudio } from '../../../../shared/audio/graphs';
+import { createAudio, type CandleAudio } from '../audio/graphs';
 import { INCHES } from '../../core/wax';
 import { lotById } from '../../core/paytable';
 import type { SessionView } from '../../../../shared/bridge';

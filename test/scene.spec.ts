@@ -7,7 +7,7 @@
  * the flare only at the end — without pretending to check pixels.
  */
 import { describe, it, expect } from 'vitest';
-import { drawScene, type SceneState, type LotFace } from '../src/shared/render/scene';
+import { drawScene, type SceneState, type LotFace } from '../src/games/candle/app/render/scene';
 import { INKS, paletteAtWax, relativeLuminance } from '../src/shared/render/light';
 import { INCHES, waxBpAt } from '../src/games/candle/core/wax';
 

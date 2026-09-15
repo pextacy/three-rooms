@@ -38,6 +38,11 @@ jobs:
       - name: verify:survey
         run: npm run verify:survey
 
+      # The third entry: the market, the index, and the proof that Pandora's rule
+      # is the dynamic program at every reachable state.
+      - name: verify:brokers
+        run: npm run verify:brokers
+
       - name: verify:light
         run: npm run verify:light
 
@@ -53,9 +58,11 @@ jobs:
         run: |
           npm run gen:constants
           npm run gen:survey
+          npm run gen:brokers
           npm run gen:readme
-          git diff --exit-code -- README.md contracts/generated/ \
-            || { echo "::error::run npm run gen:readme && npm run gen:constants && npm run gen:survey"; exit 1; }
+          npm run gen:demo
+          git diff --exit-code -- README.md DEMO.md contracts/generated/ \
+            || { echo "::error::run npm run gen:readme && npm run gen:demo && npm run gen:constants && npm run gen:survey && npm run gen:brokers"; exit 1; }
 
       - name: gates
         run: npm run gates
@@ -103,19 +110,21 @@ jobs:
           done
           echo "::error::the local chain never came up"; exit 1
 
-      - name: deploy both contracts into the simulator
+      - name: deploy all three contracts into the simulator
         run: |
           npm run sync:simulator
           for i in $(seq 1 45); do
             if grep -q CandleGame sdk/casino-sdk/simulator/local-node/deployed.json \
-              && grep -q SurveyGame sdk/casino-sdk/simulator/local-node/deployed.json; then
+              && grep -q SurveyGame sdk/casino-sdk/simulator/local-node/deployed.json \
+              && grep -q BrokersGame sdk/casino-sdk/simulator/local-node/deployed.json; then
               exit 0
             fi
             sleep 2
           done
           echo "::error::one of the game contracts never deployed"; exit 1
 
-      # parity, caps, adversarial and survey-parity now run instead of skipping.
+      # parity, caps, adversarial, survey-parity and brokers-parity now run
+      # instead of skipping.
       - name: test against the chain
         run: npm test
 
@@ -126,6 +135,11 @@ jobs:
       # ship arrives only after the call was submitted.
       - name: a real voyage settles
         run: npm run round-trip:survey
+
+      # And a real claim, which also checks on chain that a broker's price is
+      # drawn by the word his own fee bought — never before it.
+      - name: a real claim settles
+        run: npm run round-trip:brokers
 
       - name: every SDK symbol
         run: npm run spike

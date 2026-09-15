@@ -16,26 +16,30 @@ contract, its own declared RTP.
 |---|---|---|---|---|
 | **CANDLE** | Discounted optimal stopping — Gilbert–Mosteller with a deterministic decay and a forced acceptance at the horizon | **96.9961%** | 25× | [https://candle-ashen-tau.vercel.app/candle/](https://candle-ashen-tau.vercel.app/candle/) |
 | **THE SURVEY** | Sequential hypothesis testing — Wald's problem with a priced stopping rule | **97.4141%** | 20× | [https://candle-ashen-tau.vercel.app/survey/](https://candle-ashen-tau.vercel.app/survey/) |
+| **THE BROKERS** | Search with recall — Pandora's Box, and Weitzman's index | **96.9637%** | 4.99× | [https://candle-ashen-tau.vercel.app/brokers/](https://candle-ashen-tau.vercel.app/brokers/) |
 
 Free play in both. No wallet, no modal, no splash — the first round is already on
 the table when the page loads. Reproduce either number in under a minute:
 
 ```sh
 npm install
-npm run verify:rtp       # CANDLE      7577820426157 / 7812500000000
-npm run verify:survey    # THE SURVEY  60883787 / 62500000
+npm run verify:rtp       # CANDLE       7577820426157 / 7812500000000
+npm run verify:survey    # THE SURVEY   60883787 / 62500000
+npm run verify:brokers   # THE BROKERS  1551418623 / 1600000000
 ```
 
 Essentially every "original" in the crypto-casino canon reduces to one of three
 shapes: **pick a probability and get 1/p** (dice, limbo, roulette), **accumulate
 and bank before a bust** (crash, mines, towers, hi-lo), or **match symbols**
-(slots, wheels). Neither of these is any of them, and neither is a reskin of the
-other: one is about **refusing offers under a decay**, the other about **buying
-evidence until it stops being worth what it costs**.
+(slots, wheels). None of these is any of them, and none is a reskin of another:
+one is about **refusing offers under a decay**, one about **buying evidence until
+it stops being worth what it costs**, and one about **buying options you can
+always go back to**. Stop · learn · search.
 
-Both are dressed from the same room — **Lloyd's Coffee House, London, 1728, lit by
-a single candle** — and share one light model, one set of four inks, one bridge
-and one chrome. The auction is at one table; the underwriting desk is at the next.
+All three are dressed from the same room — **Lloyd's Coffee House, London, 1728,
+lit by a single candle** — and share one light model, one set of four inks, one
+bridge and one chrome. The auction is at one table, the underwriting desk at the
+next, and the brokers are on the floor between them.
 
 ---
 
@@ -357,6 +361,126 @@ was nobody left to send.
 
 ---
 
+# THE BROKERS
+
+> **You hold a claim on a wreck. Every man who looks at it charges you. When have you shopped it enough?**
+
+The house's own man values your claim for nothing, and he is not generous. Four
+brokers will each name a price, and each charges a fee the moment you ask him,
+whatever he ends up saying. **Every price you have been named stays on the
+table.** Sell whenever you like, to whoever named the best one; what you are paid
+is that price, less the fees you have run up.
+
+**Declared RTP 96.9637%** under optimal play, exactly
+`1551418623 / 1600000000`.
+
+### Why this is not a clone of anything either
+
+Its shape is *a set of alternatives with known distributions and known inspection
+costs, opened one at a time in an order of your choosing, with free recall of
+everything already opened* — **Pandora's Box**, Weitzman (1979). It is one of the
+foundational results of search theory, it is solved by an index rule, and it has
+never been turned into a wager.
+
+It is not CANDLE, and **recall is the difference**: there a refused lot is gone
+and the prize decays with time, so you hold out. Here nothing decays and nothing
+is ever lost but the fee you chose to pay, so you stop the moment what you are
+holding is good enough. Nor is it THE SURVEY: nothing is hidden on this floor.
+You are not buying evidence about a state, you are buying **options**.
+
+### The floor
+
+| | Fee | What he names | Average | Index | Asked |
+|---|---|---|---|---|---|
+| **the house's man** | — | 0.85× *50%* · 1.02× *50%* | 0.9350× | — | first, free |
+| **Stubbs** | 6.00% | 0.55× *60.00%* · 0.95× *27.00%* · 1.25× *13.00%* | 0.7490× | **0.8975×** | 4th |
+| **Marchmont** | 4.50% | 0.35× *60.00%* · 0.90× *25.00%* · 1.25× *15.00%* | 0.6225× | **0.9500×** | 3rd |
+| **Delane** | 3.25% | 0.40× *80.00%* · 0.60× *16.50%* · 2.30× *3.50%* | 0.4995× | **1.3714×** | 1st |
+| **Vanderdek** | 0.95% | 0.35× *90.00%* · 0.50× *9.75%* · 5.00× *0.25%* | 0.3763× | **1.2000×** | 2nd |
+
+**Stubbs has the best average price on the floor and is the last man worth
+asking. Vanderdek has the worst average of the four and is asked second.** That is
+not a trick of the table: it is what the index says, and the index is right.
+
+### Weitzman's index, and the rule it gives you
+
+A broker's **index** `z` is the price at which his fee would exactly pay for
+itself:
+
+```
+E[(X − z)⁺] = c
+```
+
+— the expected amount by which his price would beat `z`, set equal to what he
+charges. Above `z` he cannot pay for himself; below it he can. The index counts
+**how far above you he might reach**, not how he does on an ordinary day, which
+is exactly why it is not the average.
+
+> **Pandora's rule.** Ask the unasked man with the highest index. Stop the moment
+> the price you are holding is at least the highest index left.
+
+That is provably optimal — and it is checked rather than cited: `verify:brokers`
+compares it against the dynamic program at every one of the reachable states, and
+`test/brokers-rtp.spec.ts` does it again in CI.
+
+### Return to player
+
+| | |
+|---|---|
+| Declared RTP, optimal play | **96.9637%** |
+| Exact | `1551418623 / 1600000000` |
+| House edge | 3.0363% |
+| Maximum payout | **4.9905×** — the best price on the floor, less the one fee that buys it |
+| **Minimum payout** | **0.7030×** — there is no losing state in this game |
+| P(payout ≥ 1×) | 14.71% |
+| P(payout ≥ 2×) | 3.741% |
+| P(payout ≥ 4×) | 0.2413% |
+| Mean men asked | 2.735 of 4 |
+| Kept the house's own price | 65.5% |
+
+The maximum is **not** the best price on the floor. Only one man ever names
+5.00×, so his fee is unavoidable, and `quoteCaps` reserves
+4.9905× rather than the corner that
+cannot be reached.
+
+#### The strategy band
+
+| How you play | Returns | |
+|---|---|---|
+| Optimal — *the declared RTP* | **96.964%** | ✅ in band |
+| Pandora's rule — the index, no DP — *provably the same thing* | **96.964%** | ✅ in band |
+| Ask the three best by index | **95.732%** | ✅ in band |
+| Ask the two best by index | **95.082%** | ✅ in band |
+| Ask one, by index — *the printed rule* | **95.028%** | ✅ in band |
+| Ask everybody, then take the best — *the restless player* | **93.946%** | ✅ in band |
+| Ask the best average, while it beats what you hold — *the natural mistake* | **93.500%** | ✅ in band |
+| Take what the house names — *the impatient player* | **93.500%** | ✅ in band |
+
+Every published policy is inside the window, and the decision is worth three
+points against the autopilot of asking everybody. The fees are what hold both
+ends: all four of them together are 14.70% of the stake.
+
+### There is no losing state
+
+`TAKE` is legal at every point of the round, and it always pays what is in hand
+less what has been spent. The worst the game can do to you is the house's lowest
+price with every fee paid — **0.7030×**. There is no bust, no forced
+move, nothing that accumulates, and no way to be left holding nothing.
+
+### Playing it
+
+Keyboard: `1`…`4` ask that man · `Space`/`Enter` sell the claim ·
+`Enter` next claim · `?` the whole market and the index · `M` sound · `T` turbo ·
+`L` the book.
+
+The board draws every price on one **logarithmic** scale, so equal distances are
+equal multiples: a slip a thumb's width above the brass line beats it by the same
+factor wherever the two of them sit. The Ghost Price — what the next man you did
+not ask would have said — is drawn only once the claim is sold, changes no
+payout, and is stated once and flatly.
+
+---
+
 ## Verify everything
 
 | Command | What it proves |
@@ -389,7 +513,7 @@ RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract -- survey
 Two contracts, one interface, the same discipline: no constructor arguments, no
 storage, every hook `view`, no unbounded loops. Session state travels in four
 bytes of `gameState` for CANDLE and five for THE SURVEY, which the facet emits
-and takes back. The deployed bytecode is **2,614 bytes** for CANDLE and **3,818 bytes** for THE SURVEY — between a tenth and a sixth of the EIP-170 limit.
+and takes back. The deployed bytecode is **2,614 bytes** for CANDLE and **3,808 bytes** for THE SURVEY — between a tenth and a sixth of the EIP-170 limit.
 
 `deploy:contract` has no default chain on purpose, and reads each contract back
 after deploying — against that game's own generated constants, so a retuned

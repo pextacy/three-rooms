@@ -48,6 +48,25 @@ import {
 } from '../src/games/survey/core/solve';
 import { knifeEdge as surveyKnifeEdge } from '../src/games/survey/app/audio/voice';
 import { DAYLIGHT_BP } from '../src/games/survey/app/daylight';
+import {
+  BROKER_LIST,
+  HOUSE as BROKER_HOUSE,
+  PRICE_DENOM,
+  MAX_PAYOUT_BP as BROKERS_MAX_PAYOUT_BP,
+  TOTAL_FEES_BP,
+  WEIGHT_DENOM as BROKERS_WEIGHT_DENOM,
+} from '../src/games/brokers/core/market';
+import { reservationPrice, meanPrice, askingOrder } from '../src/games/brokers/core/weitzman';
+import {
+  solve as solveBrokers,
+  strategyBand as brokersBand,
+  evaluate as evaluateBrokers,
+  optimalPolicy as brokersOptimal,
+  roundShape as brokersShape,
+  probabilityAtLeast as brokersAtLeast,
+  takeValue as brokersTakeValue,
+  MASKS as BROKER_MASKS,
+} from '../src/games/brokers/core/solve';
 import { INKS, relativeLuminance, paletteAtWax, contrastRatio, temperatureForWax } from '../src/shared/render/light';
 import * as R from '../src/shared/math/rational';
 
@@ -170,6 +189,39 @@ const daylightRows = DAYLIGHT_BP.map((bp, k) => {
   return `| ${k} | ${(bp / 100).toFixed(0)}% | ${Math.round(temperatureForWax(bp))} K | \`rgb(${palette.tallow.r} ${palette.tallow.g} ${palette.tallow.b})\` | ${lum.toFixed(4)} | **${((lum / firstLuminance) * 100).toFixed(2)}%** | ${contrastRatio(palette.brass, palette.ink).toFixed(2)}:1 |`;
 }).join('\n');
 
+// ---------------------------------------------------------------------------
+//  THE BROKERS — from its own DP and its own index, in exact rationals
+// ---------------------------------------------------------------------------
+
+const brokers = solveBrokers();
+const brokersPolicy = brokersOptimal(brokers);
+const brokersRoundShape = brokersShape(brokersPolicy);
+const brokersOrder = askingOrder();
+const brokersWorst = brokersTakeValue(BROKER_MASKS - 1, Math.min(...BROKER_HOUSE.map(q => q.priceBp)));
+const price = (bp: number) => `${(bp / PRICE_DENOM).toFixed(2)}×`;
+
+const houseRow = `| **the house's man** | — | ${BROKER_HOUSE.map(q => `${price(q.priceBp)} *${R.toPercent(R.rat(q.weight, BROKERS_WEIGHT_DENOM), 0)}%*`).join(' · ')} | ${R.toFixed(
+  BROKER_HOUSE.reduce<R.Rational>((sum, q) => R.add(sum, R.mul(R.rat(q.weight, BROKERS_WEIGHT_DENOM), R.rat(q.priceBp, PRICE_DENOM))), R.ZERO),
+  4,
+)}× | — | first, free |`;
+
+const brokerRows = BROKER_LIST.map(broker => {
+  const quotes = broker.quotes.map(q => `${price(q.priceBp)} *${R.toPercent(R.rat(q.weight, BROKERS_WEIGHT_DENOM), 2)}%*`).join(' · ');
+  const rank = brokersOrder.findIndex(b => b.id === broker.id) + 1;
+  return `| **${broker.name}** | ${R.toPercent(R.rat(broker.feeBp, PRICE_DENOM), 2)}% | ${quotes} | ${R.toFixed(meanPrice(broker), 4)}× | **${R.toFixed(reservationPrice(broker), 4)}×** | ${rank}${['st', 'nd', 'rd', 'th'][rank - 1]} |`;
+}).join('\n');
+
+const brokersBandRows = brokersBand(brokers)
+  .map(entry => {
+    const value = evaluateBrokers(entry.policy);
+    const inBand = R.compare(value, R.rat(93n, 100n)) >= 0 && R.compare(value, R.rat(98n, 100n)) <= 0;
+    return `| ${entry.label}${entry.note ? ` — *${entry.note}*` : ''} | **${pct(value, 3)}** | ${inBand ? '✅ in band' : '—'} |`;
+  })
+  .join('\n');
+
+const bestAverage = [...BROKER_LIST].sort((a, b) => R.compare(meanPrice(b), meanPrice(a)))[0];
+const worstAverage = [...BROKER_LIST].sort((a, b) => R.compare(meanPrice(a), meanPrice(b)))[0];
+
 const readme = `<!--
   GENERATED FILE — DO NOT EDIT.
   Written by \`npm run gen:readme\` from src/games/, src/shared/render/ and each
@@ -188,26 +240,30 @@ contract, its own declared RTP.
 |---|---|---|---|---|
 | **CANDLE** | Discounted optimal stopping — Gilbert–Mosteller with a deterministic decay and a forced acceptance at the horizon | **${pct(solution.rtp)}** | ${R.toFixed(R.rat(MAX_FACE_BP, FACE_DENOM), 0)}× | ${homepage ? `[${homepage}/candle/](${homepage}/candle/)` : '\`/candle/\`'} |
 | **THE SURVEY** | Sequential hypothesis testing — Wald's problem with a priced stopping rule | **${pct(survey.rtp)}** | ${R.toFixed(R.rat(MAX_VALUE_BP, VALUE_DENOM), 0)}× | ${homepage ? `[${homepage}/survey/](${homepage}/survey/)` : '\`/survey/\`'} |
+| **THE BROKERS** | Search with recall — Pandora's Box, and Weitzman's index | **${pct(brokers.rtp)}** | ${R.toFixed(R.rat(BROKERS_MAX_PAYOUT_BP, PRICE_DENOM), 2)}× | ${homepage ? `[${homepage}/brokers/](${homepage}/brokers/)` : '\`/brokers/\`'} |
 
 Free play in both. No wallet, no modal, no splash — the first round is already on
 the table when the page loads. Reproduce either number in under a minute:
 
 \`\`\`sh
 npm install
-npm run verify:rtp       # CANDLE      ${R.toExactString(solution.rtp)}
-npm run verify:survey    # THE SURVEY  ${R.toExactString(survey.rtp)}
+npm run verify:rtp       # CANDLE       ${R.toExactString(solution.rtp)}
+npm run verify:survey    # THE SURVEY   ${R.toExactString(survey.rtp)}
+npm run verify:brokers   # THE BROKERS  ${R.toExactString(brokers.rtp)}
 \`\`\`
 
 Essentially every "original" in the crypto-casino canon reduces to one of three
 shapes: **pick a probability and get 1/p** (dice, limbo, roulette), **accumulate
 and bank before a bust** (crash, mines, towers, hi-lo), or **match symbols**
-(slots, wheels). Neither of these is any of them, and neither is a reskin of the
-other: one is about **refusing offers under a decay**, the other about **buying
-evidence until it stops being worth what it costs**.
+(slots, wheels). None of these is any of them, and none is a reskin of another:
+one is about **refusing offers under a decay**, one about **buying evidence until
+it stops being worth what it costs**, and one about **buying options you can
+always go back to**. Stop · learn · search.
 
-Both are dressed from the same room — **Lloyd's Coffee House, London, 1728, lit by
-a single candle** — and share one light model, one set of four inks, one bridge
-and one chrome. The auction is at one table; the underwriting desk is at the next.
+All three are dressed from the same room — **Lloyd's Coffee House, London, 1728,
+lit by a single candle** — and share one light model, one set of four inks, one
+bridge and one chrome. The auction is at one table, the underwriting desk at the
+next, and the brokers are on the floor between them.
 
 ---
 
@@ -478,6 +534,116 @@ The Ghost Report — what the *next* surveyor would have said — is drawn only 
 the call is locked in, changes no payout, and is stated once and flatly. On a
 voyage where every surveyor had already reported there is no ghost, because there
 was nobody left to send.
+
+---
+
+# THE BROKERS
+
+> **You hold a claim on a wreck. Every man who looks at it charges you. When have you shopped it enough?**
+
+The house's own man values your claim for nothing, and he is not generous. Four
+brokers will each name a price, and each charges a fee the moment you ask him,
+whatever he ends up saying. **Every price you have been named stays on the
+table.** Sell whenever you like, to whoever named the best one; what you are paid
+is that price, less the fees you have run up.
+
+**Declared RTP ${pct(brokers.rtp)}** under optimal play, exactly
+\`${R.toExactString(brokers.rtp)}\`.
+
+### Why this is not a clone of anything either
+
+Its shape is *a set of alternatives with known distributions and known inspection
+costs, opened one at a time in an order of your choosing, with free recall of
+everything already opened* — **Pandora's Box**, Weitzman (1979). It is one of the
+foundational results of search theory, it is solved by an index rule, and it has
+never been turned into a wager.
+
+It is not CANDLE, and **recall is the difference**: there a refused lot is gone
+and the prize decays with time, so you hold out. Here nothing decays and nothing
+is ever lost but the fee you chose to pay, so you stop the moment what you are
+holding is good enough. Nor is it THE SURVEY: nothing is hidden on this floor.
+You are not buying evidence about a state, you are buying **options**.
+
+### The floor
+
+| | Fee | What he names | Average | Index | Asked |
+|---|---|---|---|---|---|
+${houseRow}
+${brokerRows}
+
+**${bestAverage?.name} has the best average price on the floor and is the last man worth
+asking. ${worstAverage?.name} has the worst average of the four and is asked second.** That is
+not a trick of the table: it is what the index says, and the index is right.
+
+### Weitzman's index, and the rule it gives you
+
+A broker's **index** \`z\` is the price at which his fee would exactly pay for
+itself:
+
+\`\`\`
+E[(X − z)⁺] = c
+\`\`\`
+
+— the expected amount by which his price would beat \`z\`, set equal to what he
+charges. Above \`z\` he cannot pay for himself; below it he can. The index counts
+**how far above you he might reach**, not how he does on an ordinary day, which
+is exactly why it is not the average.
+
+> **Pandora's rule.** Ask the unasked man with the highest index. Stop the moment
+> the price you are holding is at least the highest index left.
+
+That is provably optimal — and it is checked rather than cited: \`verify:brokers\`
+compares it against the dynamic program at every one of the reachable states, and
+\`test/brokers-rtp.spec.ts\` does it again in CI.
+
+### Return to player
+
+| | |
+|---|---|
+| Declared RTP, optimal play | **${pct(brokers.rtp)}** |
+| Exact | \`${R.toExactString(brokers.rtp)}\` |
+| House edge | ${pct(R.sub(R.rat(1n), brokers.rtp))} |
+| Maximum payout | **${R.toFixed(R.rat(BROKERS_MAX_PAYOUT_BP, PRICE_DENOM), 4)}×** — the best price on the floor, less the one fee that buys it |
+| **Minimum payout** | **${R.toFixed(brokersWorst, 4)}×** — there is no losing state in this game |
+| P(payout ≥ 1×) | ${pct(brokersAtLeast(brokersPolicy, R.rat(1n)), 2)} |
+| P(payout ≥ 2×) | ${pct(brokersAtLeast(brokersPolicy, R.rat(2n)), 3)} |
+| P(payout ≥ 4×) | ${pct(brokersAtLeast(brokersPolicy, R.rat(4n)), 4)} |
+| Mean men asked | ${R.toFixed(brokersRoundShape.meanAsked, 3)} of ${BROKER_LIST.length} |
+| Kept the house's own price | ${pct(brokersRoundShape.keptTheHouse, 1)} |
+
+The maximum is **not** the best price on the floor. Only one man ever names
+${price(50_000)}, so his fee is unavoidable, and \`quoteCaps\` reserves
+${R.toFixed(R.rat(BROKERS_MAX_PAYOUT_BP, PRICE_DENOM), 4)}× rather than the corner that
+cannot be reached.
+
+#### The strategy band
+
+| How you play | Returns | |
+|---|---|---|
+${brokersBandRows}
+
+Every published policy is inside the window, and the decision is worth three
+points against the autopilot of asking everybody. The fees are what hold both
+ends: all four of them together are ${R.toPercent(R.rat(TOTAL_FEES_BP, PRICE_DENOM), 2)}% of the stake.
+
+### There is no losing state
+
+\`TAKE\` is legal at every point of the round, and it always pays what is in hand
+less what has been spent. The worst the game can do to you is the house's lowest
+price with every fee paid — **${R.toFixed(brokersWorst, 4)}×**. There is no bust, no forced
+move, nothing that accumulates, and no way to be left holding nothing.
+
+### Playing it
+
+Keyboard: \`1\`…\`4\` ask that man · \`Space\`/\`Enter\` sell the claim ·
+\`Enter\` next claim · \`?\` the whole market and the index · \`M\` sound · \`T\` turbo ·
+\`L\` the book.
+
+The board draws every price on one **logarithmic** scale, so equal distances are
+equal multiples: a slip a thumb's width above the brass line beats it by the same
+factor wherever the two of them sit. The Ghost Price — what the next man you did
+not ask would have said — is drawn only once the claim is sold, changes no
+payout, and is stated once and flatly.
 
 ---
 

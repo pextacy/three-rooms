@@ -58,8 +58,31 @@ time after 09-20.
   one lot per step, THE SURVEY has three different kinds of step — so pulling it
   up would need a third abstraction to earn its place.
 
-- **Let a player see the two games' bands side by side.** Both `?` panels publish
-  their own; nothing publishes the comparison, and the comparison is the
-  interesting part — one game's careless end is at 93.577% because the decision
-  is about patience, the other's is at 93.295% because the decision is about
-  information. A lobby page could show both.
+- **Let a player see the three games' bands side by side.** Every `?` panel
+  publishes its own; nothing publishes the comparison, and the comparison is the
+  interesting part — CANDLE's careless end is at 93.577% because the decision is
+  about patience, THE SURVEY's at 93.295% because it is about information, THE
+  BROKERS' at 93.500% because it is about cost. A lobby page could show all
+  three.
+
+## From phase 8 (THE BROKERS)
+
+- **Let the player set the fees.** The index is a closed-form function of the
+  fee, so a slider over `c` would move the asking order **live** and show the
+  theorem working: raise Vanderdek's fee far enough and he stops being worth
+  asking second. It is the clearest possible demonstration that the order is not
+  the average order. Not in v1 because the fee is a contract constant and a
+  player-chosen one is a different bet shape, with a different declared RTP per
+  setting — which the jam's single-number submission has no room for.
+
+- **The Ghost Price could name more than one man.** It draws a price for the
+  broker the rule would have asked next. Drawing for *everyone* unasked would
+  show the whole counterfactual floor — and it is exactly the kind of thing that
+  turns into "you were one man away", which §7 of `claude.md` forbids. Written
+  down so it stays refused for a reason rather than by omission.
+
+- **A fourth primitive: the secretary problem proper.** Stop, learn, search —
+  the obvious fourth is search **without** recall, where an offer refused is
+  gone. It shares almost all of THE BROKERS' machinery and inverts its single
+  most important property, which would make a good pair. It needs its own entry,
+  its own contract and its own band, so it needs its own jam.

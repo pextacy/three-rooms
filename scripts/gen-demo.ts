@@ -38,6 +38,8 @@ console.log('capturing verify:rtp …');
 const rtp = capture(['verify:rtp']);
 console.log('capturing verify:survey …');
 const surveyRtp = capture(['verify:survey']);
+console.log('capturing verify:brokers …');
+const brokersRtp = capture(['verify:brokers']);
 console.log('capturing verify:light …');
 const light = capture(['verify:light']);
 console.log('capturing gates …');
@@ -53,9 +55,11 @@ const demo = `<!--
 
 # DEMO — the one-minute review
 
-**Two games, one repo, one origin.** CANDLE is at \`/candle/\`, THE SURVEY at
-\`/survey/\`, each a separate entry with its own manifest, contract and declared
-RTP. Everything here runs offline. No account, no testnet funds, no wallet.
+**Three games, one repo, one origin.** CANDLE is at \`/candle/\`, THE SURVEY at
+\`/survey/\`, THE BROKERS at \`/brokers/\` — each a separate entry with its own
+manifest, contract and declared RTP, and each built on a different decision
+problem: **stop · learn · search**. Everything here runs offline. No account, no
+testnet funds, no wallet.
 
 \`\`\`sh
 npm install
@@ -115,6 +119,36 @@ ${lines(surveyRtp, -14, Infinity)}
 strategy band above it, where *every* published policy is inside 93–98%,
 including sending nobody and sending everybody.**
 
+### …and the third, which is a theorem
+
+\`\`\`sh
+npm run verify:brokers
+\`\`\`
+
+THE BROKERS is search with recall — Weitzman's Pandora's Box. The optimal rule
+is an **index**: give every broker a reservation price \`z\` solving
+\`E[(X − z)⁺] = c\`, ask in descending \`z\`, and stop when what you hold beats
+the best remaining index. This script solves the index in closed form, then
+checks it against the full dynamic program **at all 120 reachable states**.
+
+<details><summary>Expected output — the floor, the index, and the band</summary>
+
+\`\`\`
+${lines(brokersRtp, 0, 45)}
+\`\`\`
+
+</details>
+
+\`\`\`
+${lines(brokersRtp, -15, Infinity)}
+\`\`\`
+
+**The number to check: \`96.9637%\`, exactly \`1551418623 / 1600000000\` — and the
+line that says \`PANDORA'S RULE IS THE DYNAMIC PROGRAM\`. The index is published
+in full in the game's \`?\` panel, asking order included: this game sells the ten
+seconds in which you decide whether to believe the theorem, not an information
+edge over you.**
+
 ---
 
 ## 2. The whole test suite · ~15 s
@@ -123,7 +157,7 @@ including sending nobody and sending everybody.**
 npm test
 \`\`\`
 
-Around 300 tests across both games. The ones worth knowing about:
+Around 500 tests across all three games. The ones worth knowing about:
 
 | File | What it holds |
 |---|---|
@@ -132,6 +166,10 @@ Around 300 tests across both games. The ones worth knowing about:
 | \`test/survey-draw.spec.ts\` | Its reports come from the predictive distribution and her condition from the posterior, at every margin. |
 | \`test/survey-host.spec.ts\` | The Ghost Report cannot leak, and her condition is undecided until UNDERWRITE is submitted. |
 | \`test/survey-scene.spec.ts\` | The fog is exactly \`1 − confidence\`, and a disagreeing pair of reports puts it back to the digit. |
+| \`test/brokers-rtp.spec.ts\` | THE BROKERS' declared RTP, the index against its own equation, and **Pandora's rule against the DP at every reachable state**. |
+| \`test/brokers-round.spec.ts\` | Taking is legal at every point, and asking the same broker twice is refused. |
+| \`test/brokers-host.spec.ts\` | The Ghost Price cannot leak, and a broker's price does not exist until his fee is committed. |
+| \`test/brokers-scene.spec.ts\` | The floor is logarithmic, so equal distances are equal multiples — and nothing draws over the readout. |
 | \`test/strategy-band.spec.ts\` | Every sensible policy inside 93–98%, and that **no** per-inch policy beats the DP. |
 | \`test/rng.spec.ts\` | Chi-square over 10⁶ draws — **and a proof that the forbidden \`word % n\` fails the same test**, so the gate has teeth. |
 | \`test/parity.spec.ts\` | The TS core and the deployed Solidity agree on all 30 states and a 4,096-word corpus, including a word that exhausts all sixteen windows. |
@@ -152,18 +190,20 @@ suite that means "you forgot to start something" trains people to ignore red sui
 npm run dev        # http://localhost:3200
 \`\`\`
 
-\`http://localhost:3200/\` is the lobby, \`/candle/\` and \`/survey/\` are the games.
-Free play, no wallet, no modal, no splash.
+\`http://localhost:3200/\` is the lobby; \`/candle/\`, \`/survey/\` and \`/brokers/\`
+are the games. Free play, no wallet, no modal, no splash.
 
 In CANDLE: \`Space\` claims, \`B\` lets it burn. In THE SURVEY: \`Space\` underwrites,
-\`S\` sends a surveyor, \`D\` declines. In both, \`?\` opens the full model, \`M\`
-toggles sound, \`T\` is turbo and \`L\` is the log.
+\`S\` sends a surveyor, \`D\` declines. In THE BROKERS: \`1\`–\`4\` ask that broker,
+\`Space\` sells the claim. In all three, \`?\` opens the full model, \`M\` toggles
+sound, \`T\` is turbo and \`L\` is the log.
 
-To watch either loop without a browser:
+To watch any of the loops without a browser:
 
 \`\`\`sh
 npm run play -- 100            # CANDLE
 npm run play:survey -- 100     # THE SURVEY
+npm run play:brokers -- 100    # THE BROKERS
 \`\`\`
 
 Each prints a transcript worded exactly as its UI words it, then the session
@@ -200,15 +240,21 @@ Then, in another terminal:
 
 \`\`\`sh
 npm run sync:simulator     # copies contracts/ into the simulator's watch folder
-npm run round-trip         # a real round, settled on chain
-npm run spike              # every SDK symbol, exercised end to end
-npm test                   # parity and caps now RUN instead of skipping
+npm run round-trip           # a real round, settled on chain
+npm run round-trip:survey    # a real voyage
+npm run round-trip:brokers   # a real claim, shopped and sold
+npm run spike                # every SDK symbol, exercised end to end
+npm test                     # parity and caps now RUN instead of skipping
 \`\`\`
 
 \`round-trip\` stakes 100 chUSD, burns three inches, claims at the fourth, and
 checks the payout **to the base unit** against what the pure TS core computed in
-lockstep. \`spike\` drives the full session lifecycle plus the unhappy paths the SDK
-asks you to test — stuck randomness, and an abandoned session forfeiting at 90%.
+lockstep. The other two do the same for their own games, and each also checks
+that game's security model **on the chain rather than in a comment**: THE
+SURVEY's settling word arrives only after UNDERWRITE was submitted, and a
+BROKERS quote is drawn by the word that broker's own fee bought. \`spike\` drives
+the full session lifecycle plus the unhappy paths the SDK asks you to test —
+stuck randomness, and an abandoned session forfeiting at 90%.
 
 The simulator UI is at \`http://localhost:3300\`; point it at
 \`http://localhost:3200\` to play the game inside the host.
@@ -235,13 +281,16 @@ ${lines(frames, 3, 16)}
 
 ## What to look at if you only have a minute
 
-1. \`src/games/candle/core/solve.ts\` and \`src/games/survey/core/solve.ts\` — two
-   dynamic programs, both in exact rationals.
-2. \`contracts/Survey.sol\` — and the comment on why the generative order is
+1. \`src/games/{candle,survey,brokers}/core/solve.ts\` — three dynamic programs
+   over three different decision problems, all in exact rationals.
+2. \`src/games/brokers/core/weitzman.ts\` — the reservation price, solved in
+   closed form on the piecewise-linear segment it lands in, and then proved
+   equal to the DP at every reachable state.
+3. \`contracts/Survey.sol\` — and the comment on why the generative order is
    reversed, which is the whole reason a \`view\`-only contract can hide anything.
-3. \`npm run verify:rtp\` and \`npm run verify:survey\` — check \`96.9961%\` and
-   \`97.4141%\` against the README.
-4. \`docs/phases.md\` — what each phase found, including the places the
+4. \`npm run verify:rtp\`, \`verify:survey\` and \`verify:brokers\` — check
+   \`96.9961%\`, \`97.4141%\` and \`96.9637%\` against the README.
+5. \`docs/phases.md\` — what each phase found, including the places the
    specification turned out to be wrong and what the measurement said instead.
 `;
 

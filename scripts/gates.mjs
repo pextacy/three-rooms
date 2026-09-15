@@ -50,6 +50,7 @@ const walk = async dir => {
 const ENTRIES = [
   { slug: 'candle', gameId: 'CandleGame', contract: 'Candle.sol', generated: 'Paytable.sol', multiAction: 'BURN is an on-chain player action' },
   { slug: 'survey', gameId: 'SurveyGame', contract: 'Survey.sol', generated: 'Manifest.sol', multiAction: 'SEND A SURVEYOR is an on-chain player action' },
+  { slug: 'brokers', gameId: 'BrokersGame', contract: 'Brokers.sol', generated: 'Market.sol', multiAction: 'ASK is an on-chain player action' },
 ];
 const GAMES = ENTRIES.map(entry => entry.slug);
 const srcHtml = await readFile(join(ROOT, 'candle', 'index.html'), 'utf8');
@@ -242,8 +243,9 @@ console.log('\n\x1b[1mgenerated documents\x1b[0m');
   check(
     "and THE SURVEY's as well",
     readme.includes('60883787 / 62500000'),
-    'both entries are submitted, so both numbers are published',
+    'every entry is submitted, so every number is published',
   );
+  check("and THE BROKERS'", readme.includes('1551418623 / 1600000000'));
   check('README.md publishes the whole strategy band, not just the flattering end', readme.includes('93.577%'));
 
   const demoDoc = await readFile(join(ROOT, 'DEMO.md'), 'utf8').catch(() => '');

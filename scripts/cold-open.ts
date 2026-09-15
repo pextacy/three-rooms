@@ -14,11 +14,12 @@
  * and paint, so the execute figure is an estimate, not a promise. It is still
  * the right thing to watch: a regression that doubles it is visible immediately.
  * The p95 that `prd.md` §7 actually commits to needs a browser run; open the
- * page and read `window.__candleColdOpenMs` or `window.__surveyColdOpenMs`.
+ * page and read `window.__candleColdOpenMs`, `__surveyColdOpenMs` or
+ * `__brokersColdOpenMs`.
  *
- * BOTH entries are measured. They share a React chunk, so the second page a
- * player opens is cheaper than the first — but neither is allowed to rely on
- * that: each is budgeted as if it were the only page anyone ever opens.
+ * EVERY entry is measured. They share a React chunk, so the second page a
+ * player opens is cheaper than the first — but none of them is allowed to rely
+ * on that: each is budgeted as if it were the only page anyone ever opens.
  */
 import { readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -50,6 +51,7 @@ if (!existsSync(DIST)) {
 const ENTRIES = [
   { slug: 'candle', title: 'CANDLE', load: () => import('../src/games/candle/app/ui/App') },
   { slug: 'survey', title: 'THE SURVEY', load: () => import('../src/games/survey/app/ui/App') },
+  { slug: 'brokers', title: 'THE BROKERS', load: () => import('../src/games/brokers/app/ui/App') },
 ] as const;
 
 /**
@@ -207,12 +209,11 @@ let lastTotalGz = 0;
 for (const entry of ENTRIES) lastTotalGz = await measureEntry(entry);
 const totalGz = lastTotalGz;
 
-console.log(`\n${B('What the two entries share')}`);
+console.log(`\n${B('What the entries share')}`);
 {
-  const [first, second] = ENTRIES;
+  const [first, ...rest] = ENTRIES;
   const a = new Set(entryAssets.get(first.slug) ?? []);
-  const b = new Set(entryAssets.get(second.slug) ?? []);
-  const shared = [...a].filter(asset => b.has(asset));
+  const shared = [...a].filter(asset => rest.every(entry => (entryAssets.get(entry.slug) ?? []).includes(asset)));
   let sharedGz = 0;
   for (const asset of shared) {
     const path = join(DIST, asset);
@@ -223,7 +224,7 @@ console.log(`\n${B('What the two entries share')}`);
     D(`  ${(sharedGz / 1024).toFixed(1)} KB gz of the ${(totalGz / 1024).toFixed(1)} KB is already in cache by the second page a player opens.`),
   );
   check(
-    'the two entries really do share React, the room and the chrome',
+    'every entry really does share React, the room and the chrome',
     shared.length >= 3 && sharedGz > 60 * 1024,
     `${shared.length} files, ${(sharedGz / 1024).toFixed(1)} KB gz`,
   );
@@ -237,7 +238,7 @@ console.log(D('  Not done: it is a dependency decision, not a rendering one. See
 
 console.log(
   D(
-    `\n  The p95 prd.md §7 commits to is a BROWSER number. Open a page and read\n  window.__candleColdOpenMs or window.__surveyColdOpenMs; this command is the\n  regression watch, not the proof.\n`,
+    `\n  The p95 prd.md §7 commits to is a BROWSER number. Open a page and read\n  window.__candleColdOpenMs, __surveyColdOpenMs or __brokersColdOpenMs; this\n  command is the regression watch, not the proof.\n`,
   ),
 );
 

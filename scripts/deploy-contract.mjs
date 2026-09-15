@@ -25,10 +25,14 @@ const B = s => `\x1b[1m${s}\x1b[0m`;
 const D = s => `\x1b[2m${s}\x1b[0m`;
 
 /**
- * Both entries deploy the same way, and each is read back against the numbers
- * its own DP produced. The expectations are computed here from the generated
- * Solidity rather than typed, so a retuned manifest cannot leave a stale
- * assertion behind.
+ * All three entries deploy the same way, and each is read back against the
+ * numbers its own DP produced. The expectations are computed here from the
+ * generated Solidity rather than typed, so a retuned manifest cannot leave a
+ * stale assertion behind.
+ *
+ * `maxPayoutBp` is the cap in basis points of the wager, not a whole multiple:
+ * THE BROKERS tops out at 4.9905x, because Vanderdek's 5.00x still has his
+ * 0.95% fee taken out of it.
  */
 const GAMES = {
   candle: {
@@ -36,7 +40,7 @@ const GAMES = {
     source: 'contracts/Candle.sol:CandleGame',
     artifact: 'contracts/out/Candle.sol/CandleGame.json',
     generated: 'contracts/generated/Paytable.sol',
-    maxMultiplier: 25n,
+    maxPayoutBp: 250_000n,
     // P(the Sarah Christiana) = 20/10000.
     probabilityWad: 2_000_000_000_000_000n,
     rtp: { num: 7_577_820_426_157n, den: 7_812_500_000_000n, label: '96.9961%' },
@@ -47,11 +51,22 @@ const GAMES = {
     source: 'contracts/Survey.sol:SurveyGame',
     artifact: 'contracts/out/Survey.sol/SurveyGame.json',
     generated: 'contracts/generated/Manifest.sol',
-    maxMultiplier: 20n,
+    maxPayoutBp: 200_000n,
     // P(Indigo) x P(sound at the prior) = 0.02 x 0.4.
     probabilityWad: 8_000_000_000_000_000n,
     rtp: null, // read out of the generated library below
     note: 'THE SURVEY is not heavy-tailed either',
+  },
+  brokers: {
+    title: 'THE BROKERS',
+    source: 'contracts/Brokers.sol:BrokersGame',
+    artifact: 'contracts/out/Brokers.sol/BrokersGame.json',
+    generated: 'contracts/generated/Market.sol',
+    maxPayoutBp: null, // read out of the generated library below
+    // P(Vanderdek names 5.00x) = 25/10000. The only way past 2.30x.
+    probabilityWad: 2_500_000_000_000_000n,
+    rtp: null, // read out of the generated library below
+    note: 'THE BROKERS is not heavy-tailed either',
   },
 };
 
@@ -60,22 +75,40 @@ const game = GAMES[which];
 
 if (!game) {
   console.error(`\nUnknown game "${which}". One of: ${Object.keys(GAMES).join(', ')}\n`);
-  console.error(D('  npm run deploy:contract -- survey\n'));
+  console.error(D('  npm run deploy:contract -- brokers\n'));
   process.exit(1);
 }
 
-// THE SURVEY's declared RTP is generated, so it is read rather than restated.
-if (!game.rtp) {
+// The later entries' declared RTP and payout cap are generated, so they are read
+// rather than restated. A regenerated manifest moves them here automatically.
+if (!game.rtp || !game.maxPayoutBp) {
   const generated = readFileSync(join(ROOT, game.generated), 'utf8');
-  const num = /RTP_NUM = ([0-9_]+)/.exec(generated)?.[1]?.replace(/_/g, '');
-  const den = /RTP_DEN = ([0-9_]+)/.exec(generated)?.[1]?.replace(/_/g, '');
-  const percent = /Declared RTP under optimal play: ([0-9.]+%)/.exec(generated)?.[1];
-  if (!num || !den) {
-    console.error(`\n${game.generated} carries no RTP constants — run \`npm run gen:survey\`.\n`);
-    process.exit(1);
+  const read = name => new RegExp(`${name} = ([0-9_]+)`).exec(generated)?.[1]?.replace(/_/g, '');
+  if (!game.rtp) {
+    const num = read('RTP_NUM');
+    const den = read('RTP_DEN');
+    const percent = /Declared RTP under optimal play: ([0-9.]+%)/.exec(generated)?.[1];
+    if (!num || !den) {
+      console.error(`\n${game.generated} carries no RTP constants — run \`npm run gen:${which}\`.\n`);
+      process.exit(1);
+    }
+    game.rtp = { num: BigInt(num), den: BigInt(den), label: percent ?? `${num}/${den}` };
   }
-  game.rtp = { num: BigInt(num), den: BigInt(den), label: percent ?? `${num}/${den}` };
+  if (!game.maxPayoutBp) {
+    const bp = read('MAX_PAYOUT_BP');
+    if (!bp) {
+      console.error(`\n${game.generated} carries no MAX_PAYOUT_BP — run \`npm run gen:${which}\`.\n`);
+      process.exit(1);
+    }
+    // The library states it in price basis points of the stake (/10,000), which
+    // is exactly the scale this cap is in.
+    game.maxPayoutBp = BigInt(bp);
+  }
 }
+
+/** The cap, and a label for it: "25x" reads better than "250000bp". */
+const capPayout = w => (w * game.maxPayoutBp) / 10_000n;
+const capLabel = `${(Number(game.maxPayoutBp) / 10_000).toString()}x`;
 
 if (!rpc || !key) {
   console.error(`\n${B(`${game.title} — deploy the contract`)}\n`);
@@ -148,11 +181,11 @@ const check = (label, ok, detail = '') => {
 
 check('maxEscrowStake is the wager', maxEscrow === wager);
 check(
-  `maxReservedProfit is ${game.maxMultiplier - 1n}x the wager`,
-  maxReserved === wager * (game.maxMultiplier - 1n),
-  `no slack on the ${game.maxMultiplier}x cap`,
+  'maxReservedProfit is the whole win above the stake',
+  maxReserved === capPayout(wager) - wager,
+  `no slack on the ${capLabel} cap`,
 );
-check('the facet cap equals the maximum payout', maxEscrow + maxReserved === wager * game.maxMultiplier);
+check('the facet cap equals the maximum payout', maxEscrow + maxReserved === capPayout(wager));
 
 const [maxPayout, probabilityWad, expectedPayout, subVariance] = await client.readContract({
   address,
@@ -170,8 +203,8 @@ const [maxPayout, probabilityWad, expectedPayout, subVariance] = await client.re
 });
 
 check(
-  `maxPayout is ${game.maxMultiplier}x and agrees with quoteCaps`,
-  maxPayout === wager * game.maxMultiplier && maxPayout === maxEscrow + maxReserved,
+  `maxPayout is ${capLabel} and agrees with quoteCaps`,
+  maxPayout === capPayout(wager) && maxPayout === maxEscrow + maxReserved,
 );
 check(
   'probabilityWad is the top tier only',
@@ -186,7 +219,8 @@ check(
 check(`subJackpotVarianceScaled is 0 — ${game.note}`, subVariance === 0n);
 
 console.log(`\n${failed === 0 ? '\x1b[32mDEPLOYED\x1b[0m' : '\x1b[31mDEPLOYED BUT WRONG\x1b[0m'}  ${B(address)}\n`);
-console.log(D(`Deploy the other one with \`npm run deploy:contract -- ${which === 'candle' ? 'survey' : 'candle'}\`.`));
+const rest = Object.keys(GAMES).filter(name => name !== which);
+console.log(D(`Deploy the others with \`npm run deploy:contract -- ${rest.join('\` and \`npm run deploy:contract -- ')}\`.`));
 console.log(D('Give this address to the Chain.wtf team with the live URL; they wire the'));
 console.log(D('whitelist, the indexer and the catalog entry.\n'));
 process.exit(failed === 0 ? 0 : 1);

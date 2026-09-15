@@ -14,6 +14,8 @@ import { DAYLIGHT_BP, daylightAt } from '../src/games/survey/app/daylight';
 import { MAX_SURVEYS } from '../src/games/survey/core/vessel';
 import { bestCallConfidence } from '../src/games/survey/core/belief';
 import { shipOpacity } from '../src/games/survey/app/render/roads';
+import { levelFor as brokersLevelFor, heightOf } from '../src/games/brokers/app/render/floor';
+import { BROKER_LIST, HOUSE, TOTAL_FEES_BP, PRICE_DENOM } from '../src/games/brokers/core/market';
 import { toNumber } from '../src/shared/math/rational';
 
 const B = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -184,6 +186,51 @@ check(
   shipOpacity(0) === shipOpacity(0) && Math.abs(shipOpacity(2 - 2) - shipOpacity(0)) === 0,
   'margin is the whole state',
 );
+
+// ---------------------------------------------------------------- the brokers
+console.log(`\n${B('THE BROKERS — the same light model, on what the day has cost')}`);
+console.log(D('  a modest range, and reported as one: all four fees together are 14.7% of the'));
+console.log(D('  stake, so the room dims by 30% across a whole round and no further.'));
+console.log(D('  fees paid   light   flame        tallow            luminance   vs full'));
+for (const feesBp of [0, 95, 420, 870, TOTAL_FEES_BP]) {
+  const level = brokersLevelFor(feesBp);
+  const palette = paletteAtWax(level);
+  const ratio = relativeLuminance(palette.tallow) / relativeLuminance(paletteAtWax(10_000).tallow);
+  console.log(
+    `  ${`${(feesBp / 100).toFixed(2)}%`.padStart(9)}${`${level / 100}%`.padStart(8)}` +
+      `${String(Math.round(temperatureForWax(level))).padStart(7)}K ` +
+      `${swatch(palette.tallow)} ${css(palette.tallow).padEnd(18)}` +
+      `${relativeLuminance(palette.tallow).toFixed(4).padStart(9)}${`${(ratio * 100).toFixed(2)}%`.padStart(11)}`,
+  );
+}
+check('full flame before a fee is paid', brokersLevelFor(0) === 10_000);
+check('and 70% of it once every man has been paid', brokersLevelFor(TOTAL_FEES_BP) === 7_000, '30% of the light, for 14.7% of the stake');
+for (const feesBp of [0, TOTAL_FEES_BP]) {
+  const palette = paletteAtWax(brokersLevelFor(feesBp));
+  const ratio = contrastRatio(palette.brass, palette.ink);
+  check(`${(feesBp / 100).toFixed(2)}% spent: brass on ink clears WCAG AA (4.5:1)`, ratio >= 4.5, `${ratio.toFixed(2)}:1`);
+}
+
+console.log(`\n${B('THE BROKERS — distance is the ratio')}`);
+console.log(D('  the board is logarithmic, so equal distances are equal multiples'));
+console.log(D('  price        height on the board'));
+const prices = [...new Set([...HOUSE.map(q => q.priceBp), ...BROKER_LIST.flatMap(b => b.quotes.map(q => q.priceBp))])].sort((a, b) => a - b);
+for (const priceBp of prices) {
+  console.log(`  ${`${(priceBp / PRICE_DENOM).toFixed(2)}x`.padStart(7)}${`${(heightOf(priceBp) * 100).toFixed(2)}%`.padStart(22)}`);
+}
+{
+  const doubling = heightOf(10_000) - heightOf(5_000);
+  const pairs: ReadonlyArray<readonly [number, number]> = [
+    [4_000, 8_000],
+    [10_000, 20_000],
+    [12_500, 25_000],
+    [23_000, 46_000],
+  ];
+  const agree = pairs.every(([low, high]) => Math.abs(heightOf(high) - heightOf(low) - doubling) < 1e-12);
+  check('a doubling is the same distance wherever it sits on the board', agree, `${(doubling * 100).toFixed(2)}% of the board, every time`);
+  check('the scale starts at the lowest price anybody names', Math.abs(heightOf(Math.min(...prices))) < 1e-12);
+  check('and ends at the highest', Math.abs(heightOf(Math.max(...prices)) - 1) < 1e-12);
+}
 
 console.log(`\n${B('Side by side — the exit gate')}`);
 {

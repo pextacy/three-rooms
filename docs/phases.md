@@ -714,8 +714,8 @@ where reduced motion is actually handled.
 |---|---|
 | Record the 60–90 s video | `?seed=198` — an early claim, a ride to the gutter, a 25× at the first inch |
 | Point CI at a remote | the workflow has never run; it needs a `git remote` and `vars.PRODUCTION_ORIGIN` |
-| Deploy BOTH contracts to the target chain | `RPC_URL=… DEPLOYER_KEY=… npm run deploy:contract -- candle`, then `-- survey` — the chain and the gas are the entrant's |
-| Submit at jam.chain.wtf | two forms, one per entry, under the entrant's name |
+| Deploy ALL THREE contracts to the target chain | `RPC_URL=… DEPLOYER_KEY=… npm run deploy:contract -- candle`, then `-- survey`, then `-- brokers` — the chain and the gas are the entrant's |
+| Submit at jam.chain.wtf | three forms, one per entry, under the entrant's name |
 
 ---
 
@@ -798,6 +798,86 @@ bridge: `GameHost<S, A>` plus a `chain.ts` that takes an `encodeAction` and a
 `mapSession` and has never heard of a lot or a cargo. Each game's chain adapter
 is about a hundred lines, and neither game's core knows the other exists.
 
+
+---
+
+# Phase 8 — the third game
+
+THE BROKERS went from an empty directory to a playable entry in one phase: a
+market, a closed-form index, a dynamic program, a contract, a bridge, a floor,
+two audio graphs, a desk, a `?` panel, a book, and 134 tests. Five things are
+worth writing down.
+
+### 1. The design search, and the bind it had to get out of
+
+The brief was a third decision primitive that is not stopping and not learning.
+**Search with recall** — Pandora's Box — is the obvious third, and it nearly did
+not work.
+
+The first shape had the house make a flat opening offer: you hold 1.00×, and you
+pay fees to look for better. That game has **no decision in it**. The opening
+offer is a constant, so the reservation prices are constants, so the asking order
+and the stopping rule are both fixed before the round begins and the player is
+executing a recipe rather than making a call.
+
+The fix was to make the house's opening price a **draw** — 0.85× or 1.02×, evens.
+Now the state the player stands in varies from the first second, the same broker
+is worth asking at one opening price and not the other, and the DP's choice moves
+with what you hold. `npm run play:brokers` measures the result: the index sends
+for a different man than the average-price rule would in **65.5%** of the states
+it visits, and the two best options are within 2% of each other in **69.6%** of
+them.
+
+### 2. The DP double-counted the fees, and Pandora caught it
+
+The first `solve.ts` subtracted the broker's fee inside `askValue` **and** again
+inside the child state's `takeValue(mask | bit, …)`, because the mask already
+carries him. Declared RTP came out at 93.5% and — far more usefully —
+**Pandora's rule stopped agreeing with the DP.**
+
+That is the whole reason the theorem is worth checking at every state rather than
+just comparing two RTP numbers: two independent routes to the same policy
+disagreed, and the disagreement said *where*. A band check alone would have
+reported a plausible 93.5% and shipped the bug.
+
+### 3. `pending` had to become a byte of state
+
+`_whoIsLooking` originally tried to derive the broker in flight from the asked
+mask. It cannot: asks may come in **any** order, so the mask says who has been
+paid and not who is currently holding the claim. The five-byte `gameState` grew a
+`pending` byte (`0xFF` for nobody), and the parity suite grew the case that
+exposed it — ask out of index order, and check both sides agree on who is looking.
+
+### 4. The board was linear, and 80% of it was empty
+
+Prices on this floor run 0.35× to 5.00×. Drawn linearly, everything a player
+actually sees is crushed into the bottom fifth of the canvas and the top four
+fifths are reserved for a 0.25% event. Drawn **logarithmically**, equal distances
+are equal multiples — a doubling is 26.07% of the board wherever it sits — which
+is both the honest rendering of a multiplier and a usable one.
+
+Two more scene bugs came out of the same pass: the columns reshuffled every time
+somebody named a price (they are fixed now, in the index's asking order), and the
+house's column was labelled "paid" when the house charges nothing.
+
+### 5. The fees are what hold the band
+
+I2 asks that every reasonable policy sit inside 93–98%. In a search game the fees
+are the only lever that does it, and they work from both ends: large enough that
+asking everybody is a real mistake (**93.946%**), small enough that taking the
+first price offered is not a disaster (**93.500%**). The optimal player takes
+96.9637%, and the whole band is published in the `?` panel, careless end
+included.
+
+### What the third game shares with the first two
+
+The same list as phase 7, now three deep: one light model, four inks, one
+`tokens.css` and `table.css`, one exact-rational library, one PRNG, one audio
+engine, one pacing rule, and one bridge. THE BROKERS' chain adapter is the same
+hundred lines with a different `encodeAction` and `mapSession`; `shared/` still
+does not know how many games are calling it, and no game's core knows the others
+exist.
+
 ---
 
 ## Cross-phase invariants
@@ -805,10 +885,12 @@ is about a hundred lines, and neither game's core knows the other exists.
 These are checked in **every** phase's gate, not just the one that introduced them
 (`claude.md` §2):
 
-- I1 RTP recomputed from each DP — 96.9961% and 97.4141% · I2 sensible band inside 93–98% (and for THE SURVEY, the WHOLE published band)
-- I3 rejection sampling, never `word % n` · I4 decision committed before the next word exists
-- I5 max payout exactly 25× / 20×, reserved with no slack · I6 `onSessionStart` pure & idempotent
+- I1 RTP recomputed from each DP — 96.9961%, 97.4141% and 96.9637% · I2 sensible band inside 93–98% (and for THE SURVEY and THE BROKERS, the WHOLE published band)
+- I3 rejection sampling, never `word % n` · I4 decision committed before the word that answers it exists
+- I5 max payout exactly 25× / 20× / 4.9905×, reserved with no slack · I6 `onSessionStart` pure & idempotent
 - I7 `onRandomness` returns `reservedProfitDelta = 0` · I8 `frame-ancestors *`, no `X-Frame-Options`
 - I9 widget tag exactly once in raw HTML · I10 playable standalone, no host/wallet/modal
 - I11 contract and client agree bit-for-bit · I12 zero audio files, no image > 8 KB
 - I13 THE SURVEY's ship is decided after the call, never before
+- I14 THE BROKERS' optimal policy IS Weitzman's index rule, at every one of the 120 reachable states
+- I15 a broker's price is drawn by the word his own fee bought; `TAKE` draws nothing

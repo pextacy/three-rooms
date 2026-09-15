@@ -14,6 +14,8 @@ import { drawScene, type SceneState, type LotFace } from '../src/games/candle/ap
 import { LOTS } from '../src/games/candle/core/paytable';
 import { INCHES } from '../src/games/candle/core/wax';
 import { drawRoads, type RoadsState, type Manifest } from '../src/games/survey/app/render/roads';
+import { drawFloor, type FloorState } from '../src/games/brokers/app/render/floor';
+import { BROKER_LIST, TOTAL_FEES_BP, PRICE_DENOM } from '../src/games/brokers/core/market';
 import { CARGOES, MAX_SURVEYS } from '../src/games/survey/core/vessel';
 import { isReachable } from '../src/games/survey/core/belief';
 
@@ -193,6 +195,46 @@ results.push(
   },
 );
 
+/**
+ * THE BROKERS' floor. Its heaviest frame is a full board: every man asked, a
+ * price pinned in every column, one of them the jackpot at the top of the scale,
+ * and a pen still moving at a desk.
+ */
+const floorWorst = (time: number): FloorState => ({
+  slips: [
+    { brokerId: null, name: 'the house', priceBp: 8_500, priceText: '0.85×', isBest: false },
+    ...BROKER_LIST.map((broker, i) => ({
+      brokerId: broker.id,
+      name: broker.name,
+      priceBp: [12_500, 12_500, 23_000, 50_000][i] ?? 10_000,
+      priceText: '12.50×',
+      isBest: i === 3,
+    })),
+  ],
+  desks: BROKER_LIST.map((broker, i) => ({
+    brokerId: broker.id,
+    name: broker.name,
+    feeText: `${(broker.feeBp / 100).toFixed(2)}%`,
+    looking: i === 2,
+  })),
+  feesBp: TOTAL_FEES_BP,
+  payoutText: '99.81',
+  settled: false,
+  slipFall: [1, 0.8, 0.6, 0.4, 0.2],
+  time,
+  reducedMotion: false,
+});
+
+console.log(D('\n  case                                p50      p95      p99    worst'));
+results.push(
+  { label: 'the floor, every column full, 1080p', ...measure('the floor, every column full, 1080p', [1920, 1080], floorWorst, drawFloor) },
+  { label: 'the floor, a phone', ...measure('the floor, a phone', [390, 700], floorWorst, drawFloor) },
+  {
+    label: 'the floor, nothing named yet',
+    ...measure('the floor, nothing named yet', [1440, 900], t => ({ ...floorWorst(t), slips: [], feesBp: 0 }), drawFloor),
+  },
+);
+
 console.log(`\n${B('Verdict')}`);
 for (const result of results) {
   check(`${result.label}: p95 under ${BUDGET_MS} ms`, result.p95 < BUDGET_MS, `${result.p95.toFixed(3)} ms`);
@@ -204,6 +246,20 @@ check(`even p99 stays inside the 60 fps frame at ${SIXTY_FPS_MS} ms`, worstP99 <
 // heavy lots would stutter and the player would learn to read the stutter.
 const spread = Math.max(...results.map(r => r.p50)) / Math.max(Math.min(...results.map(r => r.p50)), 1e-9);
 check('every lot costs about the same to draw, so nothing stutters into a tell', spread < 6, `${spread.toFixed(1)}x between the cheapest and dearest frame`);
+
+check('every broker, at every price he names, renders without throwing', (() => {
+  const ctx = stubContext();
+  for (const broker of BROKER_LIST) {
+    for (const quote of broker.quotes) {
+      drawFloor(ctx, 1280, 720, {
+        ...floorWorst(0),
+        slips: [{ brokerId: broker.id, name: broker.name, priceBp: quote.priceBp, priceText: `${(quote.priceBp / PRICE_DENOM).toFixed(2)}×`, isBest: true }],
+      });
+    }
+  }
+  return true;
+})());
+
 check('every reachable survey state renders without throwing', (() => {
   const ctx = stubContext();
   for (const cargo of CARGOES) {

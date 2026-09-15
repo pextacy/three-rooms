@@ -8,7 +8,7 @@
 
 ## 1. What this repo is
 
-**Two** provably-fair on-chain wagering games for **Chain Jam Vol. 1**
+**Three** provably-fair on-chain wagering games for **Chain Jam Vol. 1**
 (<https://jam.chain.wtf>), deadline **2026-09-20 23:59 UTC**, on one origin. Each
 is a SEPARATE ENTRY: its own page, its own `game.manifest.json`, its own
 contract, its own declared RTP. `/` is a lobby and is not an entry.
@@ -30,8 +30,22 @@ condition CANNOT be drawn at the start — it would simply be readable. Reports
 come from the predictive distribution and her condition from the posterior, at
 settlement, out of a word that does not exist until the call is locked in.
 
-Both are dressed from one room — Lloyd's Coffee House, 1728 — and share a light
-model, four inks, a bridge and a chrome (§3).
+**THE BROKERS** — *you hold a claim on a wreck, every man who looks at it charges
+you, and the question is when you have shopped it enough.* The bet object is
+**search with recall** — Weitzman's Pandora's Box. Every price named stays
+available, so the player never loses an offer by looking at one more; what they
+spend is the fee. The optimal rule is an **index**, not a comparison of averages:
+each broker gets a reservation price `z` solving `E[(X − z)⁺] = c`, you ask in
+descending `z`, and you stop when what you hold beats the best remaining index.
+On this floor the index order is the exact REVERSE of the average-price order,
+which is the whole reason the theorem is worth publishing — and it is published,
+in full, in the game's `?` panel. We are not selling an information edge; we are
+selling the ten seconds in which a player decides whether to believe it.
+
+Three decision problems, one sentence: **stop · learn · search**.
+
+All three are dressed from one room — Lloyd's Coffee House, 1728 — and share a
+light model, four inks, a bridge and a chrome (§3).
 
 If you ever find yourself implementing "cash out before it crashes" or "reveal tiles
 until you hit a bomb", **stop** — you have drifted into a genre the jam explicitly
@@ -44,33 +58,37 @@ excludes.
 These are the things that make the entry eligible and correct. A change that
 violates any of them is a bug, no matter how good it looks.
 
-Where an invariant has a number in it, each game has its own — and both are
-checked. A rule that held for one game and was quietly dropped for the second
-would be worse than never having had it.
+Where an invariant has a number in it, each game has its own — and all three are
+checked. A rule that held for one game and was quietly dropped for the next would
+be worse than never having had it.
 
 | # | Invariant | Where it is enforced |
 |---|---|---|
-| I1 | Theoretical RTP under optimal play = **96.9961%** for CANDLE (`7577820426157 / 7812500000000`) and **97.4141%** for THE SURVEY (`60883787 / 62500000`) | `test/rtp.spec.ts`, `test/survey-rtp.spec.ts` — recomputed from each DP, never hardcoded anywhere else |
-| I2 | **Every** reasonable fixed strategy lands inside the jam's 93–98% band. CANDLE's worst sensible policy is 93.577%; THE SURVEY holds the stricter form — **every policy it publishes** is in band, from sending nobody (94.400%) to sending everybody (93.295%) | `test/strategy-band.spec.ts`, `test/survey-rtp.spec.ts` |
-| I3 | Randomness is drawn by **rejection sampling**, never `word % n` | `Candle.sol`, `src/game/rng.ts`, `test/rng.spec.ts` |
-| I4 | The player's decision at inch *k* is committed **before** the word for inch *k+1* exists | contract state machine |
-| I5 | Max payout is exactly **25× stake** (CANDLE) / **20×** (THE SURVEY), and `onSessionStart` reserves `+24×` / `+19×` so the facet's cap (`escrowedStake + reservedProfit`) meets it with no slack | `Candle.sol`, `Survey.sol`, `test/caps.spec.ts`, `test/survey-parity.spec.ts` |
+| I1 | Theoretical RTP under optimal play = **96.9961%** for CANDLE (`7577820426157 / 7812500000000`), **97.4141%** for THE SURVEY (`60883787 / 62500000`) and **96.9637%** for THE BROKERS (`1551418623 / 1600000000`) | `test/rtp.spec.ts`, `test/survey-rtp.spec.ts`, `test/brokers-rtp.spec.ts` — recomputed from each DP, never hardcoded anywhere else |
+| I2 | **Every** reasonable fixed strategy lands inside the jam's 93–98% band. CANDLE's worst sensible policy is 93.577%; THE SURVEY and THE BROKERS hold the stricter form — **every policy they publish** is in band, THE BROKERS from taking the house's first price (93.500%) to asking everybody (93.946%) | `test/strategy-band.spec.ts`, `test/survey-rtp.spec.ts`, `test/brokers-rtp.spec.ts` |
+| I3 | Randomness is drawn by **rejection sampling**, never `word % n` | `Candle.sol`, `Survey.sol`, `Brokers.sol`, `src/shared/rng.ts`, `test/rng.spec.ts` |
+| I4 | The player's decision is committed **before** the word that answers it exists — the next inch in CANDLE, the ship's condition in THE SURVEY, a broker's price in THE BROKERS | contract state machines; on chain in every `round-trip:*` |
+| I5 | Max payout is exactly **25× stake** (CANDLE) / **20×** (THE SURVEY) / **4.9905×** (THE BROKERS — the best price on the floor, less the fee of the only man who names it), and `onSessionStart` reserves the whole win above the stake so the facet's cap (`escrowedStake + reservedProfit`) meets it with no slack | `Candle.sol`, `Survey.sol`, `Brokers.sol`, `test/caps.spec.ts`, `test/survey-parity.spec.ts`, `test/brokers-parity.spec.ts` |
 | I6 | `onSessionStart` is a **pure function of `(wagerBase, gameData)`** and idempotent (production calls it twice, once with `sessionId == 0`) | `Candle.sol` — free, because every hook is `view` and the contract is stateless (`docs.md` §7.3.5) |
 | I7 | `onRandomness` and `onPlayerAction` return `reservedProfitDelta = 0` — the reserve is taken **once**, at session start, and released **never** | `Candle.sol`, `docs.md` §7.3.3 |
 | I8 | The page serves `Content-Security-Policy: frame-ancestors *` and **no** `X-Frame-Options` | `vercel.json`, checked in CI against the live origin |
 | I9 | The jam widget `<script>` appears **exactly once** in the raw HTML (not injected by JS) | `index.html`, grep test in CI |
 | I10 | The page is fully playable standalone with no host, no wallet, no modal, no splash | `src/bridge/demoHost.ts` |
-| I11 | Contract math and client math agree bit-for-bit on every reachable state | `test/parity.spec.ts`, `test/survey-parity.spec.ts`, and live in `npm run round-trip` / `round-trip:survey` |
+| I11 | Contract math and client math agree bit-for-bit on every reachable state | `test/parity.spec.ts`, `test/survey-parity.spec.ts`, `test/brokers-parity.spec.ts`, and live in `npm run round-trip` / `round-trip:survey` / `round-trip:brokers` |
 | I13 | THE SURVEY's ship is decided **after** the call, never before: the settling word is requested by `UNDERWRITE` and `DECLINE` needs none at all | `Survey.sol`, `test/survey-host.spec.ts`, and on chain in `npm run round-trip:survey` |
+| I14 | THE BROKERS' optimal policy **is** Weitzman's index rule — not approximately, at every one of the 120 reachable states — and the index is published in full, asking order included | `src/games/brokers/core/weitzman.ts`, `npm run verify:brokers`, `test/brokers-rtp.spec.ts` |
+| I15 | A broker's price is drawn by the word **his own fee bought**: it does not exist while the player is deciding whether to pay him, and `TAKE` draws nothing at all | `Brokers.sol`, `test/brokers-host.spec.ts`, and on chain in `npm run round-trip:brokers` |
 | I12 | Zero audio files, zero image files above 8 KB — everything synthesised or drawn | bundle-size gate in CI |
 
 If you need to change a number, change it in **one** place —
-`src/games/candle/core/paytable.ts` or `src/games/survey/core/vessel.ts` —
-regenerate the Solidity with `npm run gen:constants` / `npm run gen:survey`,
-regenerate the documents with `npm run gen:readme`, and let the tests tell you
-what broke. Never hand-edit the generated Solidity, and never type a number into
-a contract that a DP could have produced: THE SURVEY's declared RTP is
-`SurveyManifest.RTP_NUM / RTP_DEN` for exactly that reason.
+`src/games/candle/core/paytable.ts`, `src/games/survey/core/vessel.ts` or
+`src/games/brokers/core/market.ts` — regenerate the Solidity with
+`npm run gen:constants` / `gen:survey` / `gen:brokers`, regenerate the documents
+with `npm run gen:readme` and `gen:demo`, and let the tests tell you what broke.
+Never hand-edit the generated Solidity, and never type a number into a contract
+that a DP could have produced: THE SURVEY's and THE BROKERS' declared RTPs are
+`RTP_NUM / RTP_DEN` out of their generated libraries for exactly that reason, and
+so is `MAX_PAYOUT_BP`.
 
 ---
 
@@ -80,14 +98,17 @@ a contract that a DP could have produced: THE SURVEY's declared RTP is
 ├── contracts/
 │   ├── Candle.sol            ICasinoGameV2. Solidity 0.8.30. No constructor
 │   ├── Survey.sol            args, no storage, no unbounded loops.
-│   └── generated/            gen:constants / gen:survey output. NEVER hand-edited.
+│   ├── Brokers.sol
+│   └── generated/            gen:constants / gen:survey / gen:brokers output.
+│                             NEVER hand-edited.
 ├── index.html                the LOBBY. Not an entry: no jam widget, no metrics.
-├── candle/index.html         an entry's page
-├── survey/index.html         the other entry's page
+├── candle/index.html         one entry's page
+├── survey/index.html         the next
+├── brokers/index.html        and the third
 ├── src/
 │   ├── lobby/                the door. No balance, no deposit, no wallet.
-│   ├── shared/               what BOTH games use, and nothing that knows which
-│   │   │                     game is calling
+│   ├── shared/               what ALL THREE games use, and nothing that knows
+│   │   │                     which game is calling
 │   │   ├── bridge/           host.ts (GameHost<S, A>, generic over a session),
 │   │   │                     chain.ts (the whole penpal path), prng.ts
 │   │   ├── render/light.ts   the measurable light model, in basis points
@@ -104,7 +125,8 @@ a contract that a DP could have produced: THE SURVEY's declared RTP is
 ├── public/<slug>/
 │   └── game.manifest.json    one per entry, beside its page (that EXACT filename)
 ├── test/
-├── scripts/                  verify-rtp, verify-survey, gen-*, gates, play*
+├── scripts/                  verify-rtp, verify-survey, verify-brokers, gen-*,
+│                             gates, play*, round-trip*
 ├── spikes/                   throwaway SDK spikes + their .sol. Deleted after use.
 ├── sdk/casino-sdk/           the downloaded SDK. Not vendored, not committed.
 ├── docs/                     docs.md  prd.md  plan.md  phases.md  claude.md
@@ -151,9 +173,11 @@ judge will read.
 Run, in this order, and paste the output into the PR/commit body:
 ```
 npm run typecheck
-npm test              # unit + parity + strategy band, both games
+npm test              # unit + parity + strategy band, all three games
 npm run verify:rtp    # CANDLE's DP, all 30 reachable (inch, lot) states
 npm run verify:survey # THE SURVEY's, all 126 (cargo, surveys, margin) states
+npm run verify:brokers # THE BROKERS', all 120 (askedMask, bestPrice) states —
+                      # and that Pandora's rule IS the DP at every one of them
 npm run gates         # bundle size, CSP, widget tags, manifests, storage
 ```
 A red gate is a failure. Do not "fix" a gate by loosening it.
@@ -173,7 +197,12 @@ One direction sentence, and everything obeys it:
   head: a 1.5% change in luminance is invisible and inside 8-bit rounding, and a
   claim a reviewer cannot measure is one we do not make (`app/daylight.ts`). Its
   second measurable claim is the FOG: the ink over the ship is exactly
-  `1 − P(the better call is right)`.
+  `1 − P(the better call is right)`. THE BROKERS dims on what the day has COST:
+  all four fees together are 14.7% of the stake, so the room falls to 70% across
+  a whole round and no further — one honest range rather than a dramatic one. Its
+  own second measurable claim is the floor itself, which is **logarithmic**, so
+  equal distances up the board are equal multiples of the stake (a doubling is
+  26.07% of the board wherever it sits).
   The general rule: When the candle is down to its
   last inch the room is genuinely dim. A player must be able to read how much the
   prize has decayed **without reading a number**. The number is there too, but it
@@ -190,8 +219,9 @@ One direction sentence, and everything obeys it:
 - **Zero clicks to comprehension.** On load the player sees the whole position
   and the switches: in CANDLE the lot, its face value, the candle with five pins
   and the payout if claimed now; in THE SURVEY the manifest, what underwriting
-  and declining each pay, and where the reports stand. No tutorial, no modal, no
-  connect-wallet.
+  and declining each pay, and where the reports stand; in THE BROKERS the whole
+  floor at once — every man, his fee, and the price in hand against what selling
+  it now would pay. No tutorial, no modal, no connect-wallet.
 
 ### Audio law
 - Three synthesis graphs, no files: **room** (coffee-house noise bed, filtered),
@@ -201,7 +231,10 @@ One direction sentence, and everything obeys it:
   face value, so an experienced player hears a good lot before they read it. In
   THE SURVEY the bell is the BELIEF — a report rings at a pitch set by the
   posterior the reports now add up to, so a disagreeing pair rings the same note
-  twice — and the report's own direction is carried by timbre instead.
+  twice — and the report's own direction is carried by timbre instead. In THE
+  BROKERS the pitch is the PRICE and the interval says whether it beat the one
+  you already hold, so a man who names something worthless is heard as such
+  before the number lands.
 - Muted by default is **not** acceptable — unmuted with a visible, one-key toggle.
 
 ---
@@ -214,7 +247,10 @@ One direction sentence, and everything obeys it:
 - Never congratulate the player for a bad decision.
 - All UI copy lives in each game's `app/ui/copy.ts`. No string literals in
   components. THE SURVEY's voice is the underwriter's, not the auctioneer's:
-  "Underwritten after the second survey. She was rotten." Never "you lose".
+  "Underwritten after the second survey. She was rotten." THE BROKERS' is the
+  floor's: "Sold at 1.02x, the house's own price. 4.2% in fees." Never "you
+  lose" — and in THE BROKERS there is no losing state to name: the worst the
+  game can do is 0.7030x.
 
 ---
 

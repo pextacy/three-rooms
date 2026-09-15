@@ -26,6 +26,21 @@ import {
   meanSurveys,
   cargoProbability,
 } from '../src/games/survey/core/solve';
+import {
+  BROKER_LIST as MARKET,
+  HOUSE as HOUSE_QUOTES,
+  WEIGHT_DENOM as BROKER_WEIGHT_DENOM,
+  PRICE_DENOM as BROKER_PRICE_DENOM,
+  feesForMask,
+  payoutBase,
+} from '../src/games/brokers/core/market';
+import { drawHousePrice, drawQuote } from '../src/games/brokers/core/draw';
+import {
+  solve as solveBrokers,
+  optimalPolicy as brokersOptimal,
+  roundShape,
+  probabilityAtLeast as brokersProbabilityAtLeast,
+} from '../src/games/brokers/core/solve';
 import * as R from '../src/shared/math/rational';
 
 const N = Number(process.env['BENCH_N'] ?? 10_000_000);
@@ -35,6 +50,12 @@ const N = Number(process.env['BENCH_N'] ?? 10_000_000);
  * many voyages. Still 10^6, which bounds every reachable margin to five sigma.
  */
 const SURVEY_N = Number(process.env['BENCH_SURVEY_N'] ?? Math.max(Math.floor(N / 10), 1_000));
+/**
+ * THE BROKERS costs at most five draws a round — the house, and one a broker —
+ * and its payout is bounded by 4.99x, so the same tenth of the budget bounds it
+ * far tighter than THE SURVEY's 20x cargo does.
+ */
+const BROKERS_N = Number(process.env['BENCH_BROKERS_N'] ?? Math.max(Math.floor(N / 10), 1_000));
 const MASK = (1n << 256n) - 1n;
 
 /** A cheap 256-bit stream. Deterministic, so a failure is reproducible. */
@@ -52,6 +73,13 @@ function makeStream(seed: bigint): () => bigint {
     }
     return out & MASK;
   };
+}
+
+/** How many brokers a mask has been spent on. */
+function popcount32(mask: number): number {
+  let n = 0;
+  for (let m = mask; m !== 0; m &= m - 1) n += 1;
+  return n;
 }
 
 /** The bench never exhausts 16 windows, but the path must still be total. */
@@ -287,6 +315,145 @@ console.log(D(`${SURVEY_N.toLocaleString('en-US')} voyages under optimal play\n`
     pSoundOverall > 0.5,
     'the DP never takes a risk it believes against',
   );
+}
+
+// ------------------------------------------------------------- THE BROKERS
+console.log(`\n${B('THE BROKERS — the day on the floor, dealt for real')}`);
+console.log(
+  D(
+    `  ${BROKERS_N.toLocaleString('en-US')} rounds under Pandora's rule: the house opens, the index picks who to`,
+  ),
+);
+console.log(D('  ask next, and the fees come out of whatever the best price turns out to be.'));
+{
+  const brokers = solveBrokers();
+  const policy = brokersOptimal(brokers);
+  const shape = roundShape(policy);
+  const next = makeStream(0xb204e25n);
+  const started = Date.now();
+
+  /** The stake, in base units. A round pays `payoutBase` of it, exactly as the contract does. */
+  const STAKE = 1_000_000_000_000n;
+  let totalPaid = 0n;
+  let secondMoment = 0;
+  let asked = 0;
+  const askedCounts = new Float64Array(MARKET.length + 1);
+  let keptTheHouse = 0;
+  let atLeastDouble = 0;
+  const housePrices = new Map<number, number>();
+  const quotePrices = MARKET.map(() => new Map<number, number>());
+  const timesAsked = new Float64Array(MARKET.length);
+
+  for (let i = 0; i < BROKERS_N; i++) {
+    const opening = drawHousePrice(next(), 0, rehash);
+    const housePrice = opening.priceBp;
+    housePrices.set(housePrice, (housePrices.get(housePrice) ?? 0) + 1);
+
+    let mask = 0;
+    let best = housePrice;
+    for (;;) {
+      const choice = policy(mask, best);
+      if (choice === null || mask & (1 << choice.id)) break;
+      timesAsked[choice.id]! += 1;
+      const quote = drawQuote(choice.id, next(), 0, rehash);
+      quotePrices[choice.id]!.set(quote.priceBp, (quotePrices[choice.id]!.get(quote.priceBp) ?? 0) + 1);
+      mask |= 1 << choice.id;
+      if (quote.priceBp > best) best = quote.priceBp;
+    }
+
+    const k = popcount32(mask);
+    asked += k;
+    askedCounts[k]! += 1;
+    if (best === housePrice) keptTheHouse += 1;
+
+    const paid = payoutBase(STAKE, best, feesForMask(mask));
+    totalPaid += paid;
+    const asMultiple = Number(paid) / Number(STAKE);
+    if (asMultiple >= 2) atLeastDouble += 1;
+    secondMoment += asMultiple * asMultiple;
+  }
+
+  const meanRtp = Number(totalPaid) / Number(STAKE * BigInt(BROKERS_N));
+  const declared = R.toNumber(brokers.rtp);
+  const sd = Math.sqrt(Math.max(secondMoment / BROKERS_N - meanRtp ** 2, 0));
+  const tolerance = Math.max((5 * sd) / Math.sqrt(BROKERS_N), 0.0002);
+  check(
+    'simulated RTP lands on the declared RTP',
+    Math.abs(meanRtp - declared) < tolerance,
+    `${(meanRtp * 100).toFixed(4)}% vs ${(declared * 100).toFixed(4)}%, tolerance ±${(tolerance * 100).toFixed(4)}pp, sd ${sd.toFixed(3)} (${((Date.now() - started) / 1000).toFixed(1)}s)`,
+  );
+
+  const meanAsked = asked / BROKERS_N;
+  const exactAsked = R.toNumber(shape.meanAsked);
+  check(
+    'mean brokers asked',
+    Math.abs(meanAsked - exactAsked) < 0.02,
+    `${meanAsked.toFixed(4)} vs ${exactAsked.toFixed(4)}`,
+  );
+
+  for (let k = 0; k <= MARKET.length; k++) {
+    const want = R.toNumber(shape.asked[k] ?? R.ZERO);
+    if (want === 0) continue;
+    const observed = askedCounts[k]! / BROKERS_N;
+    const tol = Math.max(5 * Math.sqrt((want * (1 - want)) / BROKERS_N), 1e-4);
+    check(
+      `${k} asked in ${(want * 100).toFixed(2)}% of rounds`,
+      Math.abs(observed - want) < tol,
+      `observed ${(observed * 100).toFixed(4)}%`,
+    );
+  }
+
+  {
+    const want = R.toNumber(shape.keptTheHouse);
+    const observed = keptTheHouse / BROKERS_N;
+    const tol = Math.max(5 * Math.sqrt((want * (1 - want)) / BROKERS_N), 1e-4);
+    check(
+      `nobody beats the house's own price in ${(want * 100).toFixed(2)}% of rounds`,
+      Math.abs(observed - want) < tol,
+      `observed ${(observed * 100).toFixed(4)}%`,
+    );
+  }
+
+  {
+    const want = R.toNumber(brokersProbabilityAtLeast(policy, R.rat(2n)));
+    const observed = atLeastDouble / BROKERS_N;
+    const tol = Math.max(5 * Math.sqrt((want * (1 - want)) / BROKERS_N), 1e-4);
+    check(
+      `the round doubles the stake ${(want * 100).toFixed(2)}% of the time`,
+      Math.abs(observed - want) < tol,
+      `observed ${(observed * 100).toFixed(4)}%`,
+    );
+  }
+
+  console.log(`\n${B('And every man on the floor names his prices as often as the sheet says')}`);
+  const houseTotal = BROKERS_N;
+  for (const quote of HOUSE_QUOTES) {
+    const want = quote.weight / BROKER_WEIGHT_DENOM;
+    const observed = (housePrices.get(quote.priceBp) ?? 0) / houseTotal;
+    const tol = Math.max(5 * Math.sqrt((want * (1 - want)) / houseTotal), 1e-4);
+    check(
+      `the house at ${(quote.priceBp / BROKER_PRICE_DENOM).toFixed(2)}×: ${(want * 100).toFixed(2)}%`,
+      Math.abs(observed - want) < tol,
+      `observed ${(observed * 100).toFixed(4)}% over ${houseTotal.toLocaleString('en-US')} openings`,
+    );
+  }
+  for (const broker of MARKET) {
+    const n = timesAsked[broker.id]!;
+    if (n < 1_000) {
+      console.log(D(`  ${broker.name} was asked ${n.toLocaleString('en-US')} times — too few to bound`));
+      continue;
+    }
+    for (const quote of broker.quotes) {
+      const want = quote.weight / BROKER_WEIGHT_DENOM;
+      const observed = (quotePrices[broker.id]!.get(quote.priceBp) ?? 0) / n;
+      const tol = Math.max(5 * Math.sqrt((want * (1 - want)) / n), 1e-4);
+      check(
+        `${broker.name} at ${(quote.priceBp / BROKER_PRICE_DENOM).toFixed(2)}×: ${(want * 100).toFixed(2)}%`,
+        Math.abs(observed - want) < tol,
+        `observed ${(observed * 100).toFixed(4)}% over ${n.toLocaleString('en-US')} asks`,
+      );
+    }
+  }
 }
 
 console.log(`\n${failed === 0 ? '\x1b[32mBENCH GREEN\x1b[0m' : '\x1b[31mBENCH RED\x1b[0m'}  ${failed} failed\n`);

@@ -72,7 +72,7 @@ try {
 
   // The embeddable things are the GAME pages. `/` is the lobby and is not an
   // entry — the gallery never frames it, and it carries no widget.
-  const ENTRIES = ['candle', 'survey'];
+  const ENTRIES = ['candle', 'survey', 'brokers'];
   let gameUrl = '';
 
   for (const slug of ENTRIES) {
@@ -124,7 +124,7 @@ try {
           `<iframe src="${new URL(`/${slug}/`, origin).toString()}" width="420" height="620" style="border:1px solid #333"></iframe></figure>`,
       ).join('');
       res2.end(`<!doctype html><title>gallery stand-in</title>
-<p style="font:14px system-ui">If both games render below, the headers are right.</p>
+<p style="font:14px system-ui">If every game renders below, the headers are right.</p>
 <div style="display:flex;gap:16px;flex-wrap:wrap">${frames}</div>`);
     });
     await new Promise(resolve => hostServer.listen(HOST_PORT, resolve));

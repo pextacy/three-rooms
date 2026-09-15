@@ -1,13 +1,17 @@
 # DOCS — technical reference
 
-**v1.1 · 2026-09-15** — two entries on one origin.
+**v1.2 · 2026-09-15** — three entries on one origin.
 Companion to `prd.md` (what & why), `claude.md` (working rules), `plan.md` (schedule).
 
 Sections 1–9 were written for CANDLE and still describe it. **§10 is THE SURVEY**:
 what it shares (everything structural), what is its own (its maths, its scene, its
 voice), and the one place where it is not merely CANDLE with different nouns — the
 reversed generative order, which is why a `view`-only contract that emits its whole
-state can still hide whether a ship is sound.
+state can still hide whether a ship is sound. **§11 is THE BROKERS**, whose own
+such place is the opposite: it hides nothing at all, and its interest is that the
+optimal policy is a published theorem the player is invited to disbelieve.
+
+Three decision problems, one sentence: **stop · learn · search**.
 
 ---
 
@@ -1034,3 +1038,129 @@ nobody and sending everybody. That is a stricter form of I2 than CANDLE manages
 and it is the constraint the manifest was tuned around: sharper evidence pays the
 careful player out of the top of the band and drops the careless one below the
 bottom of it. `docs/phases.md` §7 records the search.
+
+---
+
+## 11. THE BROKERS
+
+The third entry. Same origin, same room, same everything structural — and a third
+bet object: **search with recall**, which is Weitzman's Pandora's Box (1979).
+
+### 11.1 What it shares, unchanged
+
+Everything §10.1 lists: `shared/bridge`, `shared/render/light.ts`,
+`shared/audio/engine.ts` and `pacing.ts`, `shared/math/rational.ts`,
+`shared/rng.ts`, `shared/ui/`. Its React shell, `?` panel and log are the same
+shapes as the other two, under the same rules — the contract is the only
+authority, the host owns the balance, nothing is written to browser storage.
+
+### 11.2 The core (`src/games/brokers/core/`)
+
+| File | What it holds |
+|---|---|
+| `market.ts` | THE FLOOR: the house's two opening prices, four brokers, their fees and quote ladders, `MAX_PAYOUT_BP`, and the one payout rule. |
+| `weitzman.ts` | The reservation price `z`, solved in CLOSED FORM; the surplus `E[(X − z)⁺]`; the index, the asking order, and `pandoraChoice`. |
+| `draw.ts` | Where randomness enters. One word per price named. Mirrors `Brokers.sol` window for window. |
+| `round.ts` | `(state, input) -> state`. OPENING → SHOPPING → SETTLED. `TAKE` is legal at every point. |
+| `solve.ts` | The DP over `(askedMask, bestPrice)`, the policies, the strategy band, and the round's shape. |
+
+### 11.3 The index, and why it is the whole game
+
+A broker's reservation price `z` is the price at which you are indifferent
+between asking him and not:
+
+```
+E[(X − z)⁺] = c          X = what he might name, c = his fee
+```
+
+Weitzman's theorem: **ask in descending `z`, and stop as soon as what you hold
+beats the best remaining `z`.** That rule is optimal — not a heuristic, and not
+an approximation of the dynamic program. It IS the dynamic program.
+
+The left-hand side is piecewise linear in `z`, so the solution is closed form on
+whichever segment it lands in:
+
+```
+z = (Σ_{p > z} w·p − c) / Σ_{p > z} w
+```
+
+`npm run verify:brokers` solves it, checks both sides of the defining equation
+exactly as rationals, and then checks the rule against the DP **at all 120
+reachable states** — the line that reads `PANDORA'S RULE IS THE DYNAMIC
+PROGRAM`.
+
+The floor is tuned so the index order is the exact **reverse** of the
+average-price order. Delane names the worst average price on the floor (0.4995×)
+and goes first; Stubbs names the best (0.7490×) and is the last man worth asking.
+That is not decoration: a player who ranks the brokers by what they average — the
+rule anyone invents on round three — asks in precisely the wrong order, and that
+rule is published in the band at 93.500%, next to the optimal 96.9637%.
+
+### 11.4 Nothing is hidden, and that is the design
+
+THE SURVEY needs its reversed generative order because a `view`-only contract
+that emits its whole state cannot hold a secret. THE BROKERS has no secret to
+hold. What a broker will say is simply **not yet drawn**: the word for his price
+is requested by the action that asks him, so it does not exist while the player
+is deciding whether to pay his fee (I4, I15). `TAKE` draws nothing at all and
+settles in the same transaction.
+
+So the `?` panel publishes the optimal rule in full — every index, the asking
+order, the whole band. The game is not selling an information edge over the
+player. It is selling the ten seconds in which they decide whether to believe a
+theorem that says the cheapest-looking man is the right one to pay first.
+
+### 11.5 `gameState`, five bytes
+
+`abi.encodePacked(uint16 bestBp, uint8 askedMask, uint8 pending, uint8 phase)`.
+
+`bestBp` is the state, not the list of prices: recall means every price named
+stays available, so you would only ever take the best one and what the others
+said cannot change a decision. The list is carried in the client for the UI and
+never for a decision.
+
+`pending` is the broker whose word is in flight, `0xFF` for nobody. It exists
+because asks may come in any order, so the mask alone cannot say who is holding
+the claim.
+
+### 11.6 The scene, and what it claims
+
+Two claims, both measurable, both checked by `npm run verify:light` and
+`test/brokers-scene.spec.ts`:
+
+- **Distance is the ratio.** The price board is logarithmic, so equal distances
+  are equal multiples of the stake: a doubling is 26.07% of the board wherever it
+  sits — at 0.40→0.80× and at 2.30→4.60× alike. A linear board wasted 80% of the
+  canvas on prices nobody names.
+- **The light is what the day has cost.** The room dims with the fees owed, from
+  full flame at 0% to 70% once every man has been paid — 30% of the light for
+  14.7% of the stake. One honest range rather than a dramatic one.
+
+Five columns, fixed: the house and the four brokers in the order they stand on
+the floor, which is the order the keys `1`–`4` ask them in. A man keeps his
+column whether or not he has named anything, so the board never reshuffles under
+the player — an earlier version packed the slips left and moved everything on
+every ask. The canvas reserves the bottom of
+its box for the DOM readout and draws nothing there — the same rule as §10.5, and
+for the same reason.
+
+### 11.7 The numbers
+
+| | |
+|---|---|
+| Declared RTP, optimal play | **96.9637%** = `1551418623 / 1600000000` |
+| House edge | 3.0363% |
+| Maximum payout | 4.9905× — the best price on the floor, less the fee of the only man who names it |
+| Minimum payout | 0.7030× — **there is no losing state in this game** |
+| The house's opening price | 0.85× or 1.02×, evens, for no fee |
+| All four fees together | 14.70% of the stake |
+| Mean brokers asked | 2.735 |
+| Kept the house's own price | 65.5% |
+| Published band | 93.500% (take what the house names) … 96.964% (the index) |
+
+**Every** published policy is inside the jam's 93–98% window — the same stricter
+form of I2 that THE SURVEY holds. The fees are what hold it there: they are large
+enough that asking everybody is a real mistake (93.946%) and small enough that
+taking the first price is not a disaster (93.500%). `docs/phases.md` §8 records
+the search, including the version where a flat opening offer made the decision
+worthless.

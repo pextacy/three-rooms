@@ -437,6 +437,27 @@ document head
 browser storage
   ✓ src/ uses no localStorage, sessionStorage or indexedDB
 
+the how pages
+  ✓ public/candle/how/index.html exists and is marked generated
+  ✓ candle's how page carries NO widget — it is not an entry  the widget marks a submission, and this page is not submitted
+  ✓ candle's how page ships no JavaScript at all  a document that needs a framework to print a table is one that can break
+  ✓ candle's how page links back to the list
+  ✓ candle's how page links into the game
+  ✓ candle's how page prints a declared return and its exact fraction
+  ✓ public/survey/how/index.html exists and is marked generated
+  ✓ survey's how page carries NO widget — it is not an entry  the widget marks a submission, and this page is not submitted
+  ✓ survey's how page ships no JavaScript at all  a document that needs a framework to print a table is one that can break
+  ✓ survey's how page links back to the list
+  ✓ survey's how page links into the game
+  ✓ survey's how page prints a declared return and its exact fraction
+  ✓ public/brokers/how/index.html exists and is marked generated
+  ✓ brokers's how page carries NO widget — it is not an entry  the widget marks a submission, and this page is not submitted
+  ✓ brokers's how page ships no JavaScript at all  a document that needs a framework to print a table is one that can break
+  ✓ brokers's how page links back to the list
+  ✓ brokers's how page links into the game
+  ✓ brokers's how page prints a declared return and its exact fraction
+  ✓ one stylesheet serves all three, rather than three copies of it  public/how.css
+
 manifests
   ✓ candle: game.manifest.json parses
   ✓ candle: schemaVersion/apiVersion are 1
@@ -488,7 +509,7 @@ generated documents
   ✓ a licence is present, so the source can actually be shared
 
 bundle
-  ✓ bundle < 150 KB gzipped  127.6 KB gzipped
+  ✓ bundle < 150 KB gzipped  139.7 KB gzipped
   ✓ zero audio files (everything synthesised)
   ✓ no image over 8 KB
   ✓ dist/candle/game.manifest.json sits beside its page
@@ -496,7 +517,7 @@ bundle
   ✓ dist/brokers/game.manifest.json sits beside its page
   ✓ the lobby exists and is not itself an entry
 
-GATES GREEN  84 passed, 0 failed
+GATES GREEN  103 passed, 0 failed
 ```
 
 And the frame budget, against a 12 ms p95:
@@ -504,16 +525,16 @@ And the frame budget, against a 12 ms p95:
 ```
 
   case                                p50      p95      p99    worst
-  a burn at the flare, 1080p        0.004    0.008    0.013    0.211
-  the flare, a phone                0.004    0.005    0.007    0.260
-  an empty crate, first inch        0.003    0.005    0.005    0.012
-  waiting for a word                0.003    0.003    0.004    0.012
+  a burn at the flare, 1080p        0.004    0.006    0.012    0.210
+  the flare, a phone                0.004    0.006    0.012    0.119
+  an empty crate, first inch        0.003    0.005    0.006    0.105
+  waiting for a word                0.003    0.003    0.004    0.089
 
   case                                p50      p95      p99    worst
-  the roads, fog and a boat, 1080p    0.006    0.010    0.013    0.107
-  the roads, a phone                0.006    0.007    0.012    0.096
-  a settled voyage, no fog          0.005    0.006    0.008    0.086
-  waiting for the manifest          0.005    0.006    0.008    0.099
+  the roads, fog and a boat, 1080p    0.006    0.010    0.013    0.122
+  the roads, a phone                0.006    0.007    0.011    0.086
+  a settled voyage, no fog          0.005    0.006    0.009    0.091
+  waiting for the manifest          0.005    0.005    0.008    0.069
 
 ```
 

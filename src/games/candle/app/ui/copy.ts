@@ -96,6 +96,14 @@ export const COPY = {
   bandNote:
     'This is a game with a decision, so the return depends on how you play it. The whole band is published, including the careless end.',
   verifyNote: 'Every number here is recomputed by npm run verify:rtp from the paytable.',
+  /**
+   * The full write-up lives on its own page, not in this panel and not on the
+   * door. It opens in a NEW TAB on purpose: inside a host this game is an
+   * iframe, and navigating it away mid-round would throw away a session the
+   * player has already staked.
+   */
+  howHref: '/candle/how/',
+  howLink: 'Read the whole model',
 
   // --- keyboard -----------------------------------------------------------
   keyboardTitle: 'Keyboard',

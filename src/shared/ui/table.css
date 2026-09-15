@@ -634,3 +634,22 @@ kbd {
 [data-room='floor'] .readout__line {
   letter-spacing: 0.2em;
 }
+
+/*
+  The way out of the panel and onto the game's own page.
+
+  A new tab, always: inside a host this game is an iframe with a staked session
+  in it, and navigating that iframe away to read a derivation would throw the
+  round away. The link is quiet — it is an exit, not an offer.
+*/
+.panel__away {
+  color: var(--brass);
+  text-decoration: none;
+  border-bottom: 1px solid rgb(from var(--brass) r g b / 0.4);
+  white-space: nowrap;
+}
+
+.panel__away:hover,
+.panel__away:focus-visible {
+  border-bottom-color: currentColor;
+}

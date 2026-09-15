@@ -16,7 +16,13 @@ export type GameEntry = {
   readonly line: string;
   /** The decision primitive, named. This is the novelty claim. */
   readonly primitive: string;
-  /** Where it comes from, so the claim can be checked. */
+  /** Where it comes from, in one line — the List has room for one line. */
+  readonly source: string;
+  /**
+   * The long form, for that game's own `how` page. It used to be printed on the
+   * door, which is how the door ended up carrying three essays nobody had asked
+   * for yet.
+   */
   readonly provenance: string;
   readonly rtp: string;
   readonly maxPayout: string;
@@ -38,6 +44,7 @@ export const GAMES: readonly GameEntry[] = [
     name: 'THE BROKERS',
     line: 'You hold a claim on a wreck. Every man who looks at it charges you. When have you shopped it enough?',
     primitive: 'Search with recall',
+    source: 'Weitzman’s Pandora’s Box, 1979',
     provenance:
       "Pandora's Box — Weitzman's 1979 index, one of the foundational results of search theory. Every price you are named stays on the table, so nothing is ever lost but the fees; the rule that solves it says the broker with the best average price is the LAST one worth asking.",
     rtp: '96.9637%',
@@ -51,6 +58,7 @@ export const GAMES: readonly GameEntry[] = [
     name: 'THE SURVEY',
     line: 'A ship lies in the roads. Every surveyor you send costs you. When have you seen enough?',
     primitive: 'Sequential hypothesis testing',
+    source: 'Wald’s sequential analysis, 1945',
     provenance:
       "Wald's problem, with a priced stopping rule. You are not guessing a number and not refusing offers — you are buying evidence, and the only question is when you have bought enough. Every published way of playing it returns between 93% and 98%, from sending nobody to sending everybody.",
     rtp: '97.4141%',
@@ -64,6 +72,7 @@ export const GAMES: readonly GameEntry[] = [
     name: 'CANDLE',
     line: 'A lot is on the table. The candle is burning. Every inch you wait is worth less.',
     primitive: 'Discounted optimal stopping',
+    source: 'Gilbert and Mosteller, 1966',
     provenance: 'The Gilbert–Mosteller full-information problem, with a deterministic decay and a forced acceptance at the horizon.',
     rtp: '96.9961%',
     maxPayout: '25×',

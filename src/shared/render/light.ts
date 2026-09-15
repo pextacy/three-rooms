@@ -344,6 +344,45 @@ export function paletteAtWax(waxBp: number, room: Room = CANDLELIGHT): Palette {
   };
 }
 
+/**
+ * The same ink, dark enough to hold on paper.
+ *
+ * The three rooms are lit; the List that fronts them is PRINTED, and an ink
+ * chosen to glow at 4.85:1 against a black room is far too pale at 4.5:1
+ * against a sheet. Rather than picking three new colours by eye — which is how a
+ * palette stops being derived and starts being decoration — each room's money
+ * ink is walked down its own luminance until it clears the ratio asked for.
+ *
+ * Hue and chroma are preserved: only luminance moves, in linear light, so what
+ * comes back is recognisably the same pigment seen on paper instead of in a
+ * dark room. Returns the ink untouched if it already clears.
+ */
+export function inkOnPaper(ink: Rgb, sheet: Rgb, ratio = 4.5): Rgb {
+  if (contrastRatio(ink, sheet) >= ratio) return ink;
+
+  const base = toLinear(ink);
+  // 64 halvings takes any ink to black, which clears any ratio a light sheet can
+  // ask for, so this cannot fail to terminate or fall out without an answer.
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 64; i++) {
+    const mid = (lo + hi) / 2;
+    const tried = {
+      r: clampByte(linearToSrgb((base[0] ?? 0) * mid) * 255),
+      g: clampByte(linearToSrgb((base[1] ?? 0) * mid) * 255),
+      b: clampByte(linearToSrgb((base[2] ?? 0) * mid) * 255),
+    };
+    if (contrastRatio(tried, sheet) >= ratio) lo = mid;
+    else hi = mid;
+  }
+
+  return {
+    r: clampByte(linearToSrgb((base[0] ?? 0) * lo) * 255),
+    g: clampByte(linearToSrgb((base[1] ?? 0) * lo) * 255),
+    b: clampByte(linearToSrgb((base[2] ?? 0) * lo) * 255),
+  };
+}
+
 /** `rgb(246 230 196)`, the form CSS and canvas both take. */
 export function css(rgb: Rgb): string {
   return `rgb(${rgb.r} ${rgb.g} ${rgb.b})`;

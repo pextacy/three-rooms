@@ -59,10 +59,11 @@ jobs:
           npm run gen:constants
           npm run gen:survey
           npm run gen:brokers
+          npm run gen:pages
           npm run gen:readme
           npm run gen:demo
-          git diff --exit-code -- README.md DEMO.md contracts/generated/ \
-            || { echo "::error::run npm run gen:readme && npm run gen:demo && npm run gen:constants && npm run gen:survey && npm run gen:brokers"; exit 1; }
+          git diff --exit-code -- README.md DEMO.md contracts/generated/ public/ \
+            || { echo "::error::a generated file is stale — run npm run gen:constants gen:survey gen:brokers gen:pages gen:readme gen:demo"; exit 1; }
 
       - name: gates
         run: npm run gates

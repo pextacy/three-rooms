@@ -1,168 +1,430 @@
 /*
-  The lobby borrows the games' four inks so the door looks like the room behind
-  it, but it is deliberately plainer: it is a list, not a scene.
+  The List — the printed sheet in front of three lit rooms.
+
+  The games are dark by nature and the door is not. That inversion is the whole
+  design and every decision below follows from it: paper takes ink, not light,
+  so the type is iron-gall dark, the rules are thin and physical, and the only
+  glowing things on the page are the three windows cut into it.
+
+  The three accents are NOT chosen here. Each is that room's own money ink,
+  walked down its luminance by `inkOnPaper()` until it clears WCAG AA against
+  this sheet — an ink picked to glow at 4.85:1 in a black room is far too pale
+  on paper, and picking three new colours by eye is how a palette stops being
+  derived and starts being decoration. They are written onto the root by
+  `main.tsx` at first paint.
+
+  Specificity is kept flat on purpose: one class per element, no element
+  selectors carrying spacing, and no two rules that could cancel each other's
+  margins.
 */
-.lobby {
-  max-width: 44rem;
-  margin: 0 auto;
-  padding-block: clamp(2.5rem, 8vh, 5rem);
-  padding-inline: clamp(1rem, 5vw, 2rem);
-  display: flex;
-  flex-direction: column;
-  gap: clamp(2rem, 6vh, 3.5rem);
-  background: var(--ink);
-  color: var(--tallow);
+
+:root {
+  /* Laid rag paper — cool, not cream. Warm cream with a serif is the look every
+     generated page reaches for, and this sheet is the wrapper of a ledger. */
+  --sheet: #d8d3c7;
+  --sheet-deep: #c8c2b3;
+  --sheet-edge: #b6af9e;
+  /* Iron-gall ink: 12.3:1 on the sheet, which is the whole type system. */
+  --iron: #17140f;
+  --iron-soft: #4d463a;
+
+  /*
+    Set by `main.tsx` from `accents.ts` before the first paint. The fallbacks are
+    the computed values, so a page that somehow renders before the script still
+    prints in the right ink rather than in a placeholder.
+  */
+  --accent-candle: rgb(112 88 46);
+  --accent-roads: rgb(58 101 68);
+  --accent-floor: rgb(65 93 132);
+  --accent: var(--iron);
+
+  --measure: 34rem;
+  --gutter: clamp(1.25rem, 5vw, 3rem);
+  --column: min(64rem, 100% - var(--gutter) * 2);
+}
+
+html,
+body {
+  background: var(--sheet);
+  color: var(--iron);
+}
+
+/* Each room names its own ink once; nothing else in the file knows a colour. */
+[data-room='candle'] {
+  --accent: var(--accent-candle);
+}
+
+[data-room='roads'] {
+  --accent: var(--accent-roads);
+}
+
+[data-room='floor'] {
+  --accent: var(--accent-floor);
+}
+
+.sheet {
   min-height: 100svh;
+  padding-block: clamp(2rem, 7vh, 4.5rem) clamp(3rem, 10vh, 6rem);
+  background: var(--sheet);
+  color: var(--iron);
+  /* A laid sheet has a grain you can feel at a glance: two hairline gradients,
+     not an image. It is under 0.02 alpha — present, never a texture. */
+  background-image:
+    repeating-linear-gradient(90deg, rgb(23 20 15 / 0.012) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgb(23 20 15 / 0.01) 0 1px, transparent 1px 34px);
+  display: grid;
+  grid-template-columns: 1fr var(--column) 1fr;
+  row-gap: clamp(2.75rem, 8vh, 5rem);
 }
 
-.lobby__eyebrow {
-  margin: 0 0 0.6rem;
-  font-family: var(--font-num);
-  font-size: var(--t-label);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--brass);
+.sheet > * {
+  grid-column: 2;
 }
 
-.lobby__title {
+/* --- masthead ----------------------------------------------------------- */
+
+.masthead {
+  display: grid;
+  row-gap: 1rem;
+}
+
+.masthead__dateline {
   margin: 0;
-  font-size: clamp(1.9rem, 6vw, 2.9rem);
+  font-family: var(--font-num);
+  font-size: 0.6875rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--iron-soft);
+}
+
+.masthead__rule {
+  width: 100%;
+  height: 2px;
+  margin: 0;
+  border: 0;
+  background: var(--iron);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.masthead__rule.is-drawn {
+  transform: scaleX(1);
+}
+
+/*
+  The display line is the one loud thing in the type system: set large, leaded
+  tight, and tracked NEGATIVE — the opposite of the wide-spaced small caps that
+  every austere page defaults to. The question itself is set in italic, because
+  in a ledger the italic is what the hand wrote in among the printed matter.
+*/
+.masthead__title {
+  margin: 0;
+  max-width: 16ch;
+  font-size: clamp(2.5rem, 7vw, 4rem);
   font-weight: 400;
-  line-height: 1.1;
+  line-height: 0.94;
+  letter-spacing: -0.022em;
   text-wrap: balance;
 }
 
-.lobby__lede {
-  margin: 1rem 0 0;
-  max-width: 34em;
-  line-height: 1.7;
-  color: var(--tallow);
-  opacity: 0.66;
+.masthead__em {
+  display: block;
+  font-style: italic;
+  /* Hung slightly left, the way a compositor hangs a turned line. */
+  margin-left: -0.04em;
 }
 
-.lobby__list {
-  list-style: none;
+.masthead__lede {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  background: rgb(from var(--tallow) r g b / 0.14);
-  border-block: 1px solid rgb(from var(--tallow) r g b / 0.14);
+  max-width: 42rem;
+  font-size: 1.0625rem;
+  line-height: 1.68;
+  color: var(--iron-soft);
 }
 
-.entry {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  padding: 1.6rem 0;
-  background: var(--ink);
+/* --- the signature: three lit windows cut into the sheet ---------------- */
+
+.windows {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(0.75rem, 2vw, 1.25rem);
 }
 
-.entry__link {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+.window {
+  display: grid;
+  row-gap: 0.55rem;
   text-decoration: none;
   color: inherit;
 }
 
+/*
+  The hole in the paper. The inset shadow is the cut edge — the sheet has a
+  thickness, and the room is behind it. This is the only shadow on the page.
+*/
+.window__pane {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #0c0a07;
+  box-shadow:
+    inset 0 1px 0 rgb(0 0 0 / 0.55),
+    0 0 0 1px var(--sheet-edge);
+  transition: box-shadow 200ms ease;
+}
+
+.window:hover .window__pane,
+.window:focus-visible .window__pane {
+  box-shadow:
+    inset 0 1px 0 rgb(0 0 0 / 0.55),
+    0 0 0 1px var(--iron);
+}
+
+.window__name {
+  font-size: 0.8125rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.window__lit {
+  font-family: var(--font-num);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--iron-soft);
+}
+
+/* --- the entries -------------------------------------------------------- */
+
+/*
+  Ruled rows, not cards. A card is a box you put a product in; these are lines
+  in a list, which is what this page is. The rule above each one is the ledger's
+  own, and the primitive stands in the margin as the thing that actually
+  distinguishes them — not a number, because three games are not a sequence.
+*/
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  row-gap: clamp(2rem, 6vh, 3.25rem);
+}
+
+.entry {
+  display: grid;
+  row-gap: 0.85rem;
+  padding-top: clamp(1.5rem, 4vh, 2.25rem);
+  border-top: 1px solid var(--sheet-edge);
+}
+
+.entry__primitive {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
 .entry__name {
-  font-size: 1.5rem;
-  letter-spacing: 0.26em;
-  text-indent: 0.26em;
-  color: var(--tallow);
+  margin: 0;
+  font-size: clamp(1.6rem, 4.5vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.015em;
+}
+
+.entry__title {
+  color: inherit;
+  text-decoration: none;
+  /* The underline is the ledger rule, so it sits low and stays thin. */
+  border-bottom: 1px solid transparent;
+}
+
+.entry__title:hover,
+.entry__title:focus-visible {
+  border-bottom-color: var(--accent);
 }
 
 .entry__line {
-  max-width: 38em;
+  margin: 0;
+  max-width: var(--measure);
+  font-size: 1.0625rem;
   line-height: 1.6;
-  color: var(--brass);
 }
 
-.entry__facts {
+.entry__figures {
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 2.25rem;
-  margin: 0;
+  gap: 1rem 2.5rem;
+  align-items: baseline;
 }
 
-.entry__facts div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+.figure {
+  display: grid;
+  row-gap: 0.15rem;
 }
 
-.entry__facts dt {
+/*
+  Class selectors only, never `.figure dd`. A type selector inside a class
+  selector outranks a plain class, so `.figure dd { font-size: .9375rem }` beat
+  `.figure__big { font-size: 1.5rem }` and quietly shrank the one number this
+  page exists to show. Every rule in this file is one flat class for that
+  reason.
+*/
+.figure__label {
   font-family: var(--font-num);
-  font-size: 0.6875rem;
-  letter-spacing: 0.1em;
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--tallow);
-  opacity: 0.45;
+  color: var(--iron-soft);
 }
 
-.entry__facts dd {
+.figure__value {
   margin: 0;
-  color: var(--tallow);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--iron-soft);
 }
 
-.entry__provenance {
+/*
+  The declared return is the most characteristic number in this world and the
+  first thing a judge looks for, so it is set as an object rather than as body
+  copy: monospace, large, and in the room's own ink.
+*/
+.figure__big {
   margin: 0;
-  max-width: 44em;
-  font-size: var(--t-label);
-  line-height: 1.65;
-  color: var(--tallow);
-  opacity: 0.5;
-}
-
-.entry__cta {
-  align-self: start;
-  padding: 0.6rem 1.1rem;
-  font-size: var(--t-label);
-  letter-spacing: 0.16em;
-  color: var(--ink);
-  background: var(--tallow);
-  text-decoration: none;
-}
-
-.entry__cta--soon {
-  color: var(--tallow);
-  background: transparent;
-  border: 1px solid rgb(from var(--tallow) r g b / 0.3);
-  opacity: 0.6;
-}
-
-.lobby__foot {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  font-size: var(--t-label);
-  line-height: 1.7;
-  color: var(--tallow);
-  opacity: 0.45;
-}
-
-.lobby__foot p {
-  margin: 0;
-  max-width: 40em;
-}
-
-.lobby__swatches {
-  display: flex;
-  gap: 1px;
-}
-
-.lobby__swatches span {
-  width: 2.5rem;
-  height: 0.6rem;
-}
-
-.num {
   font-family: var(--font-num);
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+}
+
+.figure--wide {
+  flex: 1 1 14rem;
+}
+
+.entry__actions {
+  margin: 0.35rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.btn-play {
+  padding: 0.7rem 1.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--sheet);
+  background: var(--accent);
+}
+
+.btn-read {
+  padding: 0.7rem 1.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--iron);
+  border: 1px solid var(--sheet-edge);
+}
+
+.btn-read:hover,
+.btn-read:focus-visible {
+  border-color: var(--iron);
+}
+
+.btn-play:hover,
+.btn-play:focus-visible {
+  filter: brightness(0.86);
+}
+
+/* --- colophon ----------------------------------------------------------- */
+
+.colophon {
+  display: grid;
+  row-gap: 0.9rem;
+  padding-top: clamp(1.5rem, 4vh, 2.25rem);
+  border-top: 2px solid var(--iron);
+}
+
+.colophon__head {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.colophon__body {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--iron-soft);
+}
+
+.colophon__commands {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  row-gap: 0.35rem;
+}
+
+.colophon__commands li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  font-size: 0.8125rem;
+}
+
+.colophon__commands code {
+  font-family: var(--font-num);
+  font-size: 0.8125rem;
+  padding: 0.1rem 0.4rem;
+  background: var(--sheet-deep);
+}
+
+.colophon__commands span {
+  color: var(--iron-soft);
+}
+
+.colophon__note {
+  margin: 0.5rem 0 0;
+  max-width: var(--measure);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: var(--iron-soft);
+}
+
+/* --- narrow ------------------------------------------------------------- */
+
+@media (max-width: 40rem) {
+  .windows {
+    grid-template-columns: 1fr;
+  }
+
+  .window__pane {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .masthead__rule {
+    transition: none;
+    transform: scaleX(1);
+  }
+
+  .window__pane {
+    transition: none;
+  }
 }
 
 :focus-visible {
-  outline: 2px solid var(--brass);
+  outline: 2px solid var(--iron);
   outline-offset: 3px;
 }

@@ -231,7 +231,12 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
           </dl>
         </section>
 
-        <p className="panel__verify">{COPY.verifyNote}</p>
+        <p className="panel__verify">
+          {COPY.verifyNote}{' '}
+          <a className="panel__away" href={COPY.howHref} target="_blank" rel="noreferrer">
+            {COPY.howLink} ↗
+          </a>
+        </p>
       </div>
     </div>
   );

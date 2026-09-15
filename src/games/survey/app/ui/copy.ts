@@ -128,6 +128,14 @@ export const COPY = {
   bandNote:
     'This is a game with a decision, so the return depends on how you play it. The whole band is published, including the careless end — and every way of playing it that a person would actually adopt sits inside the jam’s 93–98% window, which is what the surveyor’s accuracy and the price of a survey were chosen to hold.',
   verifyNote: 'Every number here is recomputed by npm run verify:survey from the manifest.',
+  /**
+   * The full write-up lives on its own page, not in this panel and not on the
+   * door. It opens in a NEW TAB on purpose: inside a host this game is an
+   * iframe, and navigating it away mid-round would throw away a session the
+   * player has already staked.
+   */
+  howHref: '/survey/how/',
+  howLink: 'Read the whole model',
 
   // --- keyboard -----------------------------------------------------------
   keyboardTitle: 'Keyboard',

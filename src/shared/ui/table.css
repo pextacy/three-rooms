@@ -653,3 +653,82 @@ kbd {
 .panel__away:focus-visible {
   border-bottom-color: currentColor;
 }
+
+/* ==========================================================================
+   The shape of the action area is the shape of the DECISION.
+
+   All three games stacked their choices in one full-width column, which reads
+   as a menu and says nothing. But the three decisions are not the same shape,
+   and the difference is the whole point of having three games:
+
+     CANDLE       two opposed terminal choices        -> a pair, side by side
+     THE SURVEY   two terminal calls, plus one thing
+                  you BUY to postpone deciding        -> the calls pair;
+                                                         the purchase stands apart
+     THE BROKERS  one terminal sale, plus four men
+                  you may pay to hear                 -> the sale, then a strip
+                                                         under the board
+
+   None of this is styling. A player who reads the buttons should be able to see
+   that CANDLE is a binary, that THE SURVEY lets you pay for another minute, and
+   that THE BROKERS' four purchases are four different men — before reading a
+   word of the labels.
+   ========================================================================== */
+
+/* Two choices that end the round, weighed against each other. */
+.choice--pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/*
+  Half the width means the hint can no longer sit beside the label without
+  squeezing it — "LET IT BURN" broke across two lines while "CLAIM" did not, and
+  a ragged pair reads as a mistake rather than as a balance. So in a pair the
+  hint drops under its label instead of being pushed to the right margin.
+*/
+.choice--pair .btn {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.choice--pair .btn__hint {
+  margin-left: 0;
+  text-align: left;
+}
+
+/*
+  What you buy instead of deciding. Set apart above the calls, and marked with a
+  rule, because it is a different KIND of act: it does not end anything.
+
+  THE SURVEY is the only game with one, and it gets the ledger's double rule —
+  the same mark its top bar is ruled with, so the separation reads as this
+  room's own hand rather than as a stray divider.
+*/
+.choice--buy {
+  display: grid;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 3px double var(--chrome-rule);
+}
+
+/*
+  A pair needs room to read as a pair. Below this the two halves are narrower
+  than their own labels, at which point side by side is worse than stacked.
+*/
+@media (max-width: 34rem) {
+  .choice--pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- CANDLE: the room is a candle, so give it height ---------------------- */
+/*
+  A letterbox is the wrong frame for a vertical subject. The other two rooms are
+  horizons and boards and want the width; this one wants the drop.
+*/
+[data-room='candle'] .stage {
+  min-height: clamp(13rem, 46vh, 26rem);
+}

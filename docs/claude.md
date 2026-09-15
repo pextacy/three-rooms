@@ -273,6 +273,26 @@ One direction sentence, and everything obeys it:
   stopped being derived; `test/list.spec.ts` checks the walk, and checks that the
   sheet the stylesheet paints is the sheet the accents were computed against.
 
+- **The action area's SHAPE is the decision's shape.** All three games stacked
+  their choices in one full-width column, which reads as a menu and says nothing
+  — and hid the fact that the three decisions are not the same shape, which is
+  the whole reason there are three games.
+
+  | | the decision | the layout |
+  |---|---|---|
+  | CANDLE | two opposed terminal choices | a pair, side by side |
+  | THE SURVEY | two terminal calls, plus one thing you BUY to postpone deciding | the purchase above a double rule; the calls paired below it |
+  | THE BROKERS | one terminal sale, plus four men you may pay to hear | the sale, then a strip of four **under their own columns on the board** |
+
+  THE BROKERS' strip is the one to protect: the board draws five fixed columns
+  and the strip is five columns too, the first left empty because the house has
+  already spoken and charges nothing. Pressing `3` asks the man whose slips are
+  directly above it. That correspondence is also why his fee is no longer printed
+  on his button — his column prints it six inches above, and saying it twice is
+  the kind of tidy redundancy that makes an interface feel written by nobody. The
+  fee rides on the accessible name instead, which is what a screen reader has in
+  place of the column it cannot see.
+
 - **One page, one job.** A player who wants to play does not scroll past a
   derivation, and a judge who wants the derivation does not hunt for it inside a
   modal. So the model, the tables, the strategy band and the verification

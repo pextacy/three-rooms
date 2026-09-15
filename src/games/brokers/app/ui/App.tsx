@@ -310,9 +310,11 @@ export function App() {
                     className="btn btn--burn brokers__one"
                     onClick={() => act({ kind: 'ASK', brokerId: broker.id })}
                     disabled={asked}
+                    aria-label={COPY.askAria(broker.name, formatFee(broker.feeBp))}
                   >
-                    {COPY.askPrefix} {broker.name.toUpperCase()} <kbd>{broker.id + 1}</kbd>
-                    <span className="btn__hint">{asked ? COPY.alreadyAsked : COPY.askHint(formatFee(broker.feeBp))}</span>
+                    <span className="brokers__name">{broker.name.toUpperCase()}</span>
+                    <kbd>{broker.id + 1}</kbd>
+                    {asked ? <span className="btn__hint">{COPY.alreadyAsked}</span> : null}
                   </button>
                 );
               })}

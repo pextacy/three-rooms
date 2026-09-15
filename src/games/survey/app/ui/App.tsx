@@ -281,18 +281,29 @@ export function App() {
         ) : canAct ? (
           <>
             {spent ? <p className="switches__note">{COPY.nobodyLeft}</p> : null}
-            <button className="btn btn--claim" onClick={() => act('UNDERWRITE')}>
-              {COPY.underwrite} <kbd>{COPY.underwriteKey}</kbd>
-              <span className="btn__hint">{COPY.underwriteHint}</span>
-            </button>
-            <button className="btn btn--burn" onClick={() => act('SURVEY')} disabled={spent}>
-              {COPY.survey} <kbd>{COPY.surveyKey}</kbd>
-              <span className="btn__hint">{COPY.surveyHint}</span>
-            </button>
-            <button className="btn btn--burn" onClick={() => act('DECLINE')}>
-              {COPY.decline} <kbd>{COPY.declineKey}</kbd>
-              <span className="btn__hint">{COPY.declineHint}</span>
-            </button>
+            {/*
+              Wald's problem, as a layout. Sending a surveyor is the one act that
+              does not end the voyage — you are paying to put the call off — so it
+              sits above the calls and behind a rule, where a player can see that
+              it belongs to a different kind. The two calls below it are what
+              actually settles her, and they are weighed against each other.
+            */}
+            <div className="choice choice--buy">
+              <button className="btn btn--burn" onClick={() => act('SURVEY')} disabled={spent}>
+                {COPY.survey} <kbd>{COPY.surveyKey}</kbd>
+                <span className="btn__hint">{COPY.surveyHint}</span>
+              </button>
+            </div>
+            <div className="choice choice--pair">
+              <button className="btn btn--claim" onClick={() => act('UNDERWRITE')}>
+                {COPY.underwrite} <kbd>{COPY.underwriteKey}</kbd>
+                <span className="btn__hint">{COPY.underwriteHint}</span>
+              </button>
+              <button className="btn btn--burn" onClick={() => act('DECLINE')}>
+                {COPY.decline} <kbd>{COPY.declineKey}</kbd>
+                <span className="btn__hint">{COPY.declineHint}</span>
+              </button>
+            </div>
           </>
         ) : session.surveyorOut ? (
           <p className="switches__note">{COPY.surveyorOut}</p>

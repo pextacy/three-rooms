@@ -267,14 +267,21 @@ export function App() {
         ) : canAct ? (
           <>
             {forced ? <p className="switches__note">{COPY.guttering}</p> : null}
-            <button className="btn btn--claim" onClick={() => act('CLAIM')}>
-              {COPY.claim} <kbd>{COPY.claimKey}</kbd>
-              <span className="btn__hint">{COPY.claimHint}</span>
-            </button>
-            <button className="btn btn--burn" onClick={() => act('BURN')} disabled={forced}>
-              {COPY.burn} <kbd>{COPY.burnKey}</kbd>
-              <span className="btn__hint">{COPY.burnHint}</span>
-            </button>
+            {/*
+              Two choices, opposed, and both of them end the round. Side by side
+              rather than stacked: a vertical list reads as a menu of unrelated
+              options, and this is a binary.
+            */}
+            <div className="choice choice--pair">
+              <button className="btn btn--claim" onClick={() => act('CLAIM')}>
+                {COPY.claim} <kbd>{COPY.claimKey}</kbd>
+                <span className="btn__hint">{COPY.claimHint}</span>
+              </button>
+              <button className="btn btn--burn" onClick={() => act('BURN')} disabled={forced}>
+                {COPY.burn} <kbd>{COPY.burnKey}</kbd>
+                <span className="btn__hint">{COPY.burnHint}</span>
+              </button>
+            </div>
           </>
         ) : null}
         {session?.error ? <p className="switches__error">{session.error}</p> : null}

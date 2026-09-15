@@ -30,6 +30,15 @@ export const COPY = {
   takeKey: 'Space',
   takeHint: 'take the best price you hold',
   askPrefix: 'ASK',
+  /**
+   * What a screen reader hears, and what the button would say if it had room.
+   *
+   * The visible label in the strip is the man's NAME and nothing else: his
+   * button stands under his own column on the board, and that column already
+   * prints his fee. Saying it twice, six inches apart, is the kind of tidy
+   * redundancy that makes an interface feel written by nobody.
+   */
+  askAria: (who: string, fee: string) => `Ask ${who} — ${fee} of the stake, whatever he says`,
   askHint: (fee: string) => `${fee} of the stake, whatever he says`,
   alreadyAsked: 'named his price',
 

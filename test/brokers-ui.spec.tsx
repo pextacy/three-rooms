@@ -86,8 +86,17 @@ describe('I10 — the standalone page', () => {
     for (const broker of BROKER_LIST) {
       const button = buttonSaying(broker.name.toUpperCase());
       expect(button, broker.name).not.toBeNull();
-      // His fee, printed on his own switch: the cost is never a surprise.
-      expect(button?.textContent, broker.name).toMatch(/%/);
+      /**
+       * The cost is never a surprise — but it is no longer printed twice.
+       *
+       * Each man's switch stands directly under his own column on the board, and
+       * that column prints his fee (`brokers-scene.spec.ts` checks the board
+       * draws it). So the visible label is his name, and the fee rides on the
+       * accessible name instead, which is what a screen reader has in place of
+       * the column it cannot see.
+       */
+      expect(button?.getAttribute('aria-label'), broker.name).toMatch(/%/);
+      expect(button?.getAttribute('aria-label'), broker.name).toContain(broker.name);
     }
   });
 

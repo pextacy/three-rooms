@@ -38,23 +38,64 @@
   font-size: 1.05rem;
 }
 
-/* The four men, side by side: one switch each, with his fee printed on it. */
+/*
+  The four men, each switch UNDER HIS OWN COLUMN on the board.
+
+  The board draws five fixed columns — the house, then the four brokers — across
+  the full width of the same box this strip sits in. So the strip is five columns
+  too, and the first one is left empty: the house has already spoken, he charges
+  nothing, and there is no button to press for him. Pressing 3 asks the man whose
+  slips are directly above it.
+
+  That correspondence is the whole reason this is not a 2x2 grid of buttons. It
+  costs nothing and it means a player learns the board and the keys as one thing.
+*/
 .brokers {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
 }
 
+.brokers__one:first-child {
+  grid-column-start: 2;
+}
+
+/*
+  A slip of chalk with a man's name on it. Centred under his column, tracked in
+  rather than out, and carrying nothing his column does not already say: the
+  board prints every fee, and this button stands directly beneath it.
+*/
 .brokers__one {
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  padding: 0.6rem 0.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.7rem 0.4rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.brokers__name {
+  font-size: 0.9375rem;
+  line-height: 1.1;
 }
 
 .brokers__one .btn__hint {
   margin-left: 0;
-  text-align: left;
+  text-align: center;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 52rem) {
+  .brokers__one {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    text-align: left;
+  }
 }
 
 /* A broker's own quotes, listed in the ? panel. */
@@ -66,6 +107,21 @@
 
 .switches {
   min-height: 12rem;
+}
+
+/*
+  Narrow enough and the columns stop being readable as columns, so the
+  correspondence is dropped rather than faked: two up, then one up, and the
+  first-child rule is released with them.
+*/
+@media (max-width: 52rem) {
+  .brokers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .brokers__one:first-child {
+    grid-column-start: auto;
+  }
 }
 
 @media (max-width: 30rem) {

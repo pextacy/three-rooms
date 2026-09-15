@@ -75,12 +75,33 @@ export type RoadsMetrics = {
   readonly frames: number;
 };
 
-const LAMP_X = 0.16;
-const LAMP_Y = 0.2;
-/** Where the sea meets the sky. */
-const HORIZON_Y = 0.52;
-/** The desk the manifest lies on. */
-const DESK_Y = 0.82;
+/**
+ * The composition, top to bottom, in fractions of the canvas height:
+ *
+ *   0.00          the window on to the roads
+ *   HORIZON_Y     where the sea meets the sky
+ *   WATERLINE_Y   where she floats
+ *   DESK_Y        the underwriter's desk, with the lamp on it
+ *   READOUT_Y     NOTHING is drawn below this line
+ *
+ * That last one is the rule this layout exists to keep. The accessible readout
+ * is DOM and sits over the bottom of the same box (`table.css`), so anything the
+ * canvas paints down there collides with real text. It did, until a screenshot
+ * showed the manifest printed straight through the payout line.
+ */
+const LAMP_X = 0.12;
+/** On the desk, and above the line the readout owns. */
+const LAMP_Y = 0.64;
+const HORIZON_Y = 0.3;
+const WATERLINE_Y = 0.42;
+const DESK_Y = 0.5;
+/**
+ * Nothing is drawn below this. The readout is DOM and wraps to more lines on a
+ * narrow screen, so the reserved band is generous rather than exact — a canvas
+ * that draws into it collides with real text, and a canvas that stops a little
+ * early costs nothing.
+ */
+const READOUT_Y = 0.7;
 
 /**
  * How clearly she can be seen: the confidence that the better call is the right
@@ -113,21 +134,71 @@ export function drawRoads(
   ctx.fillStyle = css(palette.ink);
   ctx.fillRect(0, 0, width, height);
 
-  const lampX = width * LAMP_X;
-  const lampY = height * LAMP_Y;
-  // The lamp's own falloff. THE one gradient.
-  const reach = Math.max(width, height) * 0.78;
-  const glow = ctx.createRadialGradient(lampX, lampY, 0, lampX, lampY, reach);
-  glow.addColorStop(0, cssAlpha(palette.tallow, 0.26));
-  glow.addColorStop(0.3, cssAlpha(palette.brass, 0.1));
+  // The order is the point. The fog goes over the WINDOW and stops at the desk,
+  // so its only edges are the frame's own — a hard-edged rectangle of ink in the
+  // middle of the water reads as a mistake, however exact its alpha is. The lamp
+  // is drawn after it, because a lamp on this side of the glass is not fogged.
+  drawSea(ctx, width, height, state, palette);
+  drawShip(ctx, width, height, state, palette, p);
+  drawFog(ctx, width, height, state, palette);
+  drawDesk(ctx, width, height, palette);
+  drawLamp(ctx, width, height, palette);
+  drawSlips(ctx, width, height, state, palette);
+  drawManifest(ctx, width, height, state, palette);
+}
+
+/** The lamp's own falloff. THE one gradient in the whole build. */
+function drawLamp(ctx: CanvasRenderingContext2D, width: number, height: number, palette: Palette): void {
+  const x = width * LAMP_X;
+  const y = height * LAMP_Y;
+  const reach = Math.max(width, height) * 0.7;
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, reach);
+  glow.addColorStop(0, cssAlpha(palette.tallow, 0.3));
+  glow.addColorStop(0.25, cssAlpha(palette.brass, 0.12));
   glow.addColorStop(1, cssAlpha(palette.ink, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, height);
 
-  drawSea(ctx, width, height, state, palette);
-  drawShip(ctx, width, height, state, palette, p);
-  drawSlips(ctx, width, height, state, palette);
-  drawManifest(ctx, width, height, state, palette);
+  // The lamp itself: a flame on the desk, at the edge of the frame.
+  const flameH = height * 0.05;
+  const flameW = Math.max(3, width * 0.012);
+  ctx.beginPath();
+  ctx.moveTo(x, y - flameH);
+  ctx.quadraticCurveTo(x + flameW, y - flameH * 0.35, x, y);
+  ctx.quadraticCurveTo(x - flameW, y - flameH * 0.35, x, y - flameH);
+  ctx.fillStyle = cssAlpha(palette.tallow, 0.9);
+  ctx.fill();
+}
+
+/**
+ * The fog, over the window and nothing else.
+ *
+ * Its alpha is exactly what is NOT known, and it covers everything beyond the
+ * glass — sky, sea and ship together, the way weather actually works. Because it
+ * stops at the desk and runs to the frame on three sides, it has no edge of its
+ * own to give the game away.
+ */
+function drawFog(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: RoadsState,
+  palette: Palette,
+): void {
+  const alpha = state.settled && state.wasSound !== null ? 1 : shipOpacity(state.margin);
+  if (alpha >= 1) return;
+  ctx.fillStyle = cssAlpha(palette.ink, 1 - alpha);
+  ctx.fillRect(0, 0, width, height * DESK_Y);
+}
+
+/** The desk in front of the window: where the manifest lies. */
+function drawDesk(ctx: CanvasRenderingContext2D, width: number, height: number, palette: Palette): void {
+  const y = height * DESK_Y;
+  ctx.fillStyle = css(palette.ink);
+  ctx.fillRect(0, y, width, height - y);
+  // Its edge catches the lamp. One hairline, no gradient.
+  ctx.fillStyle = cssAlpha(palette.brass, 0.3);
+  ctx.fillRect(0, y, width, Math.max(1, height * 0.002));
 }
 
 // ---------------------------------------------------------------------------
@@ -140,30 +211,44 @@ function drawSea(
   palette: Palette,
 ): void {
   const y = height * HORIZON_Y;
-  ctx.fillStyle = cssAlpha(palette.ink, 0.9);
-  ctx.fillRect(0, y, width, height * DESK_Y - y);
+  const bottom = height * DESK_Y;
 
-  // The horizon: one hairline catching the lamp, no gradient.
-  ctx.fillStyle = cssAlpha(palette.tallow, 0.14);
-  ctx.fillRect(0, y, width, Math.max(1, height * 0.0015));
+  // The sky beyond the glass, in two flat bands rather than a gradient — the
+  // lamp's falloff is the only gradient in the build. The upper band is barely
+  // there; the lower one is the last of the light along the horizon, which is
+  // what makes the roads read as a place with weather in them rather than a
+  // black rectangle.
+  ctx.fillStyle = cssAlpha(palette.tallow, 0.02);
+  ctx.fillRect(0, 0, width, y);
+  ctx.fillStyle = cssAlpha(palette.tallow, 0.04);
+  ctx.fillRect(0, height * (HORIZON_Y - 0.1), width, height * 0.1);
 
-  // Three lines of swell, detuned so the water never visibly repeats. A player
-  // who asked for less motion gets a flat sea and loses nothing readable.
+  // The water: darker than the sky, which is what makes the horizon a line at
+  // all. The four inks only — this is `ink`, over the room's own ink.
+  ctx.fillStyle = cssAlpha(palette.ink, 0.75);
+  ctx.fillRect(0, y, width, bottom - y);
+
+  // The horizon: one hairline catching the light, no gradient.
+  ctx.fillStyle = cssAlpha(palette.tallow, 0.22);
+  ctx.fillRect(0, y, width, Math.max(1, height * 0.0018));
+
+  // Four lines of swell, detuned so the water never visibly repeats, and each
+  // one wider and fainter as it comes toward the desk. A player who asked for
+  // less motion gets a flat sea and loses nothing readable.
   const swell = state.reducedMotion ? 0 : 1;
-  for (let i = 0; i < 3; i++) {
-    const depth = (i + 1) / 4;
-    const lineY = y + (height * DESK_Y - y) * depth;
-    const drift = swell * Math.sin(state.time * (0.7 + i * 0.23) + i) * width * 0.01;
-    ctx.fillStyle = cssAlpha(palette.tallow, 0.06 - i * 0.015);
-    ctx.fillRect(width * (0.12 + depth * 0.1) + drift, lineY, width * (0.5 - depth * 0.15), Math.max(1, height * 0.0012));
+  for (let i = 0; i < 4; i++) {
+    const depth = (i + 1) / 5;
+    const lineY = y + (bottom - y) * depth;
+    const drift = swell * Math.sin(state.time * (0.7 + i * 0.23) + i) * width * 0.012;
+    const length = width * (0.34 + depth * 0.3);
+    ctx.fillStyle = cssAlpha(palette.tallow, 0.1 - i * 0.02);
+    ctx.fillRect(
+      Math.max(0, width * (0.1 + depth * 0.06) + drift),
+      lineY,
+      Math.min(length, width - Math.max(0, width * (0.1 + depth * 0.06) + drift)),
+      Math.max(1, height * 0.0014),
+    );
   }
-
-  // The desk in front: where the manifest lies.
-  const deskY = height * DESK_Y;
-  ctx.fillStyle = cssAlpha(palette.ink, 0.96);
-  ctx.fillRect(0, deskY, width, height - deskY);
-  ctx.fillStyle = cssAlpha(palette.brass, 0.2);
-  ctx.fillRect(0, deskY, width, Math.max(1, height * 0.0015));
 }
 
 /**
@@ -183,11 +268,11 @@ function drawShip(
   p: number,
 ): void {
   // The fog carries ALL of the doubt and the ship's own inks carry none of it,
-  // so `1 - alpha` is exactly what is drawn over her and nothing scales twice.
-  const alpha = state.settled && state.wasSound !== null ? 1 : shipOpacity(state.margin);
-  const scale = Math.min(width, height * 1.4);
-  const x = width * 0.62;
-  const waterline = height * (HORIZON_Y + 0.12);
+  // so `1 - alpha` is exactly what is drawn over her (in `drawFog`) and nothing
+  // is scaled twice.
+  const scale = Math.min(width, height * 1.1);
+  const x = width * 0.6;
+  const waterline = height * WATERLINE_Y;
 
   // She settles by the head as the case for rot hardens: `p` is 0.4 at the
   // prior, so she already floats a little low before anyone goes aboard.
@@ -228,20 +313,21 @@ function drawShip(
 
   ctx.restore();
 
-  // --- the fog ---
-  // Drawn as the room's own ink over her, at exactly what is NOT known. The
-  // ship's visible strength is therefore the confidence, to the digit.
-  if (alpha < 1) {
-    ctx.fillStyle = cssAlpha(palette.ink, 1 - alpha);
-    ctx.fillRect(width * 0.34, height * (HORIZON_Y - 0.14), width * 0.62, height * 0.34);
-  }
+  // Her reflection: one short streak under the hull, so she sits IN the water
+  // rather than on top of it.
+  ctx.fillStyle = cssAlpha(ink, 0.12);
+  ctx.fillRect(x - hullW * 0.3, hullY + hullH * 0.35, hullW * 0.6, Math.max(1, hullH * 0.3));
 
   // A surveyor is aboard: his boat crosses the water while his report is out.
   if (state.surveyorOut) {
     const t = state.reducedMotion ? 0.5 : (Math.sin(state.time * 1.6) + 1) / 2;
-    const bx = width * (0.4 + 0.16 * t);
-    ctx.fillStyle = cssAlpha(palette.brass, 0.5);
-    ctx.fillRect(bx, waterline + scale * 0.03, scale * 0.03, Math.max(1, scale * 0.008));
+    const bx = width * (0.3 + 0.22 * t);
+    const by = waterline + scale * 0.06;
+    ctx.fillStyle = cssAlpha(palette.brass, 0.55);
+    ctx.fillRect(bx, by, scale * 0.035, Math.max(1, scale * 0.01));
+    // One oar out of each side, so it reads as a boat being rowed.
+    ctx.fillStyle = cssAlpha(palette.brass, 0.3);
+    ctx.fillRect(bx - scale * 0.012, by - scale * 0.006, scale * 0.06, Math.max(1, scale * 0.003));
   }
 }
 
@@ -251,6 +337,10 @@ function drawShip(
  * A report for SOUND sits above the line, one for ROT below it. They are stacked
  * from the line outward rather than left to right on purpose — a pair that
  * disagrees visibly cancels, which is exactly what it does to the belief.
+ *
+ * Anchored UP from the bottom edge, like everything else on the desk: a layout
+ * measured down from the top runs off the canvas on a short viewport, and the
+ * gallery renders this page as a miniature.
  */
 function drawSlips(
   ctx: CanvasRenderingContext2D,
@@ -259,11 +349,13 @@ function drawSlips(
   state: RoadsState,
   palette: Palette,
 ): void {
-  const lineY = height * (DESK_Y + 0.09);
-  const left = width * 0.08;
-  const slot = width * 0.055;
-  const slipW = slot * 0.62;
-  const slipH = Math.max(2, height * 0.012);
+  // On the desk, and above the line the DOM readout owns.
+  const lineY = height * (DESK_Y + (READOUT_Y - DESK_Y) * 0.62);
+  // Clear of the lamp, which stands at the left-hand edge of the desk.
+  const left = width * 0.22;
+  const slot = width * 0.05;
+  const slipW = slot * 0.6;
+  const slipH = Math.max(2, height * 0.014);
 
   // The tally, from the margin: two reports that disagree occupy one slot each
   // above and below the line, which is what cancelling looks like.
@@ -292,7 +384,14 @@ function drawSlips(
 
 }
 
-/** The manifest on the desk: what she carries, and what it pays. */
+/**
+ * The manifest on the desk: what she carries, and what it pays.
+ *
+ * Three lines, laid out UPWARD from the bottom edge — the payout nearest the
+ * player, the cargo above it, the value above that. Measured down from the desk
+ * instead, the payout fell off the bottom of the canvas at ordinary aspect
+ * ratios and nothing said so.
+ */
 function drawManifest(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -302,27 +401,31 @@ function drawManifest(
 ): void {
   if (!state.manifest) return;
 
-  const scale = Math.min(width, height * 1.3);
+  const scale = Math.min(width, height * 1.1);
   const x = width * 0.62;
-  const y = height * (DESK_Y + 0.1);
+  // Everything on the desk is laid out UP from the readout line, never down
+  // from the top: the DOM readout owns the bottom of this box.
+  const bottom = height * READOUT_Y;
 
-  // The value, in the same weight CANDLE gives a face value. Hierarchy by
-  // luminance, never by size — the type scale is fixed (claude.md §5).
-  ctx.font = `${Math.max(18, scale * 0.085)}px ui-serif, Georgia, serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = cssAlpha(state.settled ? palette.oxblood : palette.tallow, state.settled ? 0.55 : 1);
-  ctx.fillText(state.manifest.valueText, x, y);
-
-  ctx.font = `${Math.max(11, scale * 0.028)}px ui-serif, Georgia, serif`;
-  ctx.fillStyle = cssAlpha(state.settled ? palette.oxblood : palette.brass, state.settled ? 0.5 : 0.9);
-  ctx.fillText(state.manifest.name, x, y + scale * 0.032);
 
   if (state.payoutText) {
     ctx.font = `${Math.max(12, scale * 0.032)}px ui-monospace, Menlo, monospace`;
     ctx.fillStyle = cssAlpha(palette.brass, state.settled ? 0.7 : 0.95);
-    ctx.fillText(state.payoutText, x, y + scale * 0.075);
+    ctx.fillText(state.payoutText, x, bottom);
   }
+
+  const nameY = bottom - Math.max(16, scale * 0.045);
+  ctx.font = `${Math.max(11, scale * 0.028)}px ui-serif, Georgia, serif`;
+  ctx.fillStyle = cssAlpha(state.settled ? palette.oxblood : palette.brass, state.settled ? 0.5 : 0.9);
+  ctx.fillText(state.manifest.name, x, nameY);
+
+  // The value, in the same weight CANDLE gives a face value. Hierarchy by
+  // luminance, never by size — the type scale is fixed (claude.md §5).
+  ctx.font = `${Math.max(18, scale * 0.085)}px ui-serif, Georgia, serif`;
+  ctx.fillStyle = cssAlpha(state.settled ? palette.oxblood : palette.tallow, state.settled ? 0.55 : 1);
+  ctx.fillText(state.manifest.valueText, x, nameY - Math.max(14, scale * 0.032));
 }
 
 // ---------------------------------------------------------------------------

@@ -365,7 +365,7 @@ generated documents
   ✓ a licence is present, so the source can actually be shared
 
 bundle
-  ✓ bundle < 150 KB gzipped  110.2 KB gzipped
+  ✓ bundle < 150 KB gzipped  110.4 KB gzipped
   ✓ zero audio files (everything synthesised)
   ✓ no image over 8 KB
   ✓ dist/candle/game.manifest.json sits beside its page
@@ -380,16 +380,16 @@ And the frame budget, against a 12 ms p95:
 ```
 
   case                                p50      p95      p99    worst
-  a burn at the flare, 1080p        0.003    0.005    0.010    0.165
-  the flare, a phone                0.004    0.005    0.006    0.082
-  an empty crate, first inch        0.003    0.004    0.005    0.093
-  waiting for a word                0.002    0.003    0.003    0.064
+  a burn at the flare, 1080p        0.004    0.005    0.010    0.195
+  the flare, a phone                0.004    0.005    0.006    0.132
+  an empty crate, first inch        0.003    0.005    0.006    0.106
+  waiting for a word                0.002    0.003    0.003    0.066
 
   case                                p50      p95      p99    worst
-  the roads, fog and a boat, 1080p    0.005    0.009    0.013    0.108
-  the roads, a phone                0.005    0.007    0.011    0.100
-  a settled voyage, no fog          0.004    0.005    0.009    0.089
-  waiting for the manifest          0.004    0.005    0.006    0.078
+  the roads, fog and a boat, 1080p    0.006    0.009    0.013    0.075
+  the roads, a phone                0.006    0.007    0.013    0.093
+  a settled voyage, no fog          0.005    0.006    0.007    0.130
+  waiting for the manifest          0.005    0.006    0.009    0.080
 
 ```
 

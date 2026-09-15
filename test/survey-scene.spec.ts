@@ -23,12 +23,21 @@ import { DAYLIGHT_BP, DAYLIGHT_DENOM, daylightAt } from '../src/games/survey/app
 import { bestCallConfidence, posteriorSound } from '../src/games/survey/core/belief';
 import * as R from '../src/shared/math/rational';
 
-type Call = { readonly op: string; readonly style: string };
+type Call = {
+  readonly op: string;
+  readonly style: string;
+  readonly box?: readonly [number, number, number, number];
+  /** True when the call was made under a translate/rotate — the ship. */
+  readonly moved?: boolean;
+};
 
 function recorder() {
   const calls: Call[] = [];
   let gradients = 0;
   let fillStyle: unknown = '#000';
+  const stack: { dx: number; dy: number; rotated: boolean }[] = [{ dx: 0, dy: 0, rotated: false }];
+  const top = () => stack[stack.length - 1] as { dx: number; dy: number; rotated: boolean };
+  const moved = () => top().dx !== 0 || top().dy !== 0 || top().rotated;
 
   const stub = {
     get fillStyle() {
@@ -49,12 +58,31 @@ function recorder() {
       gradients += 1;
       return { addColorStop: () => {} };
     },
-    save: () => {},
-    restore: () => {},
-    translate: () => {},
-    rotate: (angle: number) => calls.push({ op: `rotate:${angle.toFixed(4)}`, style: String(fillStyle) }),
-    fillRect: () => calls.push({ op: 'fillRect', style: String(fillStyle) }),
-    fillText: (text: string) => calls.push({ op: `fillText:${text}`, style: String(fillStyle) }),
+    save: () => stack.push({ ...top() }),
+    restore: () => {
+      if (stack.length > 1) stack.pop();
+    },
+    /**
+     * The stub tracks TRANSLATION, so the ship's own coordinates come out
+     * absolute and can be bounds-checked like everything else. Rotation is
+     * recorded but not applied — the angles are under a tenth of a radian, and
+     * the bounds check allows for the overhang.
+     */
+    translate: (dx: number, dy: number) => {
+      const t = top();
+      t.dx += dx;
+      t.dy += dy;
+    },
+    rotate: (angle: number) => {
+      top().rotated = true;
+      calls.push({ op: `rotate:${angle.toFixed(4)}`, style: String(fillStyle) });
+    },
+    fillRect: (x: number, y: number, w: number, h: number) =>
+      calls.push({ op: 'fillRect', style: String(fillStyle), box: [x + top().dx, y + top().dy, w, h], moved: moved() }),
+    fillText: (text: string, x: number, y: number) =>
+      // A text baseline with no height of its own: the box is the baseline, and
+      // the ascender above it is bounded by the font size the scene asks for.
+      calls.push({ op: `fillText:${text}`, style: String(fillStyle), box: [x + top().dx, y + top().dy, 0, 0], moved: moved() }),
     beginPath: () => {},
     moveTo: () => {},
     lineTo: () => {},
@@ -85,18 +113,24 @@ function state(overrides: Partial<RoadsState> = {}): RoadsState {
   };
 }
 
-/** The alpha of the ink veil drawn over the ship, as the scene actually set it. */
+/**
+ * The alpha of the ink veil drawn over the window, as the scene actually set it.
+ *
+ * The scene's own furniture uses fixed ink alphas (the water at 0.75); the fog
+ * is the one that moves with the belief, so it is identified by being neither
+ * of those — and by covering the whole window down to the desk.
+ */
+const FURNITURE_ALPHAS = [0.75, 0.12];
+
 function fogAlpha(surveys: number, margin: number): number | null {
   const { stub, calls } = recorder();
   drawRoads(stub, 800, 500, state({ surveys, margin }));
   const ink = paletteAtWax(levelFor(surveys)).ink;
   const prefix = `rgb(${ink.r} ${ink.g} ${ink.b} / `;
-  // The fog is the only ink fill whose alpha is not one of the scene's fixed
-  // furniture values; take the one drawn right after the hull.
   const fogs = calls
     .filter(call => call.style.startsWith(prefix))
     .map(call => Number.parseFloat(call.style.slice(prefix.length)))
-    .filter(alpha => alpha !== 0.9 && alpha !== 0.96 && alpha !== 0);
+    .filter(alpha => !FURNITURE_ALPHAS.includes(alpha) && alpha !== 0);
   return fogs.length > 0 ? (fogs[fogs.length - 1] ?? null) : null;
 }
 
@@ -125,12 +159,15 @@ describe('the fog is the doubt', () => {
   });
 
   it('is gone once the voyage is settled, because she is a fact by then', () => {
+    expect(fogAlpha(1, 1)).not.toBeNull(); // still open: there is fog
     const { stub, calls } = recorder();
     drawRoads(stub, 800, 500, state({ surveys: 1, margin: 1, settled: true, wasSound: true }));
     const ink = paletteAtWax(levelFor(1)).ink;
-    const veils = calls.filter(call => call.style.startsWith(`rgb(${ink.r} ${ink.g} ${ink.b} / `) && call.style.includes('/ 0.'));
-    // Only the sea and the desk remain, both at their own fixed alphas.
-    for (const veil of veils) expect(['0.9', '0.96']).toContain(veil.style.split('/ ')[1]?.replace(')', ''));
+    const veils = calls
+      .filter(call => call.style.startsWith(`rgb(${ink.r} ${ink.g} ${ink.b} / `))
+      .map(call => Number.parseFloat(call.style.slice(`rgb(${ink.r} ${ink.g} ${ink.b} / `.length)));
+    // Only the scene's own furniture remains, at its own fixed alphas.
+    for (const veil of veils) expect(FURNITURE_ALPHAS).toContain(veil);
   });
 
   it('shipOpacity is the confidence itself, not a curve fitted to it', () => {
@@ -205,6 +242,83 @@ describe('the light is the day', () => {
   it('a level outside the ladder is clamped rather than throwing mid-frame', () => {
     expect(levelFor(-1)).toBe(daylightAt(0));
     expect(levelFor(99)).toBe(daylightAt(MAX_SURVEYS));
+  });
+});
+
+describe('nothing is drawn off the edge of the canvas', () => {
+  /**
+   * The payout line was laid out downward from the desk and fell off the bottom
+   * at ordinary aspect ratios — invisible, and nothing said so. This walks every
+   * state at the sizes the game is actually played at.
+   */
+  const SIZES: ReadonlyArray<readonly [string, number, number]> = [
+    ['1080p', 1920, 1080],
+    ['a laptop', 1440, 900],
+    ['a phone', 390, 700],
+    ['a tall phone', 390, 844],
+    ['the gallery miniature', 420, 620],
+    ['a very short window', 900, 320],
+  ];
+
+  for (const [label, width, height] of SIZES) {
+    it(`stays inside the frame at ${label}`, () => {
+      for (let surveys = 0; surveys <= MAX_SURVEYS; surveys++) {
+        for (let margin = -surveys; margin <= surveys; margin += 2) {
+          const { stub, calls } = recorder();
+          drawRoads(stub, width, height, state({ surveys, margin, surveyorOut: surveys < MAX_SURVEYS }));
+
+          for (const call of calls) {
+            if (!call.box) continue;
+            const [x, y, w, h] = call.box;
+            const isText = call.op.startsWith('fillText:');
+            // A rotated draw overhangs its own box by sin(angle) x its length;
+            // the list is under a tenth of a radian, so 3% of the frame covers
+            // it without letting a genuinely off-screen element through.
+            const slack = call.moved ? Math.max(width, height) * 0.03 : 1;
+            // Text is drawn on its baseline, so it may sit up to a line above
+            // the point; the room's own background rect legitimately covers the
+            // whole frame. Everything else must be inside it.
+            const bottom = y + h;
+            expect(x, `${call.op} at (${surveys},${margin}) starts left of the frame`).toBeGreaterThanOrEqual(-slack);
+            expect(x + w, `${call.op} at (${surveys},${margin}) runs off the right`).toBeLessThanOrEqual(width + slack);
+            expect(bottom, `${call.op} at (${surveys},${margin}) runs off the bottom`).toBeLessThanOrEqual(height + slack);
+            if (isText) {
+              // A baseline within a line-height of the bottom edge means the
+              // descender is visible and the line is readable.
+              expect(y, `${call.op} at (${surveys},${margin}) has its baseline below the frame`).toBeLessThanOrEqual(height);
+              expect(y, `${call.op} at (${surveys},${margin}) is above the frame`).toBeGreaterThanOrEqual(0);
+            }
+          }
+        }
+      }
+    });
+  }
+
+  it('and the fog always covers her, mast tips included', () => {
+    // The fog is derived from the ship's own bounding box. If it were four
+    // numbers that happened to look right at one aspect, a mast would poke out
+    // of the top of it and the claim the scene makes would be false.
+    for (const [label, width, height] of SIZES) {
+      const { stub, calls } = recorder();
+      drawRoads(stub, width, height, state({ surveys: 0, margin: 0 }));
+      const ink = paletteAtWax(levelFor(0)).ink;
+      const fog = calls.filter(call => {
+        if (!call.style.startsWith(`rgb(${ink.r} ${ink.g} ${ink.b} / `)) return false;
+        const alpha = Number.parseFloat(call.style.slice(`rgb(${ink.r} ${ink.g} ${ink.b} / `.length));
+        return !FURNITURE_ALPHAS.includes(alpha) && alpha !== 0;
+      });
+      const bank = fog[fog.length - 1]?.box;
+      expect(bank, `${label}: a fog bank is drawn`).toBeDefined();
+
+      // It must cover the whole window and stop at the desk: a bank with an edge
+      // of its own in the middle of the water reads as a mistake, however exact
+      // its alpha is.
+      const [x, y, w, h] = bank as readonly [number, number, number, number];
+      expect(x, `${label}: the bank starts at the frame`).toBe(0);
+      expect(y, `${label}: and at the top of it`).toBe(0);
+      expect(w, `${label}: it spans the full width`).toBe(width);
+      expect(h, `${label}: and reaches the desk`).toBeGreaterThan(height * 0.4);
+    }
   });
 });
 

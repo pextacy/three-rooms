@@ -93,23 +93,34 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
         note: entry.note,
       })),
       /**
-       * What the DP actually does at each cargo, at the margin the reports have
-       * reached. Derived from the policy, never asserted in prose — if the
-       * manifest changes, this table changes with it.
+       * What the DP actually does with each cargo — derived from the policy,
+       * never asserted in prose, so the table moves if the manifest does.
+       *
+       * The shape is worth knowing and it is why this reads as a band rather
+       * than a list of states: for every cargo the margins where the DP keeps
+       * asking are CONTIGUOUS, and the band slides down as the cargo gets
+       * richer. The whole strategy is "the more she pays, the further the
+       * evidence has to run against her before another report stops being worth
+       * its price". If a manifest ever made the band non-contiguous the raw
+       * margins are listed instead, because a pretty summary that is not true is
+       * worse than an ugly one that is.
        */
-      advice: CARGOES.map(cargo => ({
-        cargo,
-        rows: [0, 1, 2, 3, 4, 5]
-          .filter(k => k <= MAX_SURVEYS)
-          .map(k => {
-            const margins = [] as string[];
-            for (let m = -k; m <= k; m += 2) {
-              if (optimal(cargo, k, m)) margins.push(String(m));
-            }
-            return { surveys: k, margins };
-          }),
-        blind: bestCall(cargo, 0, 0).call,
-      })),
+      advice: CARGOES.map(cargo => {
+        const margins: number[] = [];
+        for (let k = 0; k < MAX_SURVEYS; k++) {
+          for (let m = -k; m <= k; m += 2) {
+            if (optimal(cargo, k, m) && !margins.includes(m)) margins.push(m);
+          }
+        }
+        margins.sort((a, b) => a - b);
+        const contiguous = margins.every((m, i) => i === 0 || m === (margins[i - 1] ?? m) + 1);
+        return {
+          cargo,
+          margins,
+          contiguous,
+          blind: bestCall(cargo, 0, 0).call,
+        };
+      }),
     };
   }, []);
 
@@ -202,23 +213,27 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
             <thead>
               <tr>
                 <th>{COPY.callCargo}</th>
-                <th>{COPY.callWhat}</th>
+                <th>{COPY.callBlind}</th>
+                <th>{COPY.callBand}</th>
               </tr>
             </thead>
             <tbody>
               {advice.map(entry => {
-                const sendAt = entry.rows.filter(row => row.margins.length > 0);
+                const first = entry.margins[0];
+                const last = entry.margins[entry.margins.length - 1];
+                const signed = (m: number) => (m > 0 ? `+${m}` : String(m));
                 return (
                   <tr key={entry.cargo.id}>
                     <td>
                       {entry.cargo.name} <span className="muted">{formatValue(entry.cargo.valueBp)}</span>
                     </td>
-                    <td>
-                      {sendAt.length === 0
-                        ? `${entry.blind.toLowerCase()} unseen`
-                        : sendAt
-                            .map(row => `send at ${row.surveys} (margin ${row.margins.join(', ')})`)
-                            .join('; ')}
+                    <td>{entry.blind === 'UNDERWRITE' ? COPY.underwrite.toLowerCase() : COPY.decline.toLowerCase()}</td>
+                    <td className="num">
+                      {entry.margins.length === 0 || first === undefined || last === undefined
+                        ? COPY.callNever
+                        : entry.contiguous
+                          ? `${signed(first)} … ${signed(last)}`
+                          : entry.margins.map(signed).join(', ')}
                     </td>
                   </tr>
                 );

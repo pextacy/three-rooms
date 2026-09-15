@@ -110,11 +110,12 @@ export const COPY = {
   beliefNote:
     'The margin is reports for sound minus reports for rot. Two reports that disagree cancel exactly, so the margin is the whole of what you know — and it is all the contract stores.',
   callTitle: 'When to call',
-  callSurveys: 'After',
   callCargo: 'Cargo',
-  callWhat: 'The DP does',
+  callBlind: 'Called unseen',
+  callBand: 'Keep sending while the margin is',
+  callNever: 'never — underwrite unseen',
   callNote:
-    'A surveyor is worth sending only while another report could still change the call. One report multiplies the odds by three halves and no more, so on a cargo rich enough to underwrite unseen — or poor enough to decline unseen — the evidence is not worth what it costs.',
+    'The band slides down as the cargo gets richer, and that is the whole strategy: the more she pays, the further the evidence has to run against her before another report stops being worth its price. Outside the band a surveyor cannot change the call, so he is a point and a half of premium spent on confirming what you already knew.',
   rtpTitle: 'Return to player',
   rtpDeclared: 'Declared RTP, optimal play',
   rtpExact: 'Exact',

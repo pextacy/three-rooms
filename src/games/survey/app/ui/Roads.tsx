@@ -13,7 +13,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { mountRoads, levelFor, type Manifest, type RoadsHandle } from '../render/roads';
-import { paletteAtWax, css, type InkName } from '../../../../shared/render/light';
+import { paletteAtWax, css, type InkName, DAYLIGHT } from '../../../../shared/render/light';
 
 export type RoadsProps = {
   readonly surveys: number;
@@ -29,7 +29,7 @@ export type RoadsProps = {
 /** Writes the palette for a premium level onto the document root. */
 export function applyRoomLight(levelBp: number, root: HTMLElement | null = document.documentElement): void {
   if (!root) return;
-  const palette = paletteAtWax(levelBp);
+  const palette = paletteAtWax(levelBp, DAYLIGHT);
   for (const name of Object.keys(palette) as InkName[]) {
     root.style.setProperty(`--${name}`, css(palette[name]));
   }

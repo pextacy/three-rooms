@@ -12,6 +12,7 @@
  */
 import { INCHES, waxBpAt } from '../../core/wax';
 import { cssAlpha, paletteAtWax, css, type Rgb } from '../../../../shared/render/light';
+import { drawGrain, SOOT } from '../../../../shared/render/grain';
 
 /** Everything the scene needs to draw a frame. Nothing it can derive itself. */
 export type SceneState = {
@@ -80,6 +81,10 @@ export function drawScene(
   glow.addColorStop(1, cssAlpha(palette.ink, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, height);
+
+  // Smoke in the air the flame is lighting: laid over the glow and under
+  // everything solid, so the room has a surface and the lot never does.
+  drawGrain(ctx, width, height, SOOT);
 
   drawTable(ctx, width, height, palette.ink, palette.brass);
   drawCandle(ctx, width, height, state, palette, flareBoost);

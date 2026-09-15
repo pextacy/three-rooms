@@ -432,8 +432,15 @@ luminance is a direct function of `WAX_BP[k]`. Consequences that must hold:
 - Tallow shifts **down the blackbody curve** as luminance falls (warm white →
   amber → deep amber). An LED-like constant hue is wrong and is a visible tell of
   a fake light model.
-- Four inks: **tallow** (flame, live values), **brass** (the lot on the table),
-  **oxblood** (a lot let burn), **ink** (the room). No fifth.
+- Four ink ROLES, and each game has its own four: **tallow** (the light source
+  and every live value), **brass** (the money being decided about), **oxblood**
+  (the past tense), **ink** (the room). **No fifth role, in any room.** The
+  values are the room's, not the system's — CANDLE is lit by a tallow candle,
+  THE SURVEY by the sky through an open window, THE BROKERS by an Argand lamp
+  over slate, and all three are three different palettes because they are three
+  different light sources. `[data-room]` on `<html>` says which; the rooms live
+  in `shared/render/light.ts`; `verify:light` checks each against its OWN dimmest
+  level.
 - **Legibility is a constraint on the palette, not an afterthought.** Brass carries
   the lot's face value, so it must clear WCAG AA against the room at the *fifth*
   inch, where only 40% of the light is left. It was lightened on D3 until it did
@@ -441,7 +448,17 @@ luminance is a direct function of `WAX_BP[k]`. Consequences that must hold:
   **Oxblood is deliberately below AA and stays there**: it is a past-tense mark
   that recedes, so it never carries text that has to be read, and that is a test
   rather than an intention.
-- Exactly one gradient in the entire build: the flame's own falloff.
+- **One gradient per light source, pointing where the light comes from.** A
+  flame is a point, so CANDLE and THE BROKERS get a radial falloff. Daylight is
+  not: THE SURVEY gets a sheet from the horizon and a bar across the sill, which
+  is two and is its whole budget. A third would mean something is being shaded
+  for effect rather than lit from a source.
+- **Every surface has a grain** (`shared/render/grain.ts`): one deterministic
+  noise tile per room — soot above the candle, damp off the water, mineral
+  pitting on the slate. A perfectly smooth falloff is the most recognisable tell
+  of a scene that was described rather than drawn. It is a finish and never
+  information: where no offscreen canvas exists the room draws plainer, and
+  never wrong.
 - Hierarchy by luminance, never by size; the type scale is fixed.
 
 The five pins in the wax are the inch markers. When an inch burns, a pin **falls**

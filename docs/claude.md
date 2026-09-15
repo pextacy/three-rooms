@@ -44,8 +44,10 @@ selling the ten seconds in which a player decides whether to believe it.
 
 Three decision problems, one sentence: **stop · learn · search**.
 
-All three are dressed from one room — Lloyd's Coffee House, 1728 — and share a
-light model, four inks, a bridge and a chrome (§3).
+All three are dressed from one WORLD — Lloyd's Coffee House and the streets
+around it, 1728 — and share a light model, a bridge, a chrome and one set of four
+ink roles. They are **not** dressed from one room, and that is deliberate: see
+§5.
 
 If you ever find yourself implementing "cash out before it crashes" or "reveal tiles
 until you hit a bomb", **stop** — you have drifted into a genre the jam explicitly
@@ -207,12 +209,57 @@ One direction sentence, and everything obeys it:
   last inch the room is genuinely dim. A player must be able to read how much the
   prize has decayed **without reading a number**. The number is there too, but it
   is confirmation, not information.
-- **Four inks only:** tallow (warm white, the flame and live values), brass (the
-  lot on the table), oxblood (a lot you let burn), ink (the room). No fifth colour
-  is approved. No gradients except the flame's own falloff.
-- **Warm light cools as it dims.** Tallow shifts down the blackbody curve as
-  luminance drops, because a real flame does. A reviewer can verify it with a
-  colour picker. It costs nothing.
+- **Four ink ROLES, and each game has its own four.** The roles are fixed and
+  shared: `ink` is the room, `tallow` is the light source and every live value,
+  `brass` is the money the player is deciding about, `oxblood` is the past tense
+  and never carries text that has to be read. **No fifth role is approved, in any
+  room.** What each role is MADE of belongs to the game:
+
+  | | CANDLE | THE SURVEY | THE BROKERS |
+  |---|---|---|---|
+  | lit by | a tallow candle | the sky, through an open window | an Argand lamp over a slate board |
+  | source | 2000K → 1500K | 6500K → 4300K | 2900K → 2500K |
+  | `ink` | soot | wet slate-blue | warm charcoal |
+  | `tallow` | tallow | bone | chalk |
+  | `brass` | brass | verdigris | smalt blue |
+  | `oxblood` | oxblood | rust | umber |
+
+  This was one palette for all three until it was looked at side by side, and
+  three near-identical amber pages is what "a template" looks like to a judge —
+  lighting a dawn harbour with candlelight was also simply **wrong**. The rooms
+  live in `shared/render/light.ts`, `[data-room]` on `<html>` says which one a
+  page is, and `npm run verify:light` checks every one of them for WCAG AA
+  against its OWN dimmest level. Nothing here is a free choice: a red was tried
+  for THE BROKERS and could not be kept, because no red dark enough to read as
+  ledger lead clears AA on that slate.
+
+- **One gradient per light source, and it points where the light comes from.**
+  A flame is a point, so CANDLE and THE BROKERS get a radial falloff. Daylight
+  is not, so THE SURVEY gets a sheet from the horizon and a bar across the sill —
+  two, and two is its whole budget. A third would mean something is being shaded
+  for effect rather than lit from a source.
+
+- **Every surface has a grain.** A perfectly smooth radial falloff is the single
+  most recognisable tell of a scene that was described rather than drawn.
+  `shared/render/grain.ts` bakes one deterministic noise tile per room — soot
+  above the candle, damp off the water, mineral pitting on the slate — and it is
+  a FINISH, never information: a browser that cannot bake it draws the room
+  plainer and never wrong.
+
+- **Each room writes in its own hand.** The layout, the grid, the type scale and
+  the reading order are shared, so a player who learns one game reads the next in
+  a second. The MARK is not: a printer's bill has straight edges and single
+  hairlines, an underwriter's slip has a ruled margin and a ledger's double rule,
+  and chalk on slate breaks and dusts the edge it is dragged along. Every one of
+  those is the mark that room's own trade would leave; none of them is there
+  because it looked nice.
+- **Light cools as it is spent.** Every source walks DOWN the Planckian locus as
+  it goes, because that is what light does, and the ink shifts with it. A
+  reviewer can verify it with a colour picker. The three differ in where they
+  START: only the sky begins above 5000K, so only the sky goes from blue-white to
+  warm while the two flames go from amber to red. A flame cannot be 6500K and the
+  sky cannot be 2000K, which is why this is a fact about the room and not a
+  setting.
 - **Hierarchy by luminance, never by size.** Type scale is fixed.
 - **No AI slop.** No stock gradients, no glassmorphism, no generated textures, no
   emoji in the UI, no purple-to-cyan. If it looks like a template, delete it.

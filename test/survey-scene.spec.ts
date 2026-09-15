@@ -17,7 +17,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { drawRoads, shipOpacity, levelFor, type RoadsState, type Manifest } from '../src/games/survey/app/render/roads';
-import { paletteAtWax, relativeLuminance, INKS, css } from '../src/shared/render/light';
+import { paletteAtWax, relativeLuminance, DAYLIGHT, css } from '../src/shared/render/light';
 import { MAX_SURVEYS } from '../src/games/survey/core/vessel';
 import { DAYLIGHT_BP, DAYLIGHT_DENOM, daylightAt } from '../src/games/survey/app/daylight';
 import { bestCallConfidence, posteriorSound } from '../src/games/survey/core/belief';
@@ -125,7 +125,7 @@ const FURNITURE_ALPHAS = [0.75, 0.12];
 function fogAlpha(surveys: number, margin: number): number | null {
   const { stub, calls } = recorder();
   drawRoads(stub, 800, 500, state({ surveys, margin }));
-  const ink = paletteAtWax(levelFor(surveys)).ink;
+  const ink = paletteAtWax(levelFor(surveys), DAYLIGHT).ink;
   const prefix = `rgb(${ink.r} ${ink.g} ${ink.b} / `;
   const fogs = calls
     .filter(call => call.style.startsWith(prefix))
@@ -162,7 +162,7 @@ describe('the fog is the doubt', () => {
     expect(fogAlpha(1, 1)).not.toBeNull(); // still open: there is fog
     const { stub, calls } = recorder();
     drawRoads(stub, 800, 500, state({ surveys: 1, margin: 1, settled: true, wasSound: true }));
-    const ink = paletteAtWax(levelFor(1)).ink;
+    const ink = paletteAtWax(levelFor(1), DAYLIGHT).ink;
     const veils = calls
       .filter(call => call.style.startsWith(`rgb(${ink.r} ${ink.g} ${ink.b} / `))
       .map(call => Number.parseFloat(call.style.slice(`rgb(${ink.r} ${ink.g} ${ink.b} / `.length)));
@@ -212,7 +212,7 @@ describe('the light is the day', () => {
     for (let k = 0; k <= MAX_SURVEYS; k++) {
       const share = daylightAt(k) / DAYLIGHT_DENOM;
       for (const name of ['tallow', 'brass', 'oxblood'] as const) {
-        const ratio = relativeLuminance(paletteAtWax(levelFor(k))[name]) / relativeLuminance(INKS[name]);
+        const ratio = relativeLuminance(paletteAtWax(levelFor(k), DAYLIGHT)[name]) / relativeLuminance(DAYLIGHT.inks[name]);
         expect(Math.abs(ratio - share), `${name} after ${k} surveys: ${ratio} vs ${share}`).toBeLessThan(0.01);
       }
     }
@@ -225,8 +225,8 @@ describe('the light is the day', () => {
   });
 
   it('the day is 60% gone by the time the fifth man reports', () => {
-    const first = relativeLuminance(paletteAtWax(levelFor(0)).tallow);
-    const last = relativeLuminance(paletteAtWax(levelFor(MAX_SURVEYS)).tallow);
+    const first = relativeLuminance(paletteAtWax(levelFor(0), DAYLIGHT).tallow);
+    const last = relativeLuminance(paletteAtWax(levelFor(MAX_SURVEYS), DAYLIGHT).tallow);
     expect(last).toBeLessThan(first);
     expect(Math.abs(last / first - daylightAt(MAX_SURVEYS) / DAYLIGHT_DENOM)).toBeLessThan(0.01);
   });
@@ -301,7 +301,7 @@ describe('nothing is drawn off the edge of the canvas', () => {
     for (const [label, width, height] of SIZES) {
       const { stub, calls } = recorder();
       drawRoads(stub, width, height, state({ surveys: 0, margin: 0 }));
-      const ink = paletteAtWax(levelFor(0)).ink;
+      const ink = paletteAtWax(levelFor(0), DAYLIGHT).ink;
       const fog = calls.filter(call => {
         if (!call.style.startsWith(`rgb(${ink.r} ${ink.g} ${ink.b} / `)) return false;
         const alpha = Number.parseFloat(call.style.slice(`rgb(${ink.r} ${ink.g} ${ink.b} / `.length));
@@ -323,16 +323,24 @@ describe('nothing is drawn off the edge of the canvas', () => {
 });
 
 describe('the scene obeys the design law', () => {
-  it('draws exactly one gradient: the lamp', () => {
+  /**
+   * CANDLE's law is "one gradient, and it is the flame's own falloff". This room
+   * has no flame in it: the light is the sky, which arrives as a SHEET from the
+   * horizon and lays a bar of it across the desk under the window. That is two,
+   * and two is the whole budget — the moment a third appears, something is being
+   * shaded for effect rather than lit from a source, which is the thing the
+   * original rule existed to prevent.
+   */
+  it('draws two gradients and no more: the sheet from the horizon, and the sill', () => {
     const { stub, gradientCount } = recorder();
     drawRoads(stub, 800, 500, state());
-    expect(gradientCount()).toBe(1);
+    expect(gradientCount()).toBe(2);
   });
 
   it('uses the four inks and no fifth colour', () => {
     const { stub, calls } = recorder();
     drawRoads(stub, 800, 500, state({ surveys: 2, margin: -2 }));
-    const palette = paletteAtWax(levelFor(2));
+    const palette = paletteAtWax(levelFor(2), DAYLIGHT);
     const allowed = new Set(Object.values(palette).map(rgb => `rgb(${rgb.r} ${rgb.g} ${rgb.b}`));
     for (const call of calls) {
       if (call.style.startsWith('[object')) continue; // the gradient itself
@@ -361,7 +369,7 @@ describe('the scene obeys the design law', () => {
   it('paints the room in the ink itself, not in a theme colour', () => {
     const { stub, calls } = recorder();
     drawRoads(stub, 800, 500, state());
-    const ink = paletteAtWax(levelFor(0)).ink;
+    const ink = paletteAtWax(levelFor(0), DAYLIGHT).ink;
     expect(calls[0]?.style).toBe(css(ink));
   });
 });

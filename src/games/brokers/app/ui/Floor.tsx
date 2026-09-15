@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { mountFloor, levelFor, type Desk, type Slip, type FloorHandle } from '../render/floor';
-import { paletteAtWax, css, type InkName } from '../../../../shared/render/light';
+import { paletteAtWax, css, type InkName, LAMPLIGHT } from '../../../../shared/render/light';
 
 export type FloorProps = {
   readonly slips: readonly Slip[];
@@ -27,7 +27,7 @@ export type FloorProps = {
 export function applyFloorLight(feesBp: number, root: HTMLElement | null = document.documentElement): void {
   if (!root) return;
   const level = levelFor(feesBp);
-  const palette = paletteAtWax(level);
+  const palette = paletteAtWax(level, LAMPLIGHT);
   for (const name of Object.keys(palette) as InkName[]) {
     root.style.setProperty(`--${name}`, css(palette[name]));
   }

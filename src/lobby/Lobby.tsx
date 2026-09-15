@@ -31,7 +31,13 @@ export function Lobby() {
 
       <ul className="lobby__list">
         {GAMES.map(game => (
-          <li key={game.slug} className="entry">
+          /*
+           * `data-room` here is the same attribute each entry's own page carries
+           * on <html>, so the four ink tokens resolve to that game's room and the
+           * card is lit the way the game is. One rule in `tokens.css`, no palette
+           * repeated here.
+           */
+          <li key={game.slug} className="entry" data-room={game.room}>
             <a className="entry__link" href={game.status === 'live' ? `/${game.slug}/` : undefined} aria-disabled={game.status !== 'live'}>
               <span className="entry__name">{game.name}</span>
               <span className="entry__line">{game.line}</span>
@@ -49,6 +55,10 @@ export function Lobby() {
               <div>
                 <dt>Maximum payout</dt>
                 <dd className="num">{game.maxPayout}</dd>
+              </div>
+              <div>
+                <dt>Lit by</dt>
+                <dd>{game.lit}</dd>
               </div>
             </dl>
 

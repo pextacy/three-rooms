@@ -21,6 +21,15 @@ export type GameEntry = {
   readonly rtp: string;
   readonly maxPayout: string;
   readonly status: 'live' | 'building';
+  /**
+   * The room this game is lit in, named the way `[data-room]` names it on the
+   * entry's own page. The lobby is a door, so it shows each game in ITS colours
+   * rather than repainting all three in the candle's — which is what it did, and
+   * which made three different rooms look like one product.
+   */
+  readonly room: 'candle' | 'roads' | 'floor';
+  /** What is doing the lighting, for the one line that says so. */
+  readonly lit: string;
 };
 
 export const GAMES: readonly GameEntry[] = [
@@ -34,6 +43,8 @@ export const GAMES: readonly GameEntry[] = [
     rtp: '96.9637%',
     maxPayout: '4.99×',
     status: 'live',
+    room: 'floor',
+    lit: 'an Argand lamp over a slate board',
   },
   {
     slug: 'survey',
@@ -45,6 +56,8 @@ export const GAMES: readonly GameEntry[] = [
     rtp: '97.4141%',
     maxPayout: '20×',
     status: 'live',
+    room: 'roads',
+    lit: 'the sky, through an open window',
   },
   {
     slug: 'candle',
@@ -55,5 +68,7 @@ export const GAMES: readonly GameEntry[] = [
     rtp: '96.9961%',
     maxPayout: '25×',
     status: 'live',
+    room: 'candle',
+    lit: 'a tallow candle on the table',
   },
 ];

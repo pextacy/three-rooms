@@ -31,7 +31,8 @@
  * and is handed everything it draws.
  */
 import { BROKER_LIST, TOTAL_FEES_BP, PRICE_DENOM } from '../../core/market';
-import { LEVEL_FULL, LEVEL_DENOM, cssAlpha, paletteAtWax, css, type Rgb } from '../../../../shared/render/light';
+import { LEVEL_FULL, LEVEL_DENOM, cssAlpha, paletteAtWax, css, type Rgb, LAMPLIGHT } from '../../../../shared/render/light';
+import { drawGrain, SLATE } from '../../../../shared/render/grain';
 
 type Palette = Record<'tallow' | 'brass' | 'oxblood' | 'ink', Rgb>;
 
@@ -138,11 +139,14 @@ const COLUMNS = BROKER_LIST.length + 1;
 const columnX = (width: number, index: number) => (width / COLUMNS) * (index + 0.5);
 
 export function drawFloor(ctx: CanvasRenderingContext2D, width: number, height: number, state: FloorState): void {
-  const palette = paletteAtWax(levelFor(state.feesBp));
+  const palette = paletteAtWax(levelFor(state.feesBp), LAMPLIGHT);
 
   ctx.fillStyle = css(palette.ink);
   ctx.fillRect(0, 0, width, height);
 
+  // The board is a MINERAL, so it is mottled before it is lit — grain first,
+  // then the lamp over it, which is the order the two things happen in.
+  drawGrain(ctx, width, height, SLATE);
   drawLamp(ctx, width, height, palette);
   drawBoard(ctx, width, height, state, palette);
   drawSlips(ctx, width, height, state, palette);
@@ -181,10 +185,25 @@ function drawBoard(
   const bottom = height * BOARD_BOTTOM;
 
   // Rules at the multiples a player thinks in, so the ratio scale can be read.
+  //
+  // Chalked, not printed. A rule on a slate board is laid down by a hand with a
+  // straight edge, so it breaks: this draws it as a run of short strokes whose
+  // gaps and weights come from the line's own height, which makes it repeatable
+  // frame to frame and still not mechanical. A crisp 1px rule here was the last
+  // thing on this canvas that looked typeset rather than written.
   for (const multiple of [0.5, 1, 2, 5]) {
     const y = bottom - (bottom - top) * heightOf(Math.round(multiple * PRICE_DENOM));
-    ctx.fillStyle = cssAlpha(palette.tallow, 0.07);
-    ctx.fillRect(0, y, width, Math.max(1, height * 0.001));
+    const thickness = Math.max(1, height * 0.001);
+    const step = Math.max(6, width * 0.016);
+    ctx.fillStyle = cssAlpha(palette.tallow, 0.09);
+    for (let x = 0; x < width; x += step) {
+      const wobble = ((Math.sin((x + y) * 0.07) + 1) / 2) * 0.5 + 0.5; // 0.5 .. 1
+      ctx.globalAlpha = wobble;
+      // The last stroke is cut at the frame rather than allowed to overhang it.
+      // It overhung, and `brokers-scene.spec.ts` is what said so.
+      ctx.fillRect(x, y, Math.min(step * 0.82, width - x), thickness);
+    }
+    ctx.globalAlpha = 1;
     ctx.font = `${Math.max(9, height * 0.022)}px ui-monospace, Menlo, monospace`;
     ctx.textAlign = 'left';
     ctx.fillStyle = cssAlpha(palette.tallow, 0.22);

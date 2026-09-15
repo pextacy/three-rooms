@@ -265,10 +265,15 @@ one is about **refusing offers under a decay**, one about **buying evidence unti
 it stops being worth what it costs**, and one about **buying options you can
 always go back to**. Stop · learn · search.
 
-All three are dressed from the same room — **Lloyd's Coffee House, London, 1728,
-lit by a single candle** — and share one light model, one set of four inks, one
-bridge and one chrome. The auction is at one table, the underwriting desk at the
-next, and the brokers are on the floor between them.
+All three are dressed from the same WORLD — **Lloyd's Coffee House and the
+streets around it, London, 1728** — and share one light model, one bridge, one
+chrome and one set of four ink ROLES. They are deliberately not dressed from the
+same room: the auction is lit by a tallow candle, the underwriting desk by the
+sky through an open window onto the roads, and the brokers' floor by an Argand
+lamp over a slate board. Three light sources, three palettes, three hands —
+2000K, 6500K and 2900K — checked against one another by \`npm run verify:light\`,
+because lighting a dawn harbour with candlelight is not a style choice, it is
+simply wrong.
 
 ---
 

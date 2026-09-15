@@ -1,23 +1,24 @@
 /*
-  The four inks (claude.md §5). No fifth colour is approved.
+  The four ink ROLES (claude.md §5). No fifth is approved, in any room.
 
-  Shared by every game on this origin: one room, one light model, one type
-  scale. A game's own stylesheet lays out its table; none of them redefines a
-  colour.
+  Shared by every game on this origin: one light model, one type scale, one set
+  of four roles. What is NOT shared is the room — a tallow candle, a window onto
+  the roads at dawn, and an Argand lamp over a slate board are three different
+  light sources and are drawn as three. `[data-room]` on <html> says which, and
+  the values below are only the FIRST PAINT: from the first frame on, each game's
+  `applySceneLight` overwrites all four from `paletteAtWax(level, room)` at its
+  own level, so the chrome dims with its own room rather than floating above it
+  in a fixed palette. The room definitions live in `shared/render/light.ts`; if
+  these two ever disagree the page flashes, so they are checked in
+  `test/light.spec.ts`.
 */
 :root {
-  /*
-    Opening values only — these are the four inks AT FULL FLAME. From the first
-    frame on, each game's `applySceneLight` overwrites them from `paletteAtWax`
-    at its own level (CANDLE's wax ladder, THE SURVEY's premium ladder), so the
-    chrome dims with the room instead of floating above it in a fixed palette.
-    There is one light model, not two (src/shared/render/light.ts).
-  */
-  --ink: #0c0a07; /* the room */
+  /* CANDLE — a tallow candle on the table. The default, and the reference. */
+  --ink: #0c0a07; /* the room: soot */
   --ink-raised: #16120c;
-  --tallow: #f6e6c4; /* the flame, live values */
-  --brass: #e0b463; /* the lot on the table, the cargo on the manifest */
-  --oxblood: #8d3a30; /* what you let go — never load-bearing text */
+  --tallow: #f6e6c4; /* the flame, and every live value */
+  --brass: #e0b463; /* the money: the lot's face value */
+  --oxblood: #8d3a30; /* the past tense — never load-bearing text */
   --wax: 1;
 
   /*
@@ -43,6 +44,33 @@
   --chrome-ink: var(--tallow);
   --chrome-rule: rgb(from var(--tallow) r g b / 0.12);
   --chrome-field: var(--ink-raised);
+}
+
+/*
+  THE SURVEY — the roads at dawn, by the sky. No flame in the room at all: bone
+  paper, the verdigris of her copper sheathing, and rust for what is already
+  spent — the one warm thing here, and it is the past tense.
+*/
+[data-room='roads'] {
+  --ink: #070b10;
+  --ink-raised: #0e141c;
+  --tallow: #dce4ea;
+  --brass: #79c98a;
+  --oxblood: #7e4634;
+}
+
+/*
+  THE BROKERS — the floor, by an Argand lamp over a slate board. Chalk, dusted
+  umber for a man already paid, and the smalt-blue ink the slips are written in:
+  the one cold thing inside a warm pool of lamplight, which is what makes a
+  figure on this floor findable at a glance.
+*/
+[data-room='floor'] {
+  --ink: #100e0c;
+  --ink-raised: #1a1714;
+  --tallow: #eae6dc;
+  --brass: #6e9bd8;
+  --oxblood: #6e5843;
 }
 
 /*

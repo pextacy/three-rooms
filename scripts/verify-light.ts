@@ -8,7 +8,7 @@
  * exactly the wax ladder, and the tallow must actually walk down the blackbody
  * curve rather than just fading.
  */
-import { INKS, paletteAtWax, relativeLuminance, contrastRatio, temperatureForWax, blackbody, sceneLuminance, css, type InkName } from '../src/shared/render/light';
+import { INKS, ROOMS, LEVEL_FULL, CANDLELIGHT, DAYLIGHT, LAMPLIGHT, paletteAtWax, relativeLuminance, contrastRatio, temperatureForWax, blackbody, sceneLuminance, css, type InkName, type Room } from '../src/shared/render/light';
 import { WAX_BP, INCHES, waxBpAt } from '../src/games/candle/core/wax';
 import { DAYLIGHT_BP, daylightAt } from '../src/games/survey/app/daylight';
 import { MAX_SURVEYS } from '../src/games/survey/core/vessel';
@@ -19,6 +19,24 @@ import { BROKER_LIST, HOUSE, TOTAL_FEES_BP, PRICE_DENOM } from '../src/games/bro
 import { toNumber } from '../src/shared/math/rational';
 
 const B = (s: string) => `\x1b[1m${s}\x1b[0m`;
+/** Hue angle in degrees, for asking whether two inks are the same colour. */
+function hueOf(rgb: { r: number; g: number; b: number }): number {
+  const [r, g, b] = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const span = max - min;
+  if (span === 0) return 0;
+  const raw = max === r ? ((g - b) / span) % 6 : max === g ? (b - r) / span + 2 : (r - g) / span + 4;
+  const deg = raw * 60;
+  return deg < 0 ? deg + 360 : deg;
+}
+
+/** The short way round the wheel. */
+function hueGap(a: number, b: number): number {
+  const gap = Math.abs(a - b) % 360;
+  return gap > 180 ? 360 - gap : gap;
+}
+
 const D = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const swatch = (rgb: { r: number; g: number; b: number }) => `\x1b[48;2;${rgb.r};${rgb.g};${rgb.b}m   \x1b[0m`;
 
@@ -144,11 +162,11 @@ console.log(D('  every surveyor costs an hour of daylight; the room walks the sa
 console.log(D('  surveys  daylight  flame        tallow            luminance   vs full'));
 for (let k = 0; k <= MAX_SURVEYS; k++) {
   const level = daylightAt(k);
-  const palette = paletteAtWax(level);
-  const ratio = relativeLuminance(palette.tallow) / relativeLuminance(paletteAtWax(10_000).tallow);
+  const palette = paletteAtWax(level, DAYLIGHT);
+  const ratio = relativeLuminance(palette.tallow) / relativeLuminance(paletteAtWax(10_000, DAYLIGHT).tallow);
   console.log(
     `  ${String(k).padStart(7)}${`${level / 100}%`.padStart(10)}` +
-      `${String(Math.round(temperatureForWax(level))).padStart(7)}K ` +
+      `${String(Math.round(temperatureForWax(level, DAYLIGHT))).padStart(7)}K ` +
       `${swatch(palette.tallow)} ${css(palette.tallow).padEnd(18)}` +
       `${relativeLuminance(palette.tallow).toFixed(4).padStart(9)}${`${(ratio * 100).toFixed(2)}%`.padStart(11)}`,
   );
@@ -160,7 +178,7 @@ check(
   `${daylightAt(MAX_SURVEYS) / 100}% both`,
 );
 for (let k = 0; k <= MAX_SURVEYS; k++) {
-  const palette = paletteAtWax(daylightAt(k));
+  const palette = paletteAtWax(daylightAt(k), DAYLIGHT);
   const ratio = contrastRatio(palette.brass, palette.ink);
   check(`${k} surveys: brass on ink clears WCAG AA (4.5:1)`, ratio >= 4.5, `${ratio.toFixed(2)}:1`);
 }
@@ -194,11 +212,11 @@ console.log(D('  stake, so the room dims by 30% across a whole round and no furt
 console.log(D('  fees paid   light   flame        tallow            luminance   vs full'));
 for (const feesBp of [0, 95, 420, 870, TOTAL_FEES_BP]) {
   const level = brokersLevelFor(feesBp);
-  const palette = paletteAtWax(level);
-  const ratio = relativeLuminance(palette.tallow) / relativeLuminance(paletteAtWax(10_000).tallow);
+  const palette = paletteAtWax(level, LAMPLIGHT);
+  const ratio = relativeLuminance(palette.tallow) / relativeLuminance(paletteAtWax(10_000, LAMPLIGHT).tallow);
   console.log(
     `  ${`${(feesBp / 100).toFixed(2)}%`.padStart(9)}${`${level / 100}%`.padStart(8)}` +
-      `${String(Math.round(temperatureForWax(level))).padStart(7)}K ` +
+      `${String(Math.round(temperatureForWax(level, LAMPLIGHT))).padStart(7)}K ` +
       `${swatch(palette.tallow)} ${css(palette.tallow).padEnd(18)}` +
       `${relativeLuminance(palette.tallow).toFixed(4).padStart(9)}${`${(ratio * 100).toFixed(2)}%`.padStart(11)}`,
   );
@@ -206,7 +224,7 @@ for (const feesBp of [0, 95, 420, 870, TOTAL_FEES_BP]) {
 check('full flame before a fee is paid', brokersLevelFor(0) === 10_000);
 check('and 70% of it once every man has been paid', brokersLevelFor(TOTAL_FEES_BP) === 7_000, '30% of the light, for 14.7% of the stake');
 for (const feesBp of [0, TOTAL_FEES_BP]) {
-  const palette = paletteAtWax(brokersLevelFor(feesBp));
+  const palette = paletteAtWax(brokersLevelFor(feesBp), LAMPLIGHT);
   const ratio = contrastRatio(palette.brass, palette.ink);
   check(`${(feesBp / 100).toFixed(2)}% spent: brass on ink clears WCAG AA (4.5:1)`, ratio >= 4.5, `${ratio.toFixed(2)}:1`);
 }
@@ -230,6 +248,104 @@ for (const priceBp of prices) {
   check('a doubling is the same distance wherever it sits on the board', agree, `${(doubling * 100).toFixed(2)}% of the board, every time`);
   check('the scale starts at the lowest price anybody names', Math.abs(heightOf(Math.min(...prices))) < 1e-12);
   check('and ends at the highest', Math.abs(heightOf(Math.max(...prices)) - 1) < 1e-12);
+}
+
+// ------------------------------------------------------- three rooms, one model
+console.log(`\n${B('Three rooms, one model')}`);
+console.log(D('  The physics is shared and the four ROLES are shared. What is not shared is'));
+console.log(D('  what the light is: a tallow candle, the sky, and an oil lamp are not the same'));
+console.log(D('  colour and must not be drawn as though they were. Each room is checked at its'));
+console.log(D('  OWN dimmest level, because that is where its money figure is hardest to read.'));
+
+/** The dimmest each room is ever asked to be, from that game's own ladder. */
+const DIMMEST: ReadonlyArray<readonly [Room, number]> = [
+  [CANDLELIGHT, waxBpAt(INCHES)],
+  [DAYLIGHT, daylightAt(MAX_SURVEYS)],
+  [LAMPLIGHT, brokersLevelFor(TOTAL_FEES_BP)],
+];
+
+for (const [room, dim] of DIMMEST) {
+  const full = paletteAtWax(LEVEL_FULL, room);
+  const low = paletteAtWax(dim, room);
+  console.log(`\n  ${B(room.label)}`);
+  console.log(
+    D(
+      `    ${room.source}, ${Math.round(temperatureForWax(LEVEL_FULL, room))}K at full to ` +
+        `${Math.round(temperatureForWax(dim, room))}K at ${dim / 100}%`,
+    ),
+  );
+  console.log('    ink        tallow     brass      oxblood');
+  console.log(
+    `    ${swatch(full.ink)}  ${swatch(full.tallow)}  ${swatch(full.brass)}  ${swatch(full.oxblood)}   ${D('full')}`,
+  );
+  console.log(
+    `    ${swatch(low.ink)}  ${swatch(low.tallow)}  ${swatch(low.brass)}  ${swatch(low.oxblood)}   ${D(`${dim / 100}%`)}`,
+  );
+  check(
+    `the live values clear WCAG AA against the room at ${dim / 100}%`,
+    contrastRatio(low.tallow, low.ink) >= 4.5,
+    `${contrastRatio(low.tallow, low.ink).toFixed(2)}:1`,
+  );
+  check(
+    `and so does the money figure, which is the one that must be read`,
+    contrastRatio(low.brass, low.ink) >= 4.5,
+    `${contrastRatio(low.brass, low.ink).toFixed(2)}:1`,
+  );
+  check(
+    'the past-tense mark recedes — it is darker than the live values',
+    relativeLuminance(low.oxblood) < relativeLuminance(low.tallow),
+    'nothing that has to be read is ever said in it alone',
+  );
+  check(
+    'brightness is still exactly the ladder, in this room too',
+    Math.abs(
+      relativeLuminance(low.tallow) / relativeLuminance(full.tallow) - sceneLuminance(dim),
+    ) < 1.5e-3, // 8-bit rounding: the ladder lands within 0.05pp, not on the digit
+    `${((relativeLuminance(low.tallow) / relativeLuminance(full.tallow)) * 100).toFixed(2)}% against a ladder that says ${dim / 100}%`,
+  );
+}
+
+console.log(`\n  ${B('…and they are genuinely different rooms')}`);
+{
+  const at = (room: Room) => paletteAtWax(LEVEL_FULL, room);
+  const pairs: ReadonlyArray<readonly [Room, Room]> = [
+    [CANDLELIGHT, DAYLIGHT],
+    [CANDLELIGHT, LAMPLIGHT],
+    [DAYLIGHT, LAMPLIGHT],
+  ];
+  for (const [a, b] of pairs) {
+    // Distance in the hue the money is carried in. Two rooms whose money figure
+    // is the same colour are one room with two sets of nouns.
+    const x = at(a).brass;
+    const y = at(b).brass;
+    const apart = Math.hypot(x.r - y.r, x.g - y.g, x.b - y.b);
+    const turn = hueGap(hueOf(x), hueOf(y));
+    check(
+      `${a.source} and ${b.source} carry money in different colours`,
+      apart > 80 && turn > 45,
+      `${Math.round(apart)} apart in sRGB and ${Math.round(turn)}° apart in hue — ${css(x)} vs ${css(y)}`,
+    );
+  }
+  const temps = ROOMS.map(room => temperatureForWax(LEVEL_FULL, room));
+  check(
+    'and they are lit at three different temperatures',
+    new Set(temps.map(Math.round)).size === ROOMS.length,
+    temps.map(t => `${Math.round(t)}K`).join(' · '),
+  );
+  // Every source walks DOWN the Planckian locus as it is spent, because that is
+  // what light does. The difference is where each one starts: only the sky
+  // begins above 5000K, so only the sky goes from blue-white to warm while the
+  // two flames go from amber to red.
+  check(
+    'every source cools as it is spent',
+    ROOMS.every(room => room.sourceFloor < room.sourceFull),
+    ROOMS.map(room => `${room.sourceFull}K -> ${room.sourceFloor}K`).join(' · '),
+  );
+  check(
+    'and only the one that is not a fire starts at the blue end',
+    ROOMS.filter(room => room.sourceFull > 5_000).length === 1 && DAYLIGHT.sourceFull > 5_000,
+    'a flame cannot be 6500K; the sky cannot be 2000K',
+  );
 }
 
 console.log(`\n${B('Side by side — the exit gate')}`);

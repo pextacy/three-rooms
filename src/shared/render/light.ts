@@ -17,10 +17,15 @@
 /**
  * The light model is SHARED, so it must not know which game is lighting it.
  *
- * CANDLE hands it the wax ladder (100 -> 40%); THE SURVEY hands it the premium
- * ladder (100 -> 70%). Both are a level in basis points out of `LEVEL_DENOM`,
- * which is all this file has ever actually used — it read the numbers out of
- * `candle/core/wax.ts` only because there was one game when it was written.
+ * Each game hands it a level in basis points out of `LEVEL_DENOM` — CANDLE the
+ * wax ladder (100 -> 40%), THE SURVEY the day (100 -> 40%), THE BROKERS the fees
+ * (100 -> 70%) — and a ROOM, which says what is doing the lighting and what the
+ * four inks are made of in it.
+ *
+ * One model, three light sources. A tallow candle is not a window at dawn and
+ * neither is an oil lamp over a slate board; lighting all three amber was the
+ * tell that these were one page with three sets of nouns. What is shared is the
+ * PHYSICS and the four ROLES, which is the part that was ever worth sharing.
  */
 
 /** Brightness is expressed in basis points of full flame. 100% = 10000. */
@@ -41,29 +46,128 @@ export const LEVEL_FLOOR = 4_000;
 export type Rgb = { readonly r: number; readonly g: number; readonly b: number };
 
 /**
- * The four inks **as they appear at the first inch**, under a full flame. No
- * fifth colour is approved (claude.md §5). Every other inch is derived.
+ * The four ROLES. Every room has exactly these four and no fifth (claude.md §5)
+ * — what changes between rooms is what they are made of, never how many there
+ * are.
  *
- * Their lightness is not free choice: brass carries the lot's face value, so it
- * has to clear WCAG AA against the room at the FIFTH inch, where there is only
- * 40% of the light left. `npm run verify:light` is what holds that.
+ *  - `ink`     the room itself
+ *  - `tallow`  the light source, and every live value
+ *  - `brass`   the money: the figure the player is deciding about
+ *  - `oxblood` the past tense — a mark that RECEDES, and never carries text
+ *              that has to be read. Nothing is ever said in it alone.
+ *
+ * The money role's lightness is not free choice: it has to clear WCAG AA against
+ * its own room at that room's DIMMEST level. `npm run verify:light` is what
+ * holds that, for all three.
  */
-export const INKS = {
-  /** The flame and every live value. Warm white. */
-  tallow: { r: 246, g: 230, b: 196 },
-  /** The lot on the table and its face value. */
-  brass: { r: 224, g: 180, b: 99 },
-  /**
-   * A lot you let burn. Deliberately the darkest ink after the room: it is a
-   * past-tense mark that RECEDES, so it must never carry text that has to be
-   * read. Nothing is ever said in oxblood alone.
-   */
-  oxblood: { r: 141, g: 58, b: 48 },
-  /** The room. */
-  ink: { r: 12, g: 10, b: 7 },
-} as const satisfies Record<string, Rgb>;
+export type InkName = 'tallow' | 'brass' | 'oxblood' | 'ink';
 
-export type InkName = keyof typeof INKS;
+/**
+ * A room: four inks, and what is lighting them.
+ *
+ * `sourceFull` and `sourceFloor` are the source's colour temperature at
+ * `LEVEL_FULL` and `LEVEL_FLOOR` — the ends of the shared level scale, not of
+ * this room's own ladder, so two rooms that dim over different ranges still
+ * measure against one another.
+ */
+export type Room = {
+  /** For `verify:light` and nothing else. */
+  readonly label: string;
+  /** What is doing the lighting, in the room's own words. */
+  readonly source: string;
+  readonly inks: Record<InkName, Rgb>;
+  readonly sourceFull: number;
+  readonly sourceFloor: number;
+  /**
+   * How strongly the source's colour is allowed to pull each ink. The light
+   * source itself takes most of it; the room takes hardly any, because a dark
+   * surface reflecting amber is still dark.
+   */
+  readonly pull: Record<InkName, number>;
+};
+
+const FLAME_PULL: Record<InkName, number> = { tallow: 0.55, brass: 0.45, oxblood: 0.2, ink: 0.1 };
+
+/**
+ * CANDLE — a tallow candle on a coffee-house table. The reference room: warm,
+ * and it COOLS as it dies, which is what a real wick does.
+ */
+export const CANDLELIGHT: Room = {
+  label: 'CANDLE — a tallow candle on the table',
+  source: 'tallow candle',
+  inks: {
+    tallow: { r: 246, g: 230, b: 196 },
+    brass: { r: 224, g: 180, b: 99 },
+    oxblood: { r: 141, g: 58, b: 48 },
+    ink: { r: 12, g: 10, b: 7 },
+  },
+  sourceFull: 2000,
+  sourceFloor: 1500,
+  pull: FLAME_PULL,
+};
+
+/**
+ * THE SURVEY — the roads at dawn, seen through an open window.
+ *
+ * No flame at all: the light is the SKY. It starts at the blue end of the curve
+ * where no fire ever reaches, and it walks down it as the day is spent, so the
+ * room goes from a cold dawn to a low afternoon instead of from amber to red.
+ * Bone paper, the verdigris of her copper sheathing, and the rust of her
+ * ironwork — the only warm thing in a cold room, and it is the past tense.
+ */
+export const DAYLIGHT: Room = {
+  label: 'THE SURVEY — the roads, by the day itself',
+  source: 'overcast daylight',
+  inks: {
+    tallow: { r: 220, g: 228, b: 234 },
+    brass: { r: 121, g: 201, b: 138 },
+    oxblood: { r: 126, g: 70, b: 52 },
+    ink: { r: 7, g: 11, b: 16 },
+  },
+  sourceFull: 6500,
+  sourceFloor: 4300,
+  // Daylight is diffuse: it tints the room more evenly than a point flame does.
+  pull: { tallow: 0.45, brass: 0.35, oxblood: 0.25, ink: 0.2 },
+};
+
+/**
+ * THE BROKERS — an Argand lamp over a slate board.
+ *
+ * Warmer than the sky and cooler than a candle, and it does not gutter: it is
+ * TURNED DOWN as the day costs more. Chalk on slate, dusted umber for a man
+ * already paid, and the prices in the smalt-blue ink the slips are written in —
+ * the one cold thing inside a warm pool of lamplight, which is what makes a
+ * figure on this floor findable at a glance.
+ *
+ * A red was tried first and could not be kept: at this room's dimmest, no red
+ * dark enough to look like ledger lead still clears WCAG AA against the slate.
+ * `verify:light` is where that was found, not taste.
+ */
+export const LAMPLIGHT: Room = {
+  label: 'THE BROKERS — the floor, by an Argand lamp',
+  source: 'Argand oil lamp',
+  inks: {
+    tallow: { r: 234, g: 230, b: 220 },
+    brass: { r: 110, g: 155, b: 216 },
+    oxblood: { r: 110, g: 88, b: 67 },
+    ink: { r: 16, g: 14, b: 12 },
+  },
+  sourceFull: 2900,
+  sourceFloor: 2500,
+  pull: FLAME_PULL,
+};
+
+/** Every room, for the scripts that have to walk all of them. */
+export const ROOMS: readonly Room[] = [CANDLELIGHT, DAYLIGHT, LAMPLIGHT];
+
+/**
+ * CANDLE's four inks, under a full flame.
+ *
+ * Kept as its own export because it is the reference palette the other two are
+ * measured against, and because it reads better than `CANDLELIGHT.inks` at the
+ * call sites that only ever meant the candle.
+ */
+export const INKS = CANDLELIGHT.inks;
 
 // ---------------------------------------------------------------------------
 //  sRGB <-> linear light
@@ -120,18 +224,21 @@ export function blackbody(kelvin: number): Rgb {
   return { r: clampByte(red), g: clampByte(green), b: clampByte(blue) };
 }
 
-/** A fat, healthy wick. */
-export const FLAME_KELVIN_FULL = 2000;
+/** A fat, healthy wick. CANDLE's, and the default everywhere it is not said. */
+export const FLAME_KELVIN_FULL = CANDLELIGHT.sourceFull;
 /** A wick drowning in its own wax. */
-export const FLAME_KELVIN_GUTTER = 1500;
+export const FLAME_KELVIN_GUTTER = CANDLELIGHT.sourceFloor;
 
 /**
  * Colour temperature at a given brightness. Linear in the level, so the hue
- * walks down the curve at the same pace the room dims.
+ * walks the curve at the same pace the room dims.
+ *
+ * Which DIRECTION it walks is the room's own: a candle cools as it dies, and
+ * the day warms as it ends.
  */
-export function temperatureForWax(waxBp: number): number {
-  const t = (waxBp - LEVEL_FLOOR) / (LEVEL_FULL - LEVEL_FLOOR); // 0 at the gutter, 1 at full
-  return FLAME_KELVIN_GUTTER + clamp01(t) * (FLAME_KELVIN_FULL - FLAME_KELVIN_GUTTER);
+export function temperatureForWax(waxBp: number, room: Room = CANDLELIGHT): number {
+  const t = (waxBp - LEVEL_FLOOR) / (LEVEL_FULL - LEVEL_FLOOR); // 0 at the floor, 1 at full
+  return room.sourceFloor + clamp01(t) * (room.sourceFull - room.sourceFloor);
 }
 
 // ---------------------------------------------------------------------------
@@ -145,18 +252,6 @@ export function temperatureForWax(waxBp: number): number {
 export function sceneLuminance(waxBp: number): number {
   return waxBp / LEVEL_DENOM;
 }
-
-/**
- * How strongly the blackbody shift is allowed to pull an ink. Tallow is the
- * flame itself so it takes most of it; the room takes hardly any, because a dark
- * surface reflecting amber is still dark.
- */
-const HUE_PULL: Record<InkName, number> = {
-  tallow: 0.55,
-  brass: 0.45,
-  oxblood: 0.2,
-  ink: 0.1,
-};
 
 type Linear = readonly [number, number, number];
 
@@ -191,14 +286,14 @@ function flameHue(kelvin: number): Linear {
  * its own luminance-grey until it fits. Desaturation preserves luminance
  * exactly, so gamut mapping cannot break the claim either.
  */
-export function inkAtWax(name: InkName, waxBp: number): Rgb {
-  const base = toLinear(INKS[name]);
+export function inkAtWax(name: InkName, waxBp: number, room: Room = CANDLELIGHT): Rgb {
+  const base = toLinear(room.inks[name]);
   const baseLuminance = luminanceOf(base);
-  const pull = HUE_PULL[name];
+  const pull = room.pull[name];
   const scale = sceneLuminance(waxBp);
 
-  const now = flameHue(temperatureForWax(waxBp));
-  const full = flameHue(temperatureForWax(LEVEL_FULL));
+  const now = flameHue(temperatureForWax(waxBp, room));
+  const full = flameHue(temperatureForWax(LEVEL_FULL, room));
 
   // 1. hue shift, relative to the first inch
   const shifted: [number, number, number] = [0, 0, 0];
@@ -237,13 +332,15 @@ export function inkAtWax(name: InkName, waxBp: number): Rgb {
   };
 }
 
-/** Every ink at a given wax level, ready to hand to CSS or a canvas. */
-export function paletteAtWax(waxBp: number): Record<InkName, Rgb> {
+export type Palette = Record<InkName, Rgb>;
+
+/** Every ink at a given level, in a given room, ready for CSS or a canvas. */
+export function paletteAtWax(waxBp: number, room: Room = CANDLELIGHT): Palette {
   return {
-    tallow: inkAtWax('tallow', waxBp),
-    brass: inkAtWax('brass', waxBp),
-    oxblood: inkAtWax('oxblood', waxBp),
-    ink: inkAtWax('ink', waxBp),
+    tallow: inkAtWax('tallow', waxBp, room),
+    brass: inkAtWax('brass', waxBp, room),
+    oxblood: inkAtWax('oxblood', waxBp, room),
+    ink: inkAtWax('ink', waxBp, room),
   };
 }
 

@@ -35,7 +35,8 @@ import { MAX_SURVEYS } from '../../core/vessel';
 import { daylightAt } from '../daylight';
 import { posteriorSound, bestCallConfidence } from '../../core/belief';
 import { toNumber } from '../../../../shared/math/rational';
-import { cssAlpha, paletteAtWax, css, type Rgb } from '../../../../shared/render/light';
+import { cssAlpha, paletteAtWax, css, type Rgb, DAYLIGHT } from '../../../../shared/render/light';
+import { drawGrain, DAMP } from '../../../../shared/render/grain';
 
 type Palette = Record<'tallow' | 'brass' | 'oxblood' | 'ink', Rgb>;
 
@@ -81,7 +82,7 @@ export type RoadsMetrics = {
  *   0.00          the window on to the roads
  *   HORIZON_Y     where the sea meets the sky
  *   WATERLINE_Y   where she floats
- *   DESK_Y        the underwriter's desk, with the lamp on it
+ *   DESK_Y        the underwriter's desk, under the window
  *   READOUT_Y     NOTHING is drawn below this line
  *
  * That last one is the rule this layout exists to keep. The accessible readout
@@ -89,9 +90,6 @@ export type RoadsMetrics = {
  * canvas paints down there collides with real text. It did, until a screenshot
  * showed the manifest printed straight through the payout line.
  */
-const LAMP_X = 0.12;
-/** On the desk, and above the line the readout owns. */
-const LAMP_Y = 0.64;
 const HORIZON_Y = 0.3;
 const WATERLINE_Y = 0.42;
 const DESK_Y = 0.5;
@@ -127,7 +125,7 @@ export function drawRoads(
   height: number,
   state: RoadsState,
 ): void {
-  const palette = paletteAtWax(levelFor(state.surveys));
+  const palette = paletteAtWax(levelFor(state.surveys), DAYLIGHT);
   const p = toNumber(posteriorSound(state.margin));
 
   // --- the room ----------------------------------------------------------
@@ -143,31 +141,41 @@ export function drawRoads(
   drawFog(ctx, width, height, state, palette);
   drawDesk(ctx, width, height, palette);
   drawLamp(ctx, width, height, palette);
+  // The weather goes over everything beyond the glass AND the desk in front of
+  // it, because damp is in the room too. Under the slips, so the numbers a
+  // player reads are never textured.
+  drawGrain(ctx, width, height, DAMP);
   drawSlips(ctx, width, height, state, palette);
   drawManifest(ctx, width, height, state, palette);
 }
 
-/** The lamp's own falloff. THE one gradient in the whole build. */
+/**
+ * The light in this room, which is the WINDOW.
+ *
+ * There is no lamp on this desk and there used to be: a candle flame was drawn
+ * at the desk's edge, in a game whose whole light model is the day. Daylight is
+ * not a point source — it arrives as a sheet from the horizon and falls off
+ * downward across the desk, which is why this is a linear gradient and the two
+ * rooms lit by fire are radial ones. The direction of the falloff is the tell
+ * that tells the truth about where you are standing.
+ */
 function drawLamp(ctx: CanvasRenderingContext2D, width: number, height: number, palette: Palette): void {
-  const x = width * LAMP_X;
-  const y = height * LAMP_Y;
-  const reach = Math.max(width, height) * 0.7;
-  const glow = ctx.createRadialGradient(x, y, 0, x, y, reach);
-  glow.addColorStop(0, cssAlpha(palette.tallow, 0.3));
-  glow.addColorStop(0.25, cssAlpha(palette.brass, 0.12));
-  glow.addColorStop(1, cssAlpha(palette.ink, 0));
-  ctx.fillStyle = glow;
+  const horizon = height * HORIZON_Y;
+  const sheet = ctx.createLinearGradient(0, horizon - height * 0.22, 0, height);
+  sheet.addColorStop(0, cssAlpha(palette.tallow, 0.2));
+  sheet.addColorStop(0.35, cssAlpha(palette.tallow, 0.09));
+  sheet.addColorStop(1, cssAlpha(palette.ink, 0));
+  ctx.fillStyle = sheet;
   ctx.fillRect(0, 0, width, height);
 
-  // The lamp itself: a flame on the desk, at the edge of the frame.
-  const flameH = height * 0.05;
-  const flameW = Math.max(3, width * 0.012);
-  ctx.beginPath();
-  ctx.moveTo(x, y - flameH);
-  ctx.quadraticCurveTo(x + flameW, y - flameH * 0.35, x, y);
-  ctx.quadraticCurveTo(x - flameW, y - flameH * 0.35, x, y - flameH);
-  ctx.fillStyle = cssAlpha(palette.tallow, 0.9);
-  ctx.fill();
+  // What a window actually puts on a desk: a bright bar under the glass, not a
+  // pool. It is widest at the frame and fades inward, because the sash is there.
+  const sill = ctx.createLinearGradient(0, 0, width, 0);
+  sill.addColorStop(0, cssAlpha(palette.tallow, 0.02));
+  sill.addColorStop(0.5, cssAlpha(palette.tallow, 0.12));
+  sill.addColorStop(1, cssAlpha(palette.tallow, 0.02));
+  ctx.fillStyle = sill;
+  ctx.fillRect(0, height * DESK_Y, width, Math.max(2, height * 0.035));
 }
 
 /**

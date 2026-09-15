@@ -563,3 +563,74 @@ kbd {
   animation to switch off. The light model is untouched either way, so a player
   who asks for less motion loses nothing they need to read.
 */
+
+/* ==========================================================================
+   Three rooms, three hands.
+
+   The LAYOUT above is shared and stays shared: the same grid, the same type
+   scale, the same reading order, so a player who learns one game can read the
+   next in a second. What is not shared is the HAND the room is written in — a
+   printer's bill, an underwriter's slip, and a broker's chalk are three
+   different objects and were being drawn as one, which is what made three
+   different games look like one page with three sets of nouns.
+
+   Every rule here is a derived one: the mark the room's own trade would leave.
+   Nothing is here because it looked nice.
+   ========================================================================== */
+
+/* --- CANDLE: a printed bill, nailed to the table -------------------------
+   Set type, so its edges are straight and its rules are single hairlines. The
+   default above already is this; it is named here so the other two read as
+   departures from something rather than as exceptions. */
+[data-room='candle'] .btn {
+  border-radius: 0;
+}
+
+/* --- THE SURVEY: an underwriter's slip ------------------------------------
+   A slip is a sheet with a ruled margin, written down the left and signed at
+   the foot. So: square corners, and a heavy rule on the leading edge of
+   anything that carries a decision. The ledger's double rule is what separates
+   its sections. */
+[data-room='roads'] .btn {
+  border-radius: 0;
+  border-left-width: 3px;
+}
+
+[data-room='roads'] .btn--ghost {
+  border-left-width: 1px;
+}
+
+[data-room='roads'] .top {
+  border-bottom: 3px double var(--chrome-rule);
+}
+
+[data-room='roads'] .readout__label,
+[data-room='roads'] .readout__line {
+  letter-spacing: 0.16em;
+}
+
+/* --- THE BROKERS: chalk on slate ------------------------------------------
+   Chalk does not draw a solid line; it breaks, and it dusts the edge it is
+   dragged along. The canvas draws its own rules that way (`render/floor.ts`);
+   these are the same hand applied to the chrome, so the board and the buttons
+   below it are written by one person. */
+[data-room='floor'] .btn {
+  border-radius: 0;
+  border-style: dashed;
+  border-width: 1px;
+}
+
+[data-room='floor'] .btn--claim {
+  /* The filled action is chalk laid on thick: solid, and dusted underneath. */
+  border-style: solid;
+  box-shadow: 0 2px 0 rgb(from var(--tallow) r g b / 0.18);
+}
+
+[data-room='floor'] .top {
+  border-bottom-style: dashed;
+}
+
+[data-room='floor'] .readout__label,
+[data-room='floor'] .readout__line {
+  letter-spacing: 0.2em;
+}

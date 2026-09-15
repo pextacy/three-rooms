@@ -880,6 +880,87 @@ exist.
 
 ---
 
+# Phase 9 — three rooms
+
+Three games were finished, green, and looked like **one page with three sets of
+nouns**. Screenshotting them side by side is what said so: the same amber
+palette, the same soft radial glow, the same three stacked buttons, three times.
+That is what a reviewer reads as a template, and it was also just wrong — a dawn
+harbour was being lit by candlelight.
+
+### 1. One light MODEL, three light SOURCES
+
+The physics was already shared and worth sharing; the palette was shared and was
+never worth sharing. `shared/render/light.ts` grew a `Room` — four inks and what
+is lighting them — and the games hand it theirs:
+
+| | CANDLE | THE SURVEY | THE BROKERS |
+|---|---|---|---|
+| lit by | a tallow candle | the sky, through an open window | an Argand lamp over slate |
+| | 2000K → 1500K | 6500K → 4300K | 2900K → 2500K |
+| the money | brass | verdigris | smalt blue |
+
+The claim survives intact, because it was structural rather than palette-deep:
+relative luminance is still exactly `base × level / 10000` in every room, and
+`verify:light` now checks each one at its **own** dimmest level, where its own
+money figure is hardest to read.
+
+### 2. The palette is not a free choice, and the script proved it twice
+
+THE BROKERS was going to be chalk and **red lead**, which is what a ledger is
+actually ruled in. No red dark enough to read as lead clears WCAG AA against
+that slate at 70% light — the best candidate reached 4.10:1. It became smalt
+blue, the ink the slips are written in, which clears 5.10:1 and has the side
+effect of being the only cold thing inside a warm pool of lamplight.
+
+Then the first pass at "are these actually different rooms" failed on its own
+terms: candle-amber and red-lead were 62 apart in sRGB, which is one colour with
+two names. The check now measures hue as well as distance and wants 45° and 80;
+the three land at 39°, 133° and 215°.
+
+### 3. A perfectly smooth gradient is the tell
+
+Three dark rooms, each with one soft radial falloff and nothing else, read as
+CSS rather than as matter. `shared/render/grain.ts` bakes one deterministic
+noise tile per room — soot above the candle, damp off the water, mineral pitting
+on the slate — as a repeating pattern, at the cost of one `fillRect` a frame and
+no image file.
+
+Deterministic on purpose: a random tile would shimmer between frames like video
+noise, and could not be tested. It is a **finish and never information**, so
+where no offscreen canvas exists it returns nothing and the room draws plainer.
+
+### 4. THE SURVEY had a candle in it
+
+Its desk lamp was a literal flame, drawn at the edge of the frame, in the one
+game whose entire light model is the DAY. Daylight is not a point source: it is
+now a sheet falling from the horizon and a bar laid across the sill under the
+window. The direction of a falloff is the cheapest possible tell of where a
+player is standing, and it was pointing at the wrong thing.
+
+That took the room from one gradient to two, which failed
+`test/survey-scene.spec.ts`'s "exactly one gradient: the lamp" — a rule derived
+from CANDLE and inherited without being re-asked. It is now two for this room
+and two is the whole budget, which is the same rule stated for the right room.
+
+### 5. Three hands, one grid
+
+The layout, the type scale and the reading order stay shared, so a player who
+learns one game reads the next in a second. The MARK does not: a printer's bill
+has straight edges and single hairlines, an underwriter's slip has a ruled
+margin and a ledger's double rule, and chalk breaks and dusts the edge it is
+dragged along. The chalked rules on THE BROKERS' board overhung the right edge
+of the canvas, which `brokers-scene.spec.ts` caught at all five viewport sizes
+before a person could have.
+
+### What this phase did NOT do
+
+It did not touch a payout, a policy, a contract or a declared RTP. Every number
+in the repo is the number it was before it started; `verify:rtp`, `verify:survey`
+and `verify:brokers` were re-run to say so.
+
+---
+
 ## Cross-phase invariants
 
 These are checked in **every** phase's gate, not just the one that introduced them

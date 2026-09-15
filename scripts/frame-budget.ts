@@ -54,6 +54,14 @@ function stubContext(): CanvasRenderingContext2D {
     textAlign: 'left',
     textBaseline: 'alphabetic',
     createRadialGradient: () => ({ addColorStop: (_o: number, c: string) => consume(c) }),
+    // Daylight arrives as a sheet, not a pool, so THE SURVEY's room is lit with
+    // a linear gradient rather than a radial one.
+    createLinearGradient: () => ({ addColorStop: (_o: number, c: string) => consume(c) }),
+    // The grain bakes itself into an offscreen canvas that does not exist here.
+    // `grainPattern` is total on that path and returns null, which is the same
+    // path an old webview takes: the room draws, plainer, and never wrong.
+    createPattern: () => null,
+    globalAlpha: 1,
     fillRect: () => {},
     fillText: (t: string) => consume(t),
     beginPath: () => {},

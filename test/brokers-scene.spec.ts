@@ -21,7 +21,7 @@ import {
   type Slip,
   type Desk,
 } from '../src/games/brokers/app/render/floor';
-import { paletteAtWax, relativeLuminance, INKS, css } from '../src/shared/render/light';
+import { paletteAtWax, relativeLuminance, LAMPLIGHT, css } from '../src/shared/render/light';
 import { BROKER_LIST, HOUSE, TOTAL_FEES_BP, PRICE_DENOM } from '../src/games/brokers/core/market';
 
 type Call = { readonly op: string; readonly style: string; readonly box?: readonly [number, number, number, number] };
@@ -226,7 +226,7 @@ describe('the light is what the day has cost', () => {
   it('down to 70% with every fee spent, and measurably so', () => {
     expect(levelFor(TOTAL_FEES_BP)).toBe(7_000);
     for (const name of ['tallow', 'brass', 'oxblood'] as const) {
-      const ratio = relativeLuminance(paletteAtWax(levelFor(TOTAL_FEES_BP))[name]) / relativeLuminance(INKS[name]);
+      const ratio = relativeLuminance(paletteAtWax(levelFor(TOTAL_FEES_BP), LAMPLIGHT)[name]) / relativeLuminance(LAMPLIGHT.inks[name]);
       expect(Math.abs(ratio - 0.7), name).toBeLessThan(0.01);
     }
   });
@@ -247,7 +247,7 @@ describe('the scene obeys the design law', () => {
   it('uses the four inks and no fifth colour', () => {
     const { stub, calls } = recorder();
     drawFloor(stub, 1000, 600, state({ feesBp: 600, slips: [slip(null, 8_500, false), slip(0, 12_500, true)] }));
-    const palette = paletteAtWax(levelFor(600));
+    const palette = paletteAtWax(levelFor(600), LAMPLIGHT);
     const allowed = new Set(Object.values(palette).map(rgb => `rgb(${rgb.r} ${rgb.g} ${rgb.b}`));
     for (const call of calls) {
       if (call.style.startsWith('[object')) continue; // the gradient itself
@@ -259,7 +259,7 @@ describe('the scene obeys the design law', () => {
   it('paints the room in the ink itself, not in a theme colour', () => {
     const { stub, calls } = recorder();
     drawFloor(stub, 1000, 600, state());
-    expect(calls[0]?.style).toBe(css(paletteAtWax(levelFor(0)).ink));
+    expect(calls[0]?.style).toBe(css(paletteAtWax(levelFor(0), LAMPLIGHT).ink));
   });
 
   it('draws the price on every slip, so the canvas carries the numbers too', () => {

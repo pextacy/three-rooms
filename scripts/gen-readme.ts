@@ -25,15 +25,39 @@ import {
   lotProbability,
 } from '../src/games/candle/core/solve';
 import { knifeEdge, pinDropHz } from '../src/games/candle/app/audio/voice';
+import {
+  CARGOES as SURVEY_CARGOES,
+  MAX_SURVEYS,
+  MAX_VALUE_BP,
+  VALUE_DENOM,
+  DECLINE_BP,
+  PREMIUM_BP,
+  WEIGHT_DENOM as SURVEY_WEIGHT_DENOM,
+} from '../src/games/survey/core/vessel';
+import { posteriorSound, predictiveSound, prior, accuracy, evidenceRatio } from '../src/games/survey/core/belief';
+import {
+  solve as solveSurvey,
+  strategyBand as surveyBand,
+  evaluate as evaluateSurvey,
+  optimalPolicy as surveyOptimal,
+  bestCall as surveyBestCall,
+  declineValue,
+  meanSurveys,
+  surveyDistribution,
+  cargoProbability,
+} from '../src/games/survey/core/solve';
+import { knifeEdge as surveyKnifeEdge } from '../src/games/survey/app/audio/voice';
+import { DAYLIGHT_BP } from '../src/games/survey/app/daylight';
 import { INKS, relativeLuminance, paletteAtWax, contrastRatio, temperatureForWax } from '../src/shared/render/light';
 import * as R from '../src/shared/math/rational';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, '../README.md');
-const manifest = JSON.parse(readFileSync(resolve(here, '../public/candle/game.manifest.json'), 'utf8')) as {
-  gameId: string;
-  locales: Record<string, { name: string; description: string }>;
-};
+type GameManifest = { gameId: string; locales: Record<string, { name: string; description: string }> };
+const manifest = JSON.parse(readFileSync(resolve(here, '../public/candle/game.manifest.json'), 'utf8')) as GameManifest;
+const surveyManifest = JSON.parse(
+  readFileSync(resolve(here, '../public/survey/game.manifest.json'), 'utf8'),
+) as GameManifest;
 /** The live URL lives in package.json, so it is never retyped into prose. */
 const { homepage } = JSON.parse(readFileSync(resolve(here, '../package.json'), 'utf8')) as { homepage?: string };
 
@@ -74,38 +98,103 @@ const lightRows = WAX_BP.map((bp, i) => {
   return `| ${i + 1} | ${(bp / 100).toFixed(0)}% | ${Math.round(temperatureForWax(bp))} K | \`rgb(${palette.tallow.r} ${palette.tallow.g} ${palette.tallow.b})\` | ${lum.toFixed(4)} | **${((lum / firstLuminance) * 100).toFixed(2)}%** | ${contrastRatio(palette.tallow, palette.ink).toFixed(2)}:1 |`;
 }).join('\n');
 
+// ---------------------------------------------------------------------------
+//  THE SURVEY — every number below comes out of its own DP, in exact rationals
+// ---------------------------------------------------------------------------
+
+const survey = solveSurvey();
+const surveyPolicy = surveyOptimal(survey);
+const surveyDist = surveyDistribution(surveyPolicy);
+const surveyEdge = surveyKnifeEdge();
+const ORDINALS = ['no', 'one', 'two', 'three', 'four', 'five'];
+
+const manifestRows = SURVEY_CARGOES.map(
+  cargo =>
+    `| ${cargo.name} | **${(cargo.valueBp / VALUE_DENOM).toFixed(2)}×** | ${cargo.weight.toLocaleString('en-US')} | ${pct(cargoProbability(cargo), 2)} | ${surveyBestCall(cargo, 0, 0).call.toLowerCase()} |`,
+).join('\n');
+
+const beliefRows = Array.from({ length: MAX_SURVEYS * 2 + 1 }, (_, i) => i - MAX_SURVEYS)
+  .map(m => {
+    const post = posteriorSound(m);
+    const pred = predictiveSound(m);
+    return `| ${m > 0 ? `+${m}` : m} | \`${post.n}/${post.d}\` | ${pct(post, 2)} | ${pct(pred, 2)} |`;
+  })
+  .join('\n');
+
+const premiumRows = PREMIUM_BP.map((bp, k) => {
+  const wine = SURVEY_CARGOES[3];
+  const underwrite = wine ? R.mul(R.rat(wine.valueBp, VALUE_DENOM), R.rat(bp, 10_000)) : R.ZERO;
+  return `| ${k} | **${(bp / 100).toFixed(1)}%** | ${R.toFixed(declineValue(k), 4)}× | ${R.toFixed(underwrite, 4)}× |`;
+}).join('\n');
+
+const surveyBandRows = surveyBand(survey)
+  .map(entry => {
+    const value = evaluateSurvey(entry.policy);
+    const inBand = R.compare(value, R.rat(93n, 100n)) >= 0 && R.compare(value, R.rat(98n, 100n)) <= 0;
+    return `| ${entry.label}${entry.note ? ` — *${entry.note}*` : ''} | **${pct(value, 3)}** | ${inBand ? '✅ in band' : '—'} |`;
+  })
+  .join('\n');
+
+const daylightRows = DAYLIGHT_BP.map((bp, k) => {
+  const palette = paletteAtWax(bp);
+  const lum = relativeLuminance(palette.tallow);
+  return `| ${k} | ${(bp / 100).toFixed(0)}% | ${Math.round(temperatureForWax(bp))} K | \`rgb(${palette.tallow.r} ${palette.tallow.g} ${palette.tallow.b})\` | ${lum.toFixed(4)} | **${((lum / firstLuminance) * 100).toFixed(2)}%** | ${contrastRatio(palette.brass, palette.ink).toFixed(2)}:1 |`;
+}).join('\n');
+
 const readme = `<!--
   GENERATED FILE — DO NOT EDIT.
-  Written by \`npm run gen:readme\` from src/game/, src/render/ and src/audio/.
-  Every number below is recomputed from the paytable by the same DP that
-  \`npm run verify:rtp\` runs, in exact BigInt rationals. Edit the source, re-run.
+  Written by \`npm run gen:readme\` from src/games/, src/shared/render/ and each
+  game's own audio. Every number below is recomputed from the manifests by the
+  same DPs that \`npm run verify:rtp\` and \`npm run verify:survey\` run, in exact
+  BigInt rationals. Edit the source, re-run.
 -->
+
+# Games with a decision in them
+
+Two provably-fair on-chain wagering games for **Chain Jam Vol. 1**, on one origin.
+Each is a separate entry: its own page, its own \`game.manifest.json\`, its own
+contract, its own declared RTP.
+
+| | The decision primitive | Declared RTP | Max | Play |
+|---|---|---|---|---|
+| **CANDLE** | Discounted optimal stopping — Gilbert–Mosteller with a deterministic decay and a forced acceptance at the horizon | **${pct(solution.rtp)}** | ${R.toFixed(R.rat(MAX_FACE_BP, FACE_DENOM), 0)}× | ${homepage ? `[${homepage}/candle/](${homepage}/candle/)` : '\`/candle/\`'} |
+| **THE SURVEY** | Sequential hypothesis testing — Wald's problem with a priced stopping rule | **${pct(survey.rtp)}** | ${R.toFixed(R.rat(MAX_VALUE_BP, VALUE_DENOM), 0)}× | ${homepage ? `[${homepage}/survey/](${homepage}/survey/)` : '\`/survey/\`'} |
+
+Free play in both. No wallet, no modal, no splash — the first round is already on
+the table when the page loads. Reproduce either number in under a minute:
+
+\`\`\`sh
+npm install
+npm run verify:rtp       # CANDLE      ${R.toExactString(solution.rtp)}
+npm run verify:survey    # THE SURVEY  ${R.toExactString(survey.rtp)}
+\`\`\`
+
+Essentially every "original" in the crypto-casino canon reduces to one of three
+shapes: **pick a probability and get 1/p** (dice, limbo, roulette), **accumulate
+and bank before a bust** (crash, mines, towers, hi-lo), or **match symbols**
+(slots, wheels). Neither of these is any of them, and neither is a reskin of the
+other: one is about **refusing offers under a decay**, the other about **buying
+evidence until it stops being worth what it costs**.
+
+Both are dressed from the same room — **Lloyd's Coffee House, London, 1728, lit by
+a single candle** — and share one light model, one set of four inks, one bridge
+and one chrome. The auction is at one table; the underwriting desk is at the next.
+
+---
 
 # CANDLE
 
 > **A lot is on the table. The candle is burning. Every inch you wait is worth less.**
 
-A provably-fair on-chain wagering game for **Chain Jam Vol. 1**. Take the lot in
-front of you, or let the candle burn an inch and see the next one — knowing the
-next one is worth less by construction.
-
-${homepage ? `### ▸ Play it: **${homepage}/candle/**\n\nFree play. No wallet, no modal, no splash — the first lot is already on the table\nwhen the page loads.` : ''}
+Take the lot in front of you, or let the candle burn an inch and see the next one —
+knowing the next one is worth less by construction.
 
 **Declared RTP ${pct(solution.rtp)}** under optimal play, exactly
-\`${R.toExactString(solution.rtp)}\`. Reproduce it in under a minute:
+\`${R.toExactString(solution.rtp)}\`.
 
-\`\`\`sh
-npm install && npm run verify:rtp
-\`\`\`
+### Why this is not a clone of anything
 
----
-
-## Why this is not a clone of anything
-
-Essentially every "original" in the crypto-casino canon reduces to one of three
-shapes: **pick a probability and get 1/p** (dice, limbo, roulette), **accumulate
-and bank before a bust** (crash, mines, towers, hi-lo), or **match symbols**
-(slots, wheels). CANDLE is none of them. Its shape is *a sequence of i.i.d. offers,
+CANDLE is none of the three shapes above. Its shape is *a sequence of i.i.d. offers,
 each of which may be accepted once, under a deterministic decay, with a forced
 acceptance at the horizon* — the **Gilbert–Mosteller full-information optimal
 stopping problem** with discounting. It is a well-studied object in operations
@@ -125,7 +214,7 @@ of those details is a mechanic here.
 
 ---
 
-## The rules, in two sentences
+### The rules, in two sentences
 
 > Take the lot on the table, or let the candle burn an inch and see the next one.
 > Each inch you burn, the prize is worth 15 points less — and when the candle
@@ -133,7 +222,7 @@ of those details is a mechanic here.
 
 ---
 
-## The paytable
+### The paytable
 
 | Lot | Face | Weight / ${WEIGHT_DENOM.toLocaleString('en-US')} | Probability | Pin drop |
 |---|---|---|---|---|
@@ -145,7 +234,7 @@ exactly what optimal stopping buys, and exactly what the wax ladder charges for.
 
 Cumulative weights: \`${CUMULATIVE_WEIGHTS.join(', ')}\`.
 
-## The wax ladder, and when to claim
+### The wax ladder, and when to claim
 
 | Inch | Pins | Wax | A 2.00× lot pays | \`A(k)\` | Claim if face ≥ |
 |---|---|---|---|---|---|
@@ -162,7 +251,7 @@ ${edge ? `The knife edge the design rests on: a **${(edge.faceBp / FACE_DENOM).t
 
 ---
 
-## Return to player
+### Return to player
 
 | | |
 |---|---|
@@ -177,7 +266,7 @@ ${edge ? `The knife edge the design rests on: a **${(edge.faceBp / FACE_DENOM).t
 | Mean round length | ${R.toFixed(meanRoundLength(optimal), 2)} inches |
 | Reach by inch | ${reach.slice(1).map(r => pct(r, 2)).join(' / ')} |
 
-### The strategy band
+#### The strategy band
 
 The jam requires a theoretical RTP between 93% and 98%. For a game with decisions
 "the RTP" is policy-dependent, so the **whole band** is published — including the
@@ -193,7 +282,7 @@ poker too.
 
 ---
 
-## The light model is the product
+### The light model is the product
 
 The wax ladder is rendered as the **actual relative luminance of the scene**, in
 linear light. Pick any colour out of the frame at the fifth inch, measure it, and
@@ -210,6 +299,156 @@ Brass carries the lot's face value, so it clears WCAG AA against the room even a
 the gutter.
 
 \`npm run verify:light\` measures all of it.
+
+---
+
+# THE SURVEY
+
+> **A ship lies in the roads. Every surveyor you send costs you. When have you seen enough?**
+
+A voyage is offered at Lloyd's. She is either sound or rotten, ${ORDINALS[Number(R.toFixed(R.mul(prior(), R.rat(10n)), 0))]} ships in
+ten are sound, and these are dangerous waters. Send surveyors aboard if you like —
+each one reports, each is right ${ORDINALS[Number(accuracy().n)]} times in ${ORDINALS[Number(accuracy().d)]}, and each takes a slice of the
+premium. Then call it: **underwrite** her, or **decline**.
+
+**Declared RTP ${pct(survey.rtp)}** under optimal play, exactly
+\`${R.toExactString(survey.rtp)}\`.
+
+### Why this is not a clone of anything either
+
+Its shape is *a sequence of noisy, individually priced observations of a hidden
+binary state, stopped at the player's discretion, followed by a decision whose
+payoff depends on that state* — **Wald's sequential probability ratio test**, with
+the sampling cost made an explicit price rather than an abstraction. It is one of
+the foundational objects of statistical decision theory and it has never been
+turned into a wager. You are not guessing a number, and you are not refusing
+offers: **you are buying evidence, and the only question is when you have bought
+enough.**
+
+The dressing is real too. Lloyd's Coffee House was an insurance market before it
+was an insurance company: underwriters sat at their own tables and wrote their
+names under the terms of a voyage they were willing to carry. A ship lying in the
+roads could be surveyed before you signed — and a surveyor in 1728 was a man with
+a mallet, an hour of daylight and an opinion.
+
+### The rules, in three sentences
+
+> A voyage is on the book, and she is either sound or rotten.
+> Send a surveyor and he tells you which — rightly ${pct(accuracy(), 0)} of the time, and
+> wrongly the rest, for a point and a half of the premium.
+> Then underwrite her and take what she carries if she comes home, or decline and
+> walk away with ${R.toFixed(R.rat(DECLINE_BP, VALUE_DENOM), 2)}×.
+
+### The manifest
+
+| Cargo | Pays | Weight / ${SURVEY_WEIGHT_DENOM.toLocaleString('en-US')} | Probability | Called blind |
+|---|---|---|---|---|
+${manifestRows}
+
+The last column is what the DP does with **no evidence at all**: the cheap cargoes
+are not worth taking at a ${pct(prior(), 0)} prior, the rich ones are. Every surveyor you
+send is an attempt to move a cargo across that line — and on the ones already
+clearly on one side of it, the evidence is not worth its price.
+
+### What the reports add up to
+
+The state of a survey is not the list of reports. It is their **margin**: how many
+said SOUND minus how many said ROTTEN. Two reports that disagree cancel *exactly*,
+because each carries the same weight of evidence — the odds multiply by
+\`${R.toExactString(evidenceRatio())}\` for sound and divide by it for rot. That is not a simplification
+for convenience; it falls out of Bayes, and it is why the contract stores five
+bytes and why the UI can say "the surveys stand two to one for rot" and be telling
+you the whole truth about your position.
+
+| Margin | P(she is sound), exactly | as a percentage | Next report says SOUND |
+|---|---|---|---|
+${beliefRows}
+
+### The premium ladder
+
+| Surveyors | Premium | Declining pays | A 2.50× voyage pays |
+|---|---|---|---|
+${premiumRows}
+
+### Return to player
+
+| | |
+|---|---|
+| Declared RTP, optimal play | **${pct(survey.rtp)}** |
+| Exact | \`${R.toExactString(survey.rtp)}\` |
+| House edge | ${pct(R.sub(R.rat(1n), survey.rtp))} |
+| Maximum payout | **${R.toFixed(R.rat(MAX_VALUE_BP, VALUE_DENOM), 0)}×** stake (no surveys, and she comes home) |
+| Mean surveyors bought | ${R.toFixed(meanSurveys(surveyPolicy), 3)} |
+| Surveyors bought | ${surveyDist.map((p, k) => `${k}: ${pct(p, 1)}`).join(' · ')} |
+
+#### The strategy band
+
+| How you play | Returns | |
+|---|---|---|
+${surveyBandRows}
+
+**Every published policy is inside the window**, from sending nobody to sending
+everybody — which is stricter than CANDLE manages, and it is the constraint the
+manifest was tuned around rather than a happy accident. Sharper surveyors or a
+steeper premium pay the careful player out of the top of the band and drop the
+careless one below the bottom of it: the more decisive the evidence, the further
+apart the two ends of the band are pulled. Weak, cheap evidence is what keeps a
+game *about* information inside a 93–98% window at all.
+
+${surveyEdge ? `The knife edge: the **${surveyEdge.cargo.name} at ${ORDINALS[surveyEdge.surveys]} report${surveyEdge.surveys === 1 ? '' : 's'}, margin ${surveyEdge.margin > 0 ? `+${surveyEdge.margin}` : surveyEdge.margin}**. Underwriting her and sending one more man are worth the same thing to four decimal places, and the room holds on that state for a full second because the numbers say it should.` : ''}
+
+### Why the truth cannot leak
+
+Every hook on the contract is \`view\`, so the only state is \`gameState\` — which
+the facet emits on every step and the player echoes back. Anything written there
+is public, and so is every VRF word. **If the ship's condition were drawn at the
+start, a player could simply read it.**
+
+So the generative order is **reversed**. Reports are drawn from the *predictive*
+distribution, which depends only on the margin so far and is therefore safe to
+compute in the open; her condition is drawn at settlement from the *posterior*
+given the final margin, out of a word that does not exist until the call is
+already locked in. The joint distribution over (reports, truth) is identical — it
+is the same probability model factored the other way — but nothing that decides
+the voyage exists while the player can still act on it.
+
+\`DECLINE\` settles immediately and needs no word at all: it pays the same whatever
+she was, which is exactly why walking away can never leave a player waiting on
+randomness that never arrives.
+
+### Two claims you can measure
+
+**The fog is the doubt.** The ink drawn over the ship is exactly
+\`1 − P(the better call is right)\`, straight out of the belief table above. At the
+prior she is ${pct(R.sub(R.rat(1n), prior()), 0)} there because that is how sure you are; after three reports
+for rot she is ${pct(R.sub(R.rat(1n), posteriorSound(-3)), 1)} there, because that is how sure you are then. And a pair
+of reports that disagree puts the fog back to the digit — the game's one
+mathematical claim, made visible.
+
+**The light is the day.** A surveyor rows out, sounds her, and rows back; you do
+not get five of those in an afternoon. Every surveyor costs an hour of daylight and
+the room walks down the same ladder CANDLE's wax does, ending at exactly the
+brightness the candle gutters at.
+
+| Surveyors | Daylight | Flame | Tallow | Luminance | Of full | Brass on ink |
+|---|---|---|---|---|---|---|
+${daylightRows}
+
+It is deliberately **not** the premium ladder, which falls only 1.5 points a head:
+a 1.5% change in luminance is invisible to a player and inside the rounding error
+of an 8-bit channel, and a claim a reviewer cannot measure is a claim we do not
+make. The money cost is printed as a number instead, beside it, where a number
+belongs.
+
+### Playing it
+
+Keyboard: \`Space\`/\`Enter\` underwrite · \`S\`/\`↓\` send a surveyor · \`D\` decline ·
+\`Enter\` next voyage · \`?\` the whole model · \`M\` sound · \`T\` turbo · \`L\` the book.
+
+The Ghost Report — what the *next* surveyor would have said — is drawn only once
+the call is locked in, changes no payout, and is stated once and flatly. On a
+voyage where every surveyor had already reported there is no ghost, because there
+was nobody left to send.
 
 ---
 
@@ -269,7 +508,7 @@ in four bytes of \`gameState\` that the facet emits and takes back.
 
 ---
 
-## Playing it
+### Playing it
 
 - **Standalone** — open the page and the first lot is already on the table. Free
   play, no wallet, no modal, no splash. The purse lasts one page load and nothing
@@ -298,6 +537,8 @@ escalating bet suggestions. The standalone build is free play and says so.
 ---
 
 *${manifest.locales['en']?.description ?? ''}*
+
+*${surveyManifest.locales['en']?.description ?? ''}*
 `;
 
 writeFileSync(OUT, readme);

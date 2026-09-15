@@ -36,6 +36,8 @@ const lines = (text: string, from: number, to: number) => text.split('\n').slice
 
 console.log('capturing verify:rtp …');
 const rtp = capture(['verify:rtp']);
+console.log('capturing verify:survey …');
+const surveyRtp = capture(['verify:survey']);
 console.log('capturing verify:light …');
 const light = capture(['verify:light']);
 console.log('capturing gates …');
@@ -51,7 +53,9 @@ const demo = `<!--
 
 # DEMO — the one-minute review
 
-Everything here runs offline. No account, no testnet funds, no wallet.
+**Two games, one repo, one origin.** CANDLE is at \`/candle/\`, THE SURVEY at
+\`/survey/\`, each a separate entry with its own manifest, contract and declared
+RTP. Everything here runs offline. No account, no testnet funds, no wallet.
 
 \`\`\`sh
 npm install
@@ -85,6 +89,32 @@ ${lines(rtp, -13, Infinity)}
 
 **The number to check: \`96.9961%\`, exactly \`7577820426157 / 7812500000000\`.**
 
+### …and the same again for THE SURVEY
+
+\`\`\`sh
+npm run verify:survey
+\`\`\`
+
+Its own DP, over 126 reachable \`(cargo, surveys, margin)\` states, in exact
+rationals — including the belief table the contract mirrors as fractions rather
+than as rounded probabilities.
+
+<details><summary>Expected output — the manifest, the belief and the band</summary>
+
+\`\`\`
+${lines(surveyRtp, 0, 46)}
+\`\`\`
+
+</details>
+
+\`\`\`
+${lines(surveyRtp, -14, Infinity)}
+\`\`\`
+
+**The number to check: \`97.4141%\`, exactly \`60883787 / 62500000\` — and the
+strategy band above it, where *every* published policy is inside 93–98%,
+including sending nobody and sending everybody.**
+
 ---
 
 ## 2. The whole test suite · ~15 s
@@ -93,11 +123,15 @@ ${lines(rtp, -13, Infinity)}
 npm test
 \`\`\`
 
-186 tests. The ones worth knowing about:
+Around 300 tests across both games. The ones worth knowing about:
 
 | File | What it holds |
 |---|---|
-| \`test/rtp.spec.ts\` | The declared RTP and every figure in the README, recomputed. |
+| \`test/rtp.spec.ts\` | CANDLE's declared RTP and every figure in the README, recomputed. |
+| \`test/survey-rtp.spec.ts\` | THE SURVEY's, plus the belief identities — and that **every** published policy is in band, not merely the flattering ones. |
+| \`test/survey-draw.spec.ts\` | Its reports come from the predictive distribution and her condition from the posterior, at every margin. |
+| \`test/survey-host.spec.ts\` | The Ghost Report cannot leak, and her condition is undecided until UNDERWRITE is submitted. |
+| \`test/survey-scene.spec.ts\` | The fog is exactly \`1 − confidence\`, and a disagreeing pair of reports puts it back to the digit. |
 | \`test/strategy-band.spec.ts\` | Every sensible policy inside 93–98%, and that **no** per-inch policy beats the DP. |
 | \`test/rng.spec.ts\` | Chi-square over 10⁶ draws — **and a proof that the forbidden \`word % n\` fails the same test**, so the gate has teeth. |
 | \`test/parity.spec.ts\` | The TS core and the deployed Solidity agree on all 30 states and a 4,096-word corpus, including a word that exhausts all sixteen windows. |
@@ -118,18 +152,23 @@ suite that means "you forgot to start something" trains people to ignore red sui
 npm run dev        # http://localhost:3200
 \`\`\`
 
-Free play, no wallet, no modal, no splash. \`Space\` claims, \`B\` lets it burn,
-\`?\` opens the full paytable and strategy band, \`M\` toggles sound, \`T\` is turbo.
+\`http://localhost:3200/\` is the lobby, \`/candle/\` and \`/survey/\` are the games.
+Free play, no wallet, no modal, no splash.
 
-To watch the loop without a browser:
+In CANDLE: \`Space\` claims, \`B\` lets it burn. In THE SURVEY: \`Space\` underwrites,
+\`S\` sends a surveyor, \`D\` declines. In both, \`?\` opens the full model, \`M\`
+toggles sound, \`T\` is turbo and \`L\` is the log.
+
+To watch either loop without a browser:
 
 \`\`\`sh
-npm run play -- 100
+npm run play -- 100            # CANDLE
+npm run play:survey -- 100     # THE SURVEY
 \`\`\`
 
-It prints a transcript worded exactly as the UI words it, then the session
+Each prints a transcript worded exactly as its UI words it, then the session
 statistics — including how much of the pacing falls on a real decision, and the
-Ghost Lot's distribution against the paytable.
+ghost's distribution against the model it was drawn from.
 
 ---
 
@@ -196,10 +235,13 @@ ${lines(frames, 3, 16)}
 
 ## What to look at if you only have a minute
 
-1. \`src/game/solve.ts\` — the dynamic program, in exact rationals.
-2. \`contracts/Candle.sol\` — five hooks, one \`_payout()\`, one VRF word per inch.
-3. \`npm run verify:rtp\` — and check \`96.9961%\` against the README.
-4. \`docs/phases.md\` — what each phase found, including the five places the
+1. \`src/games/candle/core/solve.ts\` and \`src/games/survey/core/solve.ts\` — two
+   dynamic programs, both in exact rationals.
+2. \`contracts/Survey.sol\` — and the comment on why the generative order is
+   reversed, which is the whole reason a \`view\`-only contract can hide anything.
+3. \`npm run verify:rtp\` and \`npm run verify:survey\` — check \`96.9961%\` and
+   \`97.4141%\` against the README.
+4. \`docs/phases.md\` — what each phase found, including the places the
    specification turned out to be wrong and what the measurement said instead.
 `;
 

@@ -16,9 +16,25 @@ import { draw, type Rehash } from '../src/shared/rng';
 import { LOTS, WEIGHT_DENOM, lotForDraw } from '../src/games/candle/core/paytable';
 import { INCHES, waxBpAt } from '../src/games/candle/core/wax';
 import { solve, optimalPolicy, probabilityAtLeast, probabilityOfNothing, meanRoundLength, standardDeviation } from '../src/games/candle/core/solve';
+import { CARGOES, MAX_SURVEYS, DECLINE_BP, VALUE_DENOM, premiumBpAt } from '../src/games/survey/core/vessel';
+import { drawReport, drawCondition, drawCargo } from '../src/games/survey/core/draw';
+import { predictiveSound } from '../src/games/survey/core/belief';
+import {
+  solve as solveSurvey,
+  optimalPolicy as surveyOptimal,
+  bestCall as surveyBestCall,
+  meanSurveys,
+  cargoProbability,
+} from '../src/games/survey/core/solve';
 import * as R from '../src/shared/math/rational';
 
 const N = Number(process.env['BENCH_N'] ?? 10_000_000);
+/**
+ * THE SURVEY's rounds cost several draws each — a manifest, a report per
+ * surveyor and her condition — so the same wall-clock budget buys a tenth as
+ * many voyages. Still 10^6, which bounds every reachable margin to five sigma.
+ */
+const SURVEY_N = Number(process.env['BENCH_SURVEY_N'] ?? Math.max(Math.floor(N / 10), 1_000));
 const MASK = (1n << 256n) - 1n;
 
 /** A cheap 256-bit stream. Deterministic, so a failure is reproducible. */
@@ -148,6 +164,129 @@ console.log(`\n${B('Simulated rounds under optimal play')}`);
   const sd = Math.sqrt(Math.max(secondMoment / N - meanRtp ** 2, 0));
   const exactSd = standardDeviation(optimal);
   check('standard deviation', Math.abs(sd - exactSd) < 0.05, `${sd.toFixed(4)} vs ${exactSd.toFixed(4)}`);
+}
+
+// ---------------------------------------------------------------- the survey
+/**
+ * THE SURVEY, simulated end to end — and the point of doing it at all is the
+ * REVERSED GENERATIVE ORDER (see `core/draw.ts`). Reports are drawn from the
+ * predictive distribution as they are asked for and her condition only at
+ * settlement, from the posterior. That is a different factorisation of the joint
+ * model from the obvious one, and "it is the same distribution" is a claim worth
+ * checking against ${SURVEY_N.toLocaleString('en-US')} voyages rather than asserting.
+ */
+console.log(`\n${B('THE SURVEY — Monte Carlo')}`);
+console.log(D(`${SURVEY_N.toLocaleString('en-US')} voyages under optimal play\n`));
+{
+  const survey = solveSurvey();
+  const optimalSurvey = surveyOptimal(survey);
+  const next = makeStream(0x5175e7n);
+  const started = Date.now();
+
+  let total = 0;
+  let secondMoment = 0;
+  let surveysBought = 0;
+  let underwritten = 0;
+  let cameHomeWhenUnderwritten = 0;
+  let zeros = 0;
+  const cargoCounts = new Float64Array(CARGOES.length);
+  /** Every report ever drawn, by the margin it was drawn at: the predictive check. */
+  const soundAt = new Map<number, number>();
+  const drawsAt = new Map<number, number>();
+
+  for (let i = 0; i < SURVEY_N; i++) {
+    const cargo = drawCargo(next(), 0, rehash).cargo;
+    cargoCounts[cargo.id]! += 1;
+
+    let margin = 0;
+    let k = 0;
+    while (k < MAX_SURVEYS && optimalSurvey(cargo, k, margin)) {
+      drawsAt.set(margin, (drawsAt.get(margin) ?? 0) + 1);
+      const report = drawReport(margin, next(), 0, rehash).report;
+      if (report === 'SOUND') {
+        soundAt.set(margin, (soundAt.get(margin) ?? 0) + 1);
+        margin += 1;
+      } else {
+        margin -= 1;
+      }
+      k += 1;
+    }
+    surveysBought += k;
+
+    const premium = premiumBpAt(k) / 10_000;
+    let payout: number;
+    if (surveyBestCall(cargo, k, margin).call === 'DECLINE') {
+      payout = (DECLINE_BP / VALUE_DENOM) * premium;
+    } else {
+      underwritten += 1;
+      // THE word that decides her, drawn only now — after the call is fixed.
+      const sound = drawCondition(margin, next(), 0, rehash).isSound;
+      if (sound) {
+        cameHomeWhenUnderwritten += 1;
+        payout = (cargo.valueBp / VALUE_DENOM) * premium;
+      } else {
+        zeros += 1;
+        payout = 0;
+      }
+    }
+    total += payout;
+    secondMoment += payout * payout;
+  }
+
+  const meanRtp = total / SURVEY_N;
+  const declared = R.toNumber(survey.rtp);
+  // The tolerance comes from the OBSERVED spread rather than a guess at it: the
+  // 20x cargo makes this distribution heavy enough that a made-up sigma would
+  // either pass anything or fail on a good run.
+  const sd = Math.sqrt(Math.max(secondMoment / SURVEY_N - meanRtp ** 2, 0));
+  const tolerance = Math.max((5 * sd) / Math.sqrt(SURVEY_N), 0.0005);
+  check(
+    'simulated RTP lands on the declared RTP',
+    Math.abs(meanRtp - declared) < tolerance,
+    `${(meanRtp * 100).toFixed(4)}% vs ${(declared * 100).toFixed(4)}%, tolerance ±${(tolerance * 100).toFixed(4)}pp, sd ${sd.toFixed(3)} (${((Date.now() - started) / 1000).toFixed(1)}s)`,
+  );
+
+  const meanK = surveysBought / SURVEY_N;
+  const exactK = R.toNumber(meanSurveys(optimalSurvey));
+  check('mean surveyors bought', Math.abs(meanK - exactK) < 0.02, `${meanK.toFixed(4)} vs ${exactK.toFixed(4)}`);
+
+  for (const cargo of CARGOES) {
+    const observed = cargoCounts[cargo.id]! / SURVEY_N;
+    const want = R.toNumber(cargoProbability(cargo));
+    const tol = Math.max(5 * Math.sqrt((want * (1 - want)) / SURVEY_N), 1e-5);
+    check(
+      `${cargo.name} lands on ${(want * 100).toFixed(2)}%`,
+      Math.abs(observed - want) < tol,
+      `observed ${(observed * 100).toFixed(4)}%`,
+    );
+  }
+
+  console.log(`\n${B('The reports really do come from the predictive distribution')}`);
+  for (const [margin, n] of [...drawsAt.entries()].sort((a, b) => a[0] - b[0])) {
+    if (n < 1_000) continue; // too few to bound meaningfully
+    const observed = (soundAt.get(margin) ?? 0) / n;
+    const want = R.toNumber(predictiveSound(margin));
+    const tol = Math.max(5 * Math.sqrt((want * (1 - want)) / n), 1e-4);
+    check(
+      `margin ${margin >= 0 ? `+${margin}` : margin}: P(next says SOUND) = ${(want * 100).toFixed(2)}%`,
+      Math.abs(observed - want) < tol,
+      `observed ${(observed * 100).toFixed(2)}% over ${n.toLocaleString('en-US')} reports`,
+    );
+  }
+
+  console.log(`\n${B('And she is sound exactly as often as the posterior says')}`);
+  const pSoundOverall = cameHomeWhenUnderwritten / Math.max(underwritten, 1);
+  console.log(
+    D(
+      `  ${underwritten.toLocaleString('en-US')} voyages underwritten, ${cameHomeWhenUnderwritten.toLocaleString('en-US')} came home ` +
+        `(${(pSoundOverall * 100).toFixed(2)}%), ${zeros.toLocaleString('en-US')} paid nothing`,
+    ),
+  );
+  check(
+    'a voyage is only ever underwritten when the evidence says she is likelier sound than not',
+    pSoundOverall > 0.5,
+    'the DP never takes a risk it believes against',
+  );
 }
 
 console.log(`\n${failed === 0 ? '\x1b[32mBENCH GREEN\x1b[0m' : '\x1b[31mBENCH RED\x1b[0m'}  ${failed} failed\n`);

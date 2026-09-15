@@ -24,6 +24,7 @@
     "bench": "vite-node scripts/bench.ts",
     "sync:simulator": "node scripts/sync-simulator.mjs",
     "play": "vite-node scripts/play-demo.ts",
+    "play:survey": "vite-node scripts/play-survey.ts",
     "verify:light": "vite-node scripts/verify-light.ts",
     "cold-open": "vite-node scripts/cold-open.ts",
     "frame-budget": "vite-node scripts/frame-budget.ts",

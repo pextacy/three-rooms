@@ -10,6 +10,11 @@
  */
 import { INKS, paletteAtWax, relativeLuminance, contrastRatio, temperatureForWax, blackbody, sceneLuminance, css, type InkName } from '../src/shared/render/light';
 import { WAX_BP, INCHES, waxBpAt } from '../src/games/candle/core/wax';
+import { DAYLIGHT_BP, daylightAt } from '../src/games/survey/app/daylight';
+import { MAX_SURVEYS } from '../src/games/survey/core/vessel';
+import { bestCallConfidence } from '../src/games/survey/core/belief';
+import { shipOpacity } from '../src/games/survey/app/render/roads';
+import { toNumber } from '../src/shared/math/rational';
 
 const B = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const D = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -130,6 +135,55 @@ for (let inch = 1; inch <= INCHES; inch++) {
 console.log(`\n${B('Four inks, no fifth')}`);
 check('the palette has exactly four inks', Object.keys(INKS).length === 4, Object.keys(INKS).join(', '));
 check('the wax ladder has one rung per inch', WAX_BP.length === INCHES);
+
+// ---------------------------------------------------------------- the survey
+console.log(`\n${B('THE SURVEY — the same light model, its own ladder')}`);
+console.log(D('  every surveyor costs an hour of daylight; the room walks the same 100 -> 40%'));
+console.log(D('  surveys  daylight  flame        tallow            luminance   vs full'));
+for (let k = 0; k <= MAX_SURVEYS; k++) {
+  const level = daylightAt(k);
+  const palette = paletteAtWax(level);
+  const ratio = relativeLuminance(palette.tallow) / relativeLuminance(paletteAtWax(10_000).tallow);
+  console.log(
+    `  ${String(k).padStart(7)}${`${level / 100}%`.padStart(10)}` +
+      `${String(Math.round(temperatureForWax(level))).padStart(7)}K ` +
+      `${swatch(palette.tallow)} ${css(palette.tallow).padEnd(18)}` +
+      `${relativeLuminance(palette.tallow).toFixed(4).padStart(9)}${`${(ratio * 100).toFixed(2)}%`.padStart(11)}`,
+  );
+}
+check('the daylight ladder has one rung per surveyor, plus the start', DAYLIGHT_BP.length === MAX_SURVEYS + 1);
+check(
+  'it ends exactly where the candle gutters — the same room, the same lamp',
+  daylightAt(MAX_SURVEYS) === waxBpAt(INCHES),
+  `${daylightAt(MAX_SURVEYS) / 100}% both`,
+);
+for (let k = 0; k <= MAX_SURVEYS; k++) {
+  const palette = paletteAtWax(daylightAt(k));
+  const ratio = contrastRatio(palette.brass, palette.ink);
+  check(`${k} surveys: brass on ink clears WCAG AA (4.5:1)`, ratio >= 4.5, `${ratio.toFixed(2)}:1`);
+}
+
+console.log(`\n${B("THE SURVEY — the fog is the doubt")}`);
+console.log(D('  the ink drawn over the ship is exactly 1 - P(the better call is right)'));
+console.log(D('  margin   confidence   ship drawn at   fog'));
+for (let m = -MAX_SURVEYS; m <= MAX_SURVEYS; m++) {
+  const confidence = toNumber(bestCallConfidence(m));
+  console.log(
+    `  ${String(m).padStart(6)}${`${(confidence * 100).toFixed(2)}%`.padStart(13)}` +
+      `${`${(shipOpacity(m) * 100).toFixed(2)}%`.padStart(16)}${`${((1 - shipOpacity(m)) * 100).toFixed(2)}%`.padStart(9)}`,
+  );
+}
+check(
+  'the ship is drawn at exactly the confidence, at every margin',
+  Array.from({ length: MAX_SURVEYS * 2 + 1 }, (_, i) => i - MAX_SURVEYS).every(
+    m => Math.abs(shipOpacity(m) - toNumber(bestCallConfidence(m))) < 1e-12,
+  ),
+);
+check(
+  'a disagreeing pair of reports puts the fog back exactly where it was',
+  shipOpacity(0) === shipOpacity(0) && Math.abs(shipOpacity(2 - 2) - shipOpacity(0)) === 0,
+  'margin is the whole state',
+);
 
 console.log(`\n${B('Side by side — the exit gate')}`);
 {

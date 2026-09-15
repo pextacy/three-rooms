@@ -13,6 +13,9 @@
 import { drawScene, type SceneState, type LotFace } from '../src/games/candle/app/render/scene';
 import { LOTS } from '../src/games/candle/core/paytable';
 import { INCHES } from '../src/games/candle/core/wax';
+import { drawRoads, type RoadsState, type Manifest } from '../src/games/survey/app/render/roads';
+import { CARGOES, MAX_SURVEYS } from '../src/games/survey/core/vessel';
+import { isReachable } from '../src/games/survey/core/belief';
 
 const FRAMES = Number(process.env['FRAME_BUDGET_FRAMES'] ?? 2_000);
 const BUDGET_MS = 12;
@@ -53,9 +56,15 @@ function stubContext(): CanvasRenderingContext2D {
     fillText: (t: string) => consume(t),
     beginPath: () => {},
     moveTo: () => {},
+    lineTo: () => {},
+    closePath: () => {},
     arc: () => {},
     quadraticCurveTo: () => {},
     fill: () => {},
+    save: () => {},
+    restore: () => {},
+    translate: () => {},
+    rotate: () => {},
     __sink: () => sink,
   };
   return ctx as unknown as CanvasRenderingContext2D;
@@ -79,18 +88,23 @@ function worstCase(time: number): SceneState {
   };
 }
 
-function measure(label: string, size: readonly [number, number], build: (t: number) => SceneState) {
+function measure<S>(
+  label: string,
+  size: readonly [number, number],
+  build: (t: number) => S,
+  draw: (ctx: CanvasRenderingContext2D, w: number, h: number, state: S) => void = drawScene as never,
+) {
   const ctx = stubContext();
   const [width, height] = size;
 
   // Warm the JIT before measuring; the first hundred frames of any JS loop are
   // not what a player experiences.
-  for (let i = 0; i < 200; i++) drawScene(ctx, width, height, build(i / 60));
+  for (let i = 0; i < 200; i++) draw(ctx, width, height, build(i / 60));
 
   const samples = new Float64Array(FRAMES);
   for (let i = 0; i < FRAMES; i++) {
     const t0 = performance.now();
-    drawScene(ctx, width, height, build(i / 60));
+    draw(ctx, width, height, build(i / 60));
     samples[i] = performance.now() - t0;
   }
 
@@ -108,7 +122,7 @@ function measure(label: string, size: readonly [number, number], build: (t: numb
   return { p50, p95, p99, worst };
 }
 
-console.log(`\n${B('CANDLE — frame budget')}`);
+console.log(`\n${B('Frame budget — both scenes')}`);
 console.log(D(`${FRAMES.toLocaleString('en-US')} frames per case · budget p95 < ${BUDGET_MS} ms · 60 fps is ${SIXTY_FPS_MS} ms\n`));
 console.log(D('  case                                p50      p95      p99    worst'));
 
@@ -136,6 +150,49 @@ const results = [
   },
 ];
 
+/**
+ * THE SURVEY's roads. Its heaviest frame is the one with the fog still up, a
+ * surveyor's boat crossing, the swell running and every slip on the desk — and
+ * the hull under a rotation, which CANDLE's scene never does.
+ */
+const MANIFEST: Manifest = { name: 'Indigo', valueText: '20.00×' };
+const roadsWorst = (time: number): RoadsState => ({
+  surveys: 3,
+  margin: -1,
+  manifest: MANIFEST,
+  surveyorOut: true,
+  payoutText: '2,000.00',
+  settled: false,
+  wasSound: null,
+  slipFall: [1, 1, 0.6, 0, 0],
+  time,
+  reducedMotion: false,
+});
+
+console.log(D('\n  case                                p50      p95      p99    worst'));
+results.push(
+  { label: 'the roads, fog and a boat, 1080p', ...measure('the roads, fog and a boat, 1080p', [1920, 1080], roadsWorst, drawRoads) },
+  { label: 'the roads, a phone', ...measure('the roads, a phone', [390, 700], roadsWorst, drawRoads) },
+  {
+    label: 'a settled voyage, no fog',
+    ...measure(
+      'a settled voyage, no fog',
+      [1440, 900],
+      t => ({ ...roadsWorst(t), settled: true, wasSound: true, surveyorOut: false }),
+      drawRoads,
+    ),
+  },
+  {
+    label: 'waiting for the manifest',
+    ...measure(
+      'waiting for the manifest',
+      [1440, 900],
+      t => ({ ...roadsWorst(t), surveys: 0, margin: 0, manifest: null, payoutText: null }),
+      drawRoads,
+    ),
+  },
+);
+
 console.log(`\n${B('Verdict')}`);
 for (const result of results) {
   check(`${result.label}: p95 under ${BUDGET_MS} ms`, result.p95 < BUDGET_MS, `${result.p95.toFixed(3)} ms`);
@@ -147,6 +204,24 @@ check(`even p99 stays inside the 60 fps frame at ${SIXTY_FPS_MS} ms`, worstP99 <
 // heavy lots would stutter and the player would learn to read the stutter.
 const spread = Math.max(...results.map(r => r.p50)) / Math.max(Math.min(...results.map(r => r.p50)), 1e-9);
 check('every lot costs about the same to draw, so nothing stutters into a tell', spread < 6, `${spread.toFixed(1)}x between the cheapest and dearest frame`);
+check('every reachable survey state renders without throwing', (() => {
+  const ctx = stubContext();
+  for (const cargo of CARGOES) {
+    for (let k = 0; k <= MAX_SURVEYS; k++) {
+      for (let m = -k; m <= k; m += 2) {
+        if (!isReachable(k, m)) continue;
+        drawRoads(ctx, 1280, 720, {
+          ...roadsWorst(0),
+          surveys: k,
+          margin: m,
+          manifest: { name: cargo.name, valueText: `${(cargo.valueBp / 100).toFixed(2)}×` },
+        });
+      }
+    }
+  }
+  return true;
+})());
+
 check('all five inches and every lot render without throwing', (() => {
   const ctx = stubContext();
   for (let inch = 1; inch <= INCHES; inch++) {

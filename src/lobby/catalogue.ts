@@ -30,10 +30,10 @@ export const GAMES: readonly GameEntry[] = [
     line: 'A ship lies in the roads. Every surveyor you send costs you. When have you seen enough?',
     primitive: 'Sequential hypothesis testing',
     provenance:
-      "Wald's problem, with a priced stopping rule. You are not guessing a number and not refusing offers — you are buying evidence, and the only question is when you have bought enough.",
+      "Wald's problem, with a priced stopping rule. You are not guessing a number and not refusing offers — you are buying evidence, and the only question is when you have bought enough. Every published way of playing it returns between 93% and 98%, from sending nobody to sending everybody.",
     rtp: '97.4141%',
     maxPayout: '20×',
-    status: 'building',
+    status: 'live',
   },
   {
     slug: 'candle',

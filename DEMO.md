@@ -6,7 +6,9 @@
 
 # DEMO — the one-minute review
 
-Everything here runs offline. No account, no testnet funds, no wallet.
+**Two games, one repo, one origin.** CANDLE is at `/candle/`, THE SURVEY at
+`/survey/`, each a separate entry with its own manifest, contract and declared
+RTP. Everything here runs offline. No account, no testnet funds, no wallet.
 
 ```sh
 npm install
@@ -91,6 +93,90 @@ VERIFIED  declared RTP 96.9961%  =  7577820426157 / 7812500000000
 
 **The number to check: `96.9961%`, exactly `7577820426157 / 7812500000000`.**
 
+### …and the same again for THE SURVEY
+
+```sh
+npm run verify:survey
+```
+
+Its own DP, over 126 reachable `(cargo, surveys, margin)` states, in exact
+rationals — including the belief table the contract mirrors as fractions rather
+than as rounded probabilities.
+
+<details><summary>Expected output — the manifest, the belief and the band</summary>
+
+```
+
+THE SURVEY — RTP verification
+every number below is recomputed from the manifest in exact rationals
+
+The manifest
+  cargo        pays     weight     chance
+  Salt         1.10x      3000     30.00%
+  Coal         1.40x      2500     25.00%
+  Timber       1.80x      2000     20.00%
+  Wine         2.50x      1500     15.00%
+  Silk         5.00x       800      8.00%
+  Indigo      20.00x       200      2.00%
+  weights sum to 10000 / 10000 ✓
+  cumulative: 3000, 5500, 7500, 9000, 9800, 10000
+
+The ship, and the surveyors
+  P(sound) before any survey     0.4000   2/5 — these are dangerous waters
+  a surveyor is right            0.6000   3/5
+  evidence weight of one report  1.5000   odds multiply by this
+  declining hands back           0.60x  of the premium
+
+What the reports add up to
+  margin = reports for sound minus reports for rot. Disagreeing reports cancel.
+  margin   P(sound)   next report says SOUND
+      -5     0.0807               0.4161
+      -4     0.1164               0.4233
+      -3     0.1649               0.4330
+      -2     0.2286               0.4457
+      -1     0.3077               0.4615
+       0     0.4000               0.4800
+       1     0.5000               0.5000
+       2     0.6000               0.5200
+       3     0.6923               0.5385
+       4     0.7714               0.5543
+       5     0.8351               0.5670
+
+The premium ladder
+  surveys   premium   declining pays
+        0      100%           0.6000
+        1     98.5%           0.5910
+        2       97%           0.5820
+        3     95.5%           0.5730
+        4       94%           0.5640
+        5     92.5%           0.5550
+
+Each voyage, played optimally
+```
+
+</details>
+
+```
+  21 states per cargo, 126 in all
+
+Assertions
+  ✓ manifest weights sum to the denominator
+  ✓ the declared RTP sits inside the jam band 93–98%  97.4141%
+  ✓ no policy beats the DP
+  ✓ the premium ladder has one rung per survey plus the start
+  ✓ a disagreeing pair of reports cancels exactly  margin 0 is the prior, whatever was bought
+  ✓ the posterior rises with every report for sound
+  ✓ declining always pays less than the stake  0.60x
+  ✓ the richest cargo is the maximum payout
+  ✓ margin is a sufficient statistic
+
+VERIFIED  declared RTP 97.4141%  =  60883787 / 62500000
+```
+
+**The number to check: `97.4141%`, exactly `60883787 / 62500000` — and the
+strategy band above it, where *every* published policy is inside 93–98%,
+including sending nobody and sending everybody.**
+
 ---
 
 ## 2. The whole test suite · ~15 s
@@ -99,11 +185,15 @@ VERIFIED  declared RTP 96.9961%  =  7577820426157 / 7812500000000
 npm test
 ```
 
-186 tests. The ones worth knowing about:
+Around 300 tests across both games. The ones worth knowing about:
 
 | File | What it holds |
 |---|---|
-| `test/rtp.spec.ts` | The declared RTP and every figure in the README, recomputed. |
+| `test/rtp.spec.ts` | CANDLE's declared RTP and every figure in the README, recomputed. |
+| `test/survey-rtp.spec.ts` | THE SURVEY's, plus the belief identities — and that **every** published policy is in band, not merely the flattering ones. |
+| `test/survey-draw.spec.ts` | Its reports come from the predictive distribution and her condition from the posterior, at every margin. |
+| `test/survey-host.spec.ts` | The Ghost Report cannot leak, and her condition is undecided until UNDERWRITE is submitted. |
+| `test/survey-scene.spec.ts` | The fog is exactly `1 − confidence`, and a disagreeing pair of reports puts it back to the digit. |
 | `test/strategy-band.spec.ts` | Every sensible policy inside 93–98%, and that **no** per-inch policy beats the DP. |
 | `test/rng.spec.ts` | Chi-square over 10⁶ draws — **and a proof that the forbidden `word % n` fails the same test**, so the gate has teeth. |
 | `test/parity.spec.ts` | The TS core and the deployed Solidity agree on all 30 states and a 4,096-word corpus, including a word that exhausts all sixteen windows. |
@@ -124,18 +214,23 @@ suite that means "you forgot to start something" trains people to ignore red sui
 npm run dev        # http://localhost:3200
 ```
 
-Free play, no wallet, no modal, no splash. `Space` claims, `B` lets it burn,
-`?` opens the full paytable and strategy band, `M` toggles sound, `T` is turbo.
+`http://localhost:3200/` is the lobby, `/candle/` and `/survey/` are the games.
+Free play, no wallet, no modal, no splash.
 
-To watch the loop without a browser:
+In CANDLE: `Space` claims, `B` lets it burn. In THE SURVEY: `Space` underwrites,
+`S` sends a surveyor, `D` declines. In both, `?` opens the full model, `M`
+toggles sound, `T` is turbo and `L` is the log.
+
+To watch either loop without a browser:
 
 ```sh
-npm run play -- 100
+npm run play -- 100            # CANDLE
+npm run play:survey -- 100     # THE SURVEY
 ```
 
-It prints a transcript worded exactly as the UI words it, then the session
+Each prints a transcript worded exactly as its UI words it, then the session
 statistics — including how much of the pacing falls on a real decision, and the
-Ghost Lot's distribution against the paytable.
+ghost's distribution against the model it was drawn from.
 
 ---
 
@@ -207,52 +302,77 @@ headers — vercel.json
 
 jam widget — raw HTML
   ✓ candle/index.html contains the widget tag exactly once  1 occurrence(s)
+  ✓ survey/index.html contains the widget tag exactly once  1 occurrence(s)
   ✓ the lobby carries NO widget — it is a door, not an entry  a widget there would report engagement for something never submitted
-  ✓ the widget tag is a real <script src>, not injected by JS  the gallery reads the served document
+  ✓ candle's widget tag is a real <script src>, not injected by JS  the gallery reads the served document
+  ✓ survey's widget tag is a real <script src>, not injected by JS  the gallery reads the served document
   ✓ dist/candle/index.html contains the widget tag exactly once  1 occurrence(s)
+  ✓ dist/survey/index.html contains the widget tag exactly once  1 occurrence(s)
 
 document head
-  ✓ a favicon is inlined, so nothing 404s in a console a judge has open  806 bytes, no extra request
-  ✓ it is well under the 8 KB image budget
-  ✓ the page says what it is when its URL is pasted somewhere
-  ✓ a theme colour is set, so browser chrome matches the room
-  ✓ the document declares a language
+  ✓ candle: a favicon is inlined, so nothing 404s in a console a judge has open  806 bytes, no extra request
+  ✓ candle: it is well under the 8 KB image budget
+  ✓ candle: nothing spilled out of the favicon href
+  ✓ candle: the page says what it is when its URL is pasted somewhere
+  ✓ candle: a theme colour is set, so browser chrome matches the room
+  ✓ candle: the document declares a language
+  ✓ survey: a favicon is inlined, so nothing 404s in a console a judge has open  649 bytes, no extra request
+  ✓ survey: it is well under the 8 KB image budget
+  ✓ survey: nothing spilled out of the favicon href
+  ✓ survey: the page says what it is when its URL is pasted somewhere
+  ✓ survey: a theme colour is set, so browser chrome matches the room
+  ✓ survey: the document declares a language
 
 browser storage
   ✓ src/ uses no localStorage, sessionStorage or indexedDB
 
-manifest
-  ✓ game.manifest.json parses
-  ✓ schemaVersion/apiVersion are 1
-  ✓ gameId is set and matches the contract name  CandleGame
-  ✓ defaultLocale exists in locales
-  ✓ capabilities.openSession is true
-  ✓ capabilities.submitAction is true (CANDLE is multi-action)  BURN is an on-chain player action
+manifests
+  ✓ candle: game.manifest.json parses
+  ✓ candle: schemaVersion/apiVersion are 1
+  ✓ candle: gameId matches the contract name  CandleGame
+  ✓ candle: defaultLocale exists in locales
+  ✓ candle: capabilities.openSession is true
+  ✓ candle: capabilities.submitAction is true (it is multi-action)  BURN is an on-chain player action
+  ✓ survey: game.manifest.json parses
+  ✓ survey: schemaVersion/apiVersion are 1
+  ✓ survey: gameId matches the contract name  SurveyGame
+  ✓ survey: defaultLocale exists in locales
+  ✓ survey: capabilities.openSession is true
+  ✓ survey: capabilities.submitAction is true (it is multi-action)  SEND A SURVEYOR is an on-chain player action
+  ✓ no two entries claim the same gameId  the host keys a game by it
 
 contract
   ✓ the ICasinoGameV2 interface is vendored beside the game  so a standard toolchain can compile it
   ✓ and is byte-identical to the SDK once comments are stripped
   ✓ Candle.sol imports the interface by a path that resolves anywhere
-  ✓ the generated paytable is never hand-edited
-  ✓ the contract declares no constructor arguments  the SDK deploys it without any
-  ✓ every hook is view, so the game holds no storage
+  ✓ Paytable.sol is generated, never hand-edited
+  ✓ Candle.sol declares no constructor arguments  the SDK deploys it without any
+  ✓ Candle.sol: every hook is view, so the game holds no storage
+  ✓ Candle.sol: no unbounded loop in a settlement path  claude.md §3
+  ✓ Survey.sol imports the interface by a path that resolves anywhere
+  ✓ Manifest.sol is generated, never hand-edited
+  ✓ Survey.sol declares no constructor arguments  the SDK deploys it without any
+  ✓ Survey.sol: every hook is view, so the game holds no storage
+  ✓ Survey.sol: no unbounded loop in a settlement path  claude.md §3
 
 generated documents
   ✓ README.md exists and is marked generated
-  ✓ README.md carries the declared RTP as an exact rational  the one number a judge will check
+  ✓ README.md carries CANDLE's declared RTP as an exact rational  the one number a judge will check
+  ✓ and THE SURVEY's as well  both entries are submitted, so both numbers are published
   ✓ README.md publishes the whole strategy band, not just the flattering end
   ✓ DEMO.md exists and is marked generated
   ✓ DEMO.md pastes real expected output, not a description of it  the verify:rtp headline and a verify:light row, both as captured
   ✓ a licence is present, so the source can actually be shared
 
 bundle
-  ✓ bundle < 150 KB gzipped  92.2 KB gzipped
+  ✓ bundle < 150 KB gzipped  110.2 KB gzipped
   ✓ zero audio files (everything synthesised)
   ✓ no image over 8 KB
   ✓ dist/candle/game.manifest.json sits beside its page
+  ✓ dist/survey/game.manifest.json sits beside its page
   ✓ the lobby exists and is not itself an entry
 
-GATES GREEN  37 passed, 0 failed
+GATES GREEN  62 passed, 0 failed
 ```
 
 And the frame budget, against a 12 ms p95:
@@ -260,25 +380,28 @@ And the frame budget, against a 12 ms p95:
 ```
 
   case                                p50      p95      p99    worst
-  a burn at the flare, 1080p        0.004    0.006    0.009    0.195
-  the flare, a phone                0.004    0.005    0.006    0.081
-  an empty crate, first inch        0.004    0.005    0.005    0.090
-  waiting for a word                0.003    0.003    0.004    0.069
+  a burn at the flare, 1080p        0.004    0.006    0.015    0.179
+  the flare, a phone                0.004    0.005    0.010    0.154
+  an empty crate, first inch        0.003    0.004    0.005    0.081
+  waiting for a word                0.002    0.003    0.003    0.065
 
-Verdict
-  ✓ a burn at the flare, 1080p: p95 under 12 ms  0.006 ms
-  ✓ the flare, a phone: p95 under 12 ms  0.005 ms
-  ✓ an empty crate, first inch: p95 under 12 ms  0.005 ms
-  ✓ waiting for a word: p95 under 12 ms  0.003 ms
-  ✓ even p99 stays inside the 60 fps frame at 16.7 ms  0.009 ms
+  case                                p50      p95      p99    worst
+  the roads, fog and a boat, 1080p    0.005    0.009    0.013    0.084
+  the roads, a phone                0.005    0.006    0.008    0.097
+  a settled voyage, no fog          0.004    0.005    0.008    0.079
+  waiting for the manifest          0.004    0.005    0.006    0.068
+
 ```
 
 ---
 
 ## What to look at if you only have a minute
 
-1. `src/game/solve.ts` — the dynamic program, in exact rationals.
-2. `contracts/Candle.sol` — five hooks, one `_payout()`, one VRF word per inch.
-3. `npm run verify:rtp` — and check `96.9961%` against the README.
-4. `docs/phases.md` — what each phase found, including the five places the
+1. `src/games/candle/core/solve.ts` and `src/games/survey/core/solve.ts` — two
+   dynamic programs, both in exact rationals.
+2. `contracts/Survey.sol` — and the comment on why the generative order is
+   reversed, which is the whole reason a `view`-only contract can hide anything.
+3. `npm run verify:rtp` and `npm run verify:survey` — check `96.9961%` and
+   `97.4141%` against the README.
+4. `docs/phases.md` — what each phase found, including the places the
    specification turned out to be wrong and what the measurement said instead.

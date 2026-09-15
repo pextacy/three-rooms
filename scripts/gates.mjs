@@ -47,7 +47,11 @@ const walk = async dir => {
  * its own directory with its own manifest beside it, which is how the host
  * resolves one (`new URL('game.manifest.json', gameUrl)`).
  */
-const GAMES = ['candle'];
+const ENTRIES = [
+  { slug: 'candle', gameId: 'CandleGame', contract: 'Candle.sol', generated: 'Paytable.sol', multiAction: 'BURN is an on-chain player action' },
+  { slug: 'survey', gameId: 'SurveyGame', contract: 'Survey.sol', generated: 'Manifest.sol', multiAction: 'SEND A SURVEYOR is an on-chain player action' },
+];
+const GAMES = ENTRIES.map(entry => entry.slug);
 const srcHtml = await readFile(join(ROOT, 'candle', 'index.html'), 'utf8');
 const lobbyHtml = await readFile(join(ROOT, 'index.html'), 'utf8');
 
@@ -104,11 +108,14 @@ check(
   countIn(lobbyHtml) === 0,
   'a widget there would report engagement for something never submitted',
 );
-check(
-  'the widget tag is a real <script src>, not injected by JS',
-  /<script[^>]+src=["']https:\/\/jam\.chain\.wtf\/widget\.js["']/.test(srcHtml),
-  'the gallery reads the served document',
-);
+for (const game of GAMES) {
+  const html = await readFile(join(ROOT, game, 'index.html'), 'utf8');
+  check(
+    `${game}'s widget tag is a real <script src>, not injected by JS`,
+    /<script[^>]+src=["']https:\/\/jam\.chain\.wtf\/widget\.js["']/.test(html),
+    'the gallery reads the served document',
+  );
+}
 
 for (const game of GAMES) {
   const built = join(DIST, game, 'index.html');
@@ -122,19 +129,22 @@ for (const game of GAMES) {
 
 // ---------------------------------------------------------------- the document
 console.log('\n\x1b[1mdocument head\x1b[0m');
-{
-  const built = join(DIST, 'candle', 'index.html');
-  const head = existsSync(built) ? await readFile(built, 'utf8') : srcHtml;
+for (const game of GAMES) {
+  const built = join(DIST, game, 'index.html');
+  const head = existsSync(built) ? await readFile(built, 'utf8') : await readFile(join(ROOT, game, 'index.html'), 'utf8');
   const favicon = /rel="icon"\s+href="(data:image\/svg\+xml,[^"]+)"/.exec(head);
   check(
-    'a favicon is inlined, so nothing 404s in a console a judge has open',
+    `${game}: a favicon is inlined, so nothing 404s in a console a judge has open`,
     favicon !== null,
     favicon ? `${Buffer.byteLength(favicon[1] ?? '')} bytes, no extra request` : '',
   );
-  check('it is well under the 8 KB image budget', Buffer.byteLength(favicon?.[1] ?? '') < 8 * 1024);
-  check('the page says what it is when its URL is pasted somewhere', /og:title/.test(head) && /og:description/.test(head));
-  check('a theme colour is set, so browser chrome matches the room', /name="theme-color"/.test(head));
-  check('the document declares a language', /<html[^>]+lang="/.test(head));
+  check(`${game}: it is well under the 8 KB image budget`, Buffer.byteLength(favicon?.[1] ?? '') < 8 * 1024);
+  // A stray tag outside the href — this happened once, and the page shipped with
+  // raw SVG markup loose in its <head>.
+  check(`${game}: nothing spilled out of the favicon href`, !/<\/svg>"?\s*<(rect|path|circle)/i.test(head));
+  check(`${game}: the page says what it is when its URL is pasted somewhere`, /og:title/.test(head) && /og:description/.test(head));
+  check(`${game}: a theme colour is set, so browser chrome matches the room`, /name="theme-color"/.test(head));
+  check(`${game}: the document declares a language`, /<html[^>]+lang="/.test(head));
 }
 
 // ---------------------------------------------------------------- no storage
@@ -158,18 +168,26 @@ console.log('\n\x1b[1mbrowser storage\x1b[0m');
 }
 
 // ---------------------------------------------------------------- manifest
-console.log('\n\x1b[1mmanifest\x1b[0m');
-const manifestPath = join(ROOT, 'public', 'candle', 'game.manifest.json');
-const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-check('game.manifest.json parses', true);
-check('schemaVersion/apiVersion are 1', manifest.schemaVersion === 1 && manifest.apiVersion === 1);
-check('gameId is set and matches the contract name', manifest.gameId === 'CandleGame', manifest.gameId);
-check('defaultLocale exists in locales', Boolean(manifest.locales?.[manifest.defaultLocale]?.name));
-check('capabilities.openSession is true', manifest.capabilities?.openSession === true);
+console.log('\n\x1b[1mmanifests\x1b[0m');
+for (const entry of ENTRIES) {
+  // The host resolves a manifest with `new URL('game.manifest.json', gameUrl)`,
+  // so each entry needs its own, beside its own page, under that exact name.
+  const manifest = JSON.parse(await readFile(join(ROOT, 'public', entry.slug, 'game.manifest.json'), 'utf8'));
+  check(`${entry.slug}: game.manifest.json parses`, true);
+  check(`${entry.slug}: schemaVersion/apiVersion are 1`, manifest.schemaVersion === 1 && manifest.apiVersion === 1);
+  check(`${entry.slug}: gameId matches the contract name`, manifest.gameId === entry.gameId, manifest.gameId);
+  check(`${entry.slug}: defaultLocale exists in locales`, Boolean(manifest.locales?.[manifest.defaultLocale]?.name));
+  check(`${entry.slug}: capabilities.openSession is true`, manifest.capabilities?.openSession === true);
+  check(
+    `${entry.slug}: capabilities.submitAction is true (it is multi-action)`,
+    manifest.capabilities?.submitAction === true,
+    entry.multiAction,
+  );
+}
 check(
-  'capabilities.submitAction is true (CANDLE is multi-action)',
-  manifest.capabilities?.submitAction === true,
-  'BURN is an on-chain player action',
+  'no two entries claim the same gameId',
+  new Set(ENTRIES.map(e => e.gameId)).size === ENTRIES.length,
+  'the host keys a game by it',
 );
 
 // ---------------------------------------------------------------- the contract
@@ -195,11 +213,17 @@ console.log('\n\x1b[1mcontract\x1b[0m');
     console.log(`  \x1b[2m· SDK absent, skipping the drift check (npm run sdk:fetch)\x1b[0m`);
   }
 
-  const candle = await readFile(join(ROOT, 'contracts', 'Candle.sol'), 'utf8').catch(() => '');
-  check('Candle.sol imports the interface by a path that resolves anywhere', /from '\.\/ICasinoGameV2\.sol'/.test(candle));
-  check('the generated paytable is never hand-edited', /GENERATED FILE — DO NOT EDIT/.test(await readFile(join(ROOT, 'contracts', 'generated', 'Paytable.sol'), 'utf8').catch(() => '')));
-  check('the contract declares no constructor arguments', !/constructor\s*\([^)]+\)/.test(candle), 'the SDK deploys it without any');
-  check('every hook is view, so the game holds no storage', (candle.match(/external\s+pure\s+returns/g) ?? []).length >= 5);
+  for (const entry of ENTRIES) {
+    const source = await readFile(join(ROOT, 'contracts', entry.contract), 'utf8').catch(() => '');
+    check(`${entry.contract} imports the interface by a path that resolves anywhere`, /from '\.\/ICasinoGameV2\.sol'/.test(source));
+    check(
+      `${entry.generated} is generated, never hand-edited`,
+      /GENERATED FILE — DO NOT EDIT/.test(await readFile(join(ROOT, 'contracts', 'generated', entry.generated), 'utf8').catch(() => '')),
+    );
+    check(`${entry.contract} declares no constructor arguments`, !/constructor\s*\([^)]+\)/.test(source), 'the SDK deploys it without any');
+    check(`${entry.contract}: every hook is view, so the game holds no storage`, (source.match(/external\s+pure\s+returns/g) ?? []).length >= 5);
+    check(`${entry.contract}: no unbounded loop in a settlement path`, !/while\s*\(\s*true\s*\)/.test(source), 'claude.md §3');
+  }
 }
 
 // ---------------------------------------------------------------- generated docs
@@ -211,9 +235,14 @@ console.log('\n\x1b[1mgenerated documents\x1b[0m');
   const readme = await readFile(join(ROOT, 'README.md'), 'utf8').catch(() => '');
   check('README.md exists and is marked generated', /GENERATED FILE — DO NOT EDIT/.test(readme));
   check(
-    'README.md carries the declared RTP as an exact rational',
+    "README.md carries CANDLE's declared RTP as an exact rational",
     readme.includes('7577820426157 / 7812500000000'),
     'the one number a judge will check',
+  );
+  check(
+    "and THE SURVEY's as well",
+    readme.includes('60883787 / 62500000'),
+    'both entries are submitted, so both numbers are published',
   );
   check('README.md publishes the whole strategy band, not just the flattering end', readme.includes('93.577%'));
 

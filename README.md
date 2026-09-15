@@ -513,7 +513,7 @@ RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract -- survey
 Two contracts, one interface, the same discipline: no constructor arguments, no
 storage, every hook `view`, no unbounded loops. Session state travels in four
 bytes of `gameState` for CANDLE and five for THE SURVEY, which the facet emits
-and takes back. The deployed bytecode is **2,614 bytes** for CANDLE and **3,808 bytes** for THE SURVEY — between a tenth and a sixth of the EIP-170 limit.
+and takes back. The deployed bytecode is **2,614 bytes** for CANDLE, **3,808 bytes** for THE SURVEY and **3,235 bytes** for THE BROKERS — between a tenth and a sixth of the EIP-170 limit.
 
 `deploy:contract` has no default chain on purpose, and reads each contract back
 after deploying — against that game's own generated constants, so a retuned

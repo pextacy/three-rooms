@@ -96,13 +96,18 @@ function bytecodeSize(artifact: string): number | null {
     return null; // not built in this checkout; the sentence below adapts
   }
 }
-const candleBytes = bytecodeSize('Candle.sol/CandleGame.json');
-const surveyBytes = bytecodeSize('Survey.sol/SurveyGame.json');
-const sizeSentence =
-  candleBytes && surveyBytes
-    ? `The deployed bytecode is **${candleBytes.toLocaleString('en-US')} bytes** for CANDLE and ` +
-      `**${surveyBytes.toLocaleString('en-US')} bytes** for THE SURVEY — between a tenth and a sixth of the EIP-170 limit.`
-    : 'Run `npm run contracts:build` to see the deployed sizes against the EIP-170 limit.';
+const sizes = [
+  ['CANDLE', bytecodeSize('Candle.sol/CandleGame.json')],
+  ['THE SURVEY', bytecodeSize('Survey.sol/SurveyGame.json')],
+  ['THE BROKERS', bytecodeSize('Brokers.sol/BrokersGame.json')],
+] as const;
+// "a, b and c" — the numbers themselves carry commas, so the list is joined by
+// hand rather than by a regex over the finished string.
+const phrases = sizes.map(([name, bytes]) => `**${(bytes as number).toLocaleString('en-US')} bytes** for ${name}`);
+const sizeSentence = sizes.every(([, bytes]) => bytes !== null)
+  ? `The deployed bytecode is ${phrases.slice(0, -1).join(', ')} and ${phrases[phrases.length - 1]} — ` +
+    'between a tenth and a sixth of the EIP-170 limit.'
+  : 'Run `npm run contracts:build` to see the deployed sizes against the EIP-170 limit.';
 
 const solution = solve();
 const optimal = optimalPolicy(solution);

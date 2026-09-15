@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "gameId": "BrokersGame",
+  "apiVersion": 1,
+  "defaultLocale": "en",
+  "locales": {
+    "en": {
+      "name": "The Brokers",
+      "description": "You hold a claim on a wreck. The house values it for nothing and is not generous; four brokers will each name a price, and each charges a fee. Every price you are named stays on the table — so when have you shopped it enough?"
+    }
+  },
+  "presentation": {
+    "mode": "full-iframe",
+    "hostPanels": {
+      "openSession": false,
+      "history": false,
+      "status": false
+    }
+  },
+  "capabilities": {
+    "openSession": true,
+    "submitAction": true,
+    "forfeitExpiredSession": true,
+    "cancelStuckRandomness": true,
+    "resize": true
+  }
+}

@@ -25,6 +25,17 @@ export type GameEntry = {
 
 export const GAMES: readonly GameEntry[] = [
   {
+    slug: 'brokers',
+    name: 'THE BROKERS',
+    line: 'You hold a claim on a wreck. Every man who looks at it charges you. When have you shopped it enough?',
+    primitive: 'Search with recall',
+    provenance:
+      "Pandora's Box — Weitzman's 1979 index, one of the foundational results of search theory. Every price you are named stays on the table, so nothing is ever lost but the fees; the rule that solves it says the broker with the best average price is the LAST one worth asking.",
+    rtp: '96.9637%',
+    maxPayout: '4.99×',
+    status: 'live',
+  },
+  {
     slug: 'survey',
     name: 'THE SURVEY',
     line: 'A ship lies in the roads. Every surveyor you send costs you. When have you seen enough?',

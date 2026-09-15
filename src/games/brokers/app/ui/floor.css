@@ -1,0 +1,93 @@
+/*
+  What is THE BROKERS' own. The room, the chrome and the switches are
+  `shared/ui/table.css` — the same furniture the other two are played on.
+
+  Four inks only — no fifth colour is approved (claude.md §5).
+*/
+
+/* Every price named, in words, under the board that draws them as heights. */
+.prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0.4rem 0 0.7rem;
+  font-size: var(--t-body);
+  color: var(--tallow);
+  opacity: 0.7;
+}
+
+.prices__one--best {
+  color: var(--brass);
+  opacity: 1;
+}
+
+.prices__one--waiting {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.prices__who {
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.prices__price {
+  font-size: 1.05rem;
+}
+
+/* The four men, side by side: one switch each, with his fee printed on it. */
+.brokers {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.brokers__one {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.brokers__one .btn__hint {
+  margin-left: 0;
+  text-align: left;
+}
+
+/* A broker's own quotes, listed in the ? panel. */
+.quote {
+  display: inline-block;
+  margin-right: 0.75rem;
+  white-space: nowrap;
+}
+
+.switches {
+  min-height: 12rem;
+}
+
+@media (max-width: 30rem) {
+  .brokers {
+    grid-template-columns: 1fr;
+  }
+
+  .switches {
+    min-height: 0;
+  }
+}
+
+@media (max-height: 26rem), (max-width: 22rem) {
+  .brokers__one {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .prices {
+    margin: 0.25rem 0 0.4rem;
+  }
+
+  .switches {
+    min-height: 0;
+  }
+}

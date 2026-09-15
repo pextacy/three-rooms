@@ -37,6 +37,10 @@ export function surveyAddress(): `0x${string}` | null {
   return gameAddress('SurveyGame');
 }
 
+export function brokersAddress(): `0x${string}` | null {
+  return gameAddress('BrokersGame');
+}
+
 export function gameAddress(name: string): `0x${string}` | null {
   return loadDeployment()?.games.find(g => g.name === name)?.address ?? null;
 }
@@ -113,6 +117,32 @@ export const surveyAbi = [
   { type: 'function', name: 'onRandomness', stateMutability: 'view', inputs: [{ ...CTX, name: 'ctx' }, { name: 'randomness', type: 'bytes32' }], outputs: [{ ...STEP_RESULT, name: 'r' }] },
   { type: 'function', name: 'quoteForfeitPayout', stateMutability: 'view', inputs: [{ ...CTX, name: 'ctx' }], outputs: [{ type: 'uint256' }] },
 ] as const;
+
+/** THE BROKERS' hooks. The same ICasinoGameV2 shape again. */
+export const brokersAbi = surveyAbi;
+
+/** `abi.encodePacked(uint16 bestBp, uint8 askedMask, uint8 pending, uint8 phase)` */
+export function encodeBrokersState(bestBp: number, askedMask: number, pending: number, phase: number): `0x${string}` {
+  return `0x${bestBp.toString(16).padStart(4, '0')}${askedMask.toString(16).padStart(2, '0')}${pending
+    .toString(16)
+    .padStart(2, '0')}${phase.toString(16).padStart(2, '0')}`;
+}
+
+export function decodeBrokersState(hex: string): {
+  bestBp: number;
+  askedMask: number;
+  pending: number;
+  phase: number;
+} {
+  const body = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (body.length !== 10) throw new Error(`brokers gameState must be 5 bytes, got ${body.length / 2}`);
+  return {
+    bestBp: parseInt(body.slice(0, 4), 16),
+    askedMask: parseInt(body.slice(4, 6), 16),
+    pending: parseInt(body.slice(6, 8), 16),
+    phase: parseInt(body.slice(8, 10), 16),
+  };
+}
 
 /** `abi.encodePacked(uint16 valueBp, uint8 surveys, int8 margin+128, uint8 phase)` */
 export function encodeSurveyState(valueBp: number, surveys: number, margin: number, phase: number): `0x${string}` {

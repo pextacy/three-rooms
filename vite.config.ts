@@ -31,6 +31,7 @@ export default defineConfig({
       input: {
         lobby: fileURLToPath(new URL('./index.html', import.meta.url)),
         candle: fileURLToPath(new URL('./candle/index.html', import.meta.url)),
+        survey: fileURLToPath(new URL('./survey/index.html', import.meta.url)),
       },
       output: { manualChunks: undefined },
     },

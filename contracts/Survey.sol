@@ -100,8 +100,8 @@ contract SurveyGame is ICasinoGameV2 {
     revert Survey__RandomnessExhausted();
   }
 
-  /// @dev Uniform on [0, DRAW_SPACE). Two windows, because a report's odds run
-  ///      as fine as 2/731 and 10,000 is too coarse to carry them.
+  /// @dev Uniform on [0, DRAW_SPACE). Two windows, because the finest odds in
+  ///      the belief table need more resolution than 10,000 can carry.
   function _drawFine(Cursor memory c) private pure returns (uint256) {
     for (uint256 tries = 0; tries < 64; tries++) {
       uint256 v = (_window(c) << 16) | _window(c);
@@ -171,8 +171,9 @@ contract SurveyGame is ICasinoGameV2 {
     // P(Indigo) = 200/10000 = 2%, P(sound) = 2/5 → 0.8%
     probabilityWad = 8e15;
     // The optimal-play RTP: the supremum over policies, so it is the honest
-    // worst case for the vault. Exact rational, generated from the DP.
-    expectedPayout = (wager * 49_679_521) / 51_200_000;
+    // worst case for the vault. Exact rational, generated from the DP — never a
+    // number typed in here, where it could drift from the manifest it came from.
+    expectedPayout = (wager * SurveyManifest.RTP_NUM) / SurveyManifest.RTP_DEN;
     subJackpotVarianceScaled = 0;
   }
 

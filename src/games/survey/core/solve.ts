@@ -104,6 +104,25 @@ export function solveCargo(cargo: Cargo): CargoSolution {
   return { cargo, value, shouldSurvey, atStart };
 }
 
+/**
+ * What sending one more surveyor is worth at `(k, m)`, exactly.
+ *
+ *     E[ A_F(k+1, m+1) ] * P(next says SOUND) + E[ A_F(k+1, m-1) ] * P(rot)
+ *
+ * Undefined at the cap, where there is nobody left to send. Exported because the
+ * pacing and the `?` panel both need the CONTINUATION value beside the call
+ * value — the gap between them is what makes a state a decision at all, and
+ * neither should have to re-run the DP by hand to find it.
+ */
+export function continuationValue(solution: CargoSolution, surveys: number, margin: number): Rational | undefined {
+  if (surveys >= MAX_SURVEYS || !isReachable(surveys, margin)) return undefined;
+  const up = solution.value[surveys + 1]?.[index(margin + 1)];
+  const down = solution.value[surveys + 1]?.[index(margin - 1)];
+  if (up === undefined || down === undefined) return undefined;
+  const pSound = predictiveSound(margin);
+  return add(mul(pSound, up), mul(sub(rat(1n), pSound), down));
+}
+
 export function solve(): Solution {
   const byCargo = CARGOES.map(solveCargo);
   const rtp = byCargo.reduce<Rational>(

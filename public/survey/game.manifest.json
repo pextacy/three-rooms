@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "gameId": "SurveyGame",
+  "apiVersion": 1,
+  "defaultLocale": "en",
+  "locales": {
+    "en": {
+      "name": "The Survey",
+      "description": "A ship lies in the roads. Send surveyors aboard — each one reports, each one costs you a slice of the premium — then underwrite her or decline. When have you seen enough?"
+    }
+  },
+  "presentation": {
+    "mode": "full-iframe",
+    "hostPanels": {
+      "openSession": false,
+      "history": false,
+      "status": false
+    }
+  },
+  "capabilities": {
+    "openSession": true,
+    "submitAction": true,
+    "forfeitExpiredSession": true,
+    "cancelStuckRandomness": true,
+    "resize": true
+  }
+}

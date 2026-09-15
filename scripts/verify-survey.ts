@@ -73,9 +73,10 @@ const rows: ReadonlyArray<readonly [string, string]> = [
 for (const [k, v] of rows) console.log(`  ${k.padEnd(28)} ${v}`);
 
 console.log(`\n${B('Strategy band')}`);
-console.log(D('  THE SURVEY is a game of judgement, and judgement pays. Its band is wider'));
-console.log(D('  than CANDLE\'s on purpose: skipping the evidence costs more than playing a'));
-console.log(D('  hunch does there. The whole band is published, careless end included.'));
+console.log(D('  Every way of playing this a person would actually adopt — including sending'));
+console.log(D('  nobody, and including sending everybody — sits inside the jam band. That is'));
+console.log(D('  what the surveyor\'s accuracy and the price of a survey were chosen to hold:'));
+console.log(D('  sharper evidence would pay the careful player out of the window.'));
 for (const { label, policy, note } of strategyBand(solution)) {
   const value = evaluate(policy);
   const inBand = R.compare(value, R.rat(93n, 100n)) >= 0 && R.compare(value, R.rat(98n, 100n)) <= 0;

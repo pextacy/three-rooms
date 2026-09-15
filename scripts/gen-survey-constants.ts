@@ -26,6 +26,11 @@ const solution = solve();
 const margins: number[] = [];
 for (let m = -MAX_SURVEYS; m <= MAX_SURVEYS; m++) margins.push(m);
 
+/** The finest fraction the belief ever produces, so the comment cannot go stale. */
+const finest = margins
+  .flatMap(m => [posteriorSound(m), predictiveSound(m)])
+  .reduce((worst, value) => (value.d > worst.d ? value : worst));
+
 const cargoBranches = CARGOES.slice(0, -1)
   .map((c, i) => `    if (r < ${u(CUMULATIVE_WEIGHTS[i] ?? 0)}) return ${String(c.valueBp).padStart(4)}; // ${(c.valueBp / VALUE_DENOM).toFixed(2)}x  ${c.name}`)
   .join('\n');
@@ -70,12 +75,19 @@ library SurveyManifest {
   /// @dev Declining hands back this much of the premium, whatever she was.
   uint256 internal constant DECLINE_BP = ${DECLINE_BP};
 
+  /// @dev The declared RTP under optimal play, as an exact rational — the
+  ///      supremum over policies, and therefore the honest worst case for the
+  ///      vault. \`quoteRiskParams\` quotes it rather than carrying a number a
+  ///      hand could edit.
+  uint256 internal constant RTP_NUM = ${u(solution.rtp.n)};
+  uint256 internal constant RTP_DEN = ${u(solution.rtp.d)};
+
   /// @dev Rejection sampling for the manifest: floor(65536/10000)*10000.
   uint256 internal constant RNG_LIMIT = ${u(60_000)};
   uint256 internal constant RNG_WINDOWS = 16;
 
   /// @dev Belief draws need a finer grid than the manifest: a report's odds run
-  ///      as fine as 2/731. Uniform on [0, DRAW_SPACE).
+  ///      as fine as ${finest.n}/${finest.d}. Uniform on [0, DRAW_SPACE).
   uint256 internal constant DRAW_SPACE = ${u(DRAW_SPACE)};
   /// @dev The largest multiple of DRAW_SPACE inside 2^32.
   uint256 internal constant FINE_LIMIT = ${u(Math.floor(2 ** 32 / DRAW_SPACE) * DRAW_SPACE)};

@@ -1,0 +1,33 @@
+/*
+  What is THE SURVEY's own. The room, the chrome and the switches are
+  `shared/ui/table.css` — the same furniture CANDLE is played on.
+
+  Four inks only — no fifth colour is approved (claude.md §5).
+*/
+
+/*
+  The tally, in words, directly under the manifest: "the surveys stand two to one
+  for rot". The fog says the same thing in the scene, and the two can never
+  disagree because both are functions of the margin alone.
+*/
+.tally {
+  margin: 0.5rem 0 0.75rem;
+  font-size: var(--t-body);
+  color: var(--tallow);
+  opacity: 0.82;
+}
+
+/* Three switches rather than two: the stack needs a little more room. */
+.table .switches {
+  min-height: 11rem;
+}
+
+@media (max-height: 26rem), (max-width: 22rem) {
+  .table .switches {
+    min-height: 0;
+  }
+
+  .tally {
+    margin: 0.25rem 0 0.4rem;
+  }
+}

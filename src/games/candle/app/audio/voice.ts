@@ -12,6 +12,7 @@ import { FACE_DENOM, LOTS, MAX_FACE_BP } from '../../core/paytable';
 import { WAX_DENOM, INCHES, waxBpAt } from '../../core/wax';
 import { solve, faceValue } from '../../core/solve';
 import { compare, sub, toNumber, rat, type Rational } from '../../../../shared/math/rational';
+import { dwellFromTension, withTurbo } from '../../../../shared/audio/pacing';
 
 /** The pin drop for an empty crate. Low, dull, unmistakable. */
 export const PIN_HZ_MIN = 196;
@@ -66,8 +67,11 @@ export function crackleDensityHz(waxBp: number): number {
  * threshold at this inch — the DP's own threshold, not a hand-tuned table. A lot
  * that is genuinely a decision gets a beat; a lot that is not gets out of the way.
  */
-export const DWELL_FAST_MS = 260;
-export const DWELL_SLOW_MS = 1_150;
+/**
+ * The house pacing constants are shared with THE SURVEY (`shared/audio/pacing`);
+ * what is CANDLE's is only the measure of tension below.
+ */
+export { DWELL_FAST_MS, DWELL_SLOW_MS, TURBO_SCALE } from '../../../../shared/audio/pacing';
 
 /** How close a lot is to being a real decision, 0 (obvious) to 1 (knife edge). */
 export function tension(faceBp: number, inch: number): number {
@@ -87,15 +91,11 @@ export function tension(faceBp: number, inch: number): number {
 
 /** How long to hold on this lot before the player is expected to act. */
 export function dwellMs(faceBp: number, inch: number): number {
-  return Math.round(DWELL_FAST_MS + (DWELL_SLOW_MS - DWELL_FAST_MS) * tension(faceBp, inch));
+  return dwellFromTension(tension(faceBp, inch));
 }
 
-/** Turbo collapses every dwell without touching what the player must decide. */
-export const TURBO_SCALE = 0.35;
-
 export function dwellWithTurbo(faceBp: number, inch: number, turbo: boolean): number {
-  const base = dwellMs(faceBp, inch);
-  return turbo ? Math.round(base * TURBO_SCALE) : base;
+  return withTurbo(dwellMs(faceBp, inch), turbo);
 }
 
 /**

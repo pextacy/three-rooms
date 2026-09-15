@@ -24,7 +24,7 @@
  */
 import { posteriorSound, predictiveSound } from './belief';
 import { cargoForDraw, WEIGHT_DENOM, type Cargo, type Report } from './vessel';
-import { draw, type Rehash, type Word } from '../../../shared/rng';
+import { draw, MAX_REHASHES, WINDOWS, type Rehash, type Word } from '../../../shared/rng';
 
 /**
  * One part per million. The manifest is drawn against 10,000 like CANDLE's
@@ -33,32 +33,60 @@ import { draw, type Rehash, type Word } from '../../../shared/rng';
  */
 export const DRAW_SPACE = 1_000_000;
 
-/** A draw in [0, DRAW_SPACE), from a word, by rejection sampling. */
-export function drawFine(word: Word, cursor: number, rehash: Rehash): { value: number; cursor: number; word: Word } {
-  // Two 16-bit windows make a 32-bit value; reject above the largest multiple
-  // of DRAW_SPACE that fits, so what survives is exactly uniform.
-  const LIMIT = Math.floor(2 ** 32 / DRAW_SPACE) * DRAW_SPACE;
-  let w = word;
-  let c = cursor;
-  for (;;) {
-    const hi = draw16(w, c);
-    const lo = draw16(hi.word, hi.cursor);
-    const value = hi.value * 65_536 + lo.value;
-    w = lo.word;
-    c = lo.cursor;
-    if (value < LIMIT) return { value: value % DRAW_SPACE, cursor: c, word: w };
-    if (c >= 16) {
-      w = rehash(w);
-      c = 0;
+/**
+ * The rehash cap and the window count are CANDLE's, imported rather than
+ * restated: both games draw from the same 256-bit word in the same 16-bit
+ * windows, and both contracts carry the same bound because an unbounded loop in
+ * a settlement path cannot have its gas reasoned about (claude.md §3).
+ * `test/survey-draw.spec.ts` pins the number to the Solidity.
+ */
+
+/** The largest multiple of DRAW_SPACE that fits in 32 bits. */
+export const FINE_LIMIT = Math.floor(2 ** 32 / DRAW_SPACE) * DRAW_SPACE;
+
+type Cursor = { word: Word; cursor: number; rehashes: number };
+
+/**
+ * One 16-bit window, rehashing the word when the cursor runs off the end.
+ *
+ * This mirrors `_window` in `Survey.sol` step for step — including the rehash,
+ * which an earlier version of this file left out. It THREW at the end of a word
+ * instead, so a fine draw that began on the last window could not complete: the
+ * contract would have carried on and the client would have raised, which is
+ * exactly the kind of parity gap that only ever appears in production.
+ */
+function window16(c: Cursor, rehash: Rehash): number {
+  for (let pass = 0; pass <= MAX_REHASHES; pass++) {
+    if (c.cursor < WINDOWS) {
+      const shift = BigInt(240 - c.cursor * 16);
+      c.cursor += 1;
+      return Number((c.word >> shift) & 0xffffn);
     }
+    c.word = rehash(c.word);
+    c.cursor = 0;
+    c.rehashes += 1;
   }
+  throw new Error(`randomness exhausted after ${MAX_REHASHES} rehashes`);
 }
 
-/** A raw 16-bit window, with the same rehash discipline as `shared/rng.ts`. */
-function draw16(word: Word, cursor: number): { value: number; cursor: number; word: Word } {
-  if (cursor >= 16) throw new RangeError('cursor past the end of the word');
-  const shift = BigInt(240 - cursor * 16);
-  return { value: Number((word >> shift) & 0xffffn), cursor: cursor + 1, word };
+/**
+ * A draw in [0, DRAW_SPACE), from a word, by rejection sampling.
+ *
+ * Two 16-bit windows make a 32-bit value; anything at or above the largest
+ * multiple of DRAW_SPACE that fits is rejected, so what survives is exactly
+ * uniform. `word % n` is biased and is not used anywhere.
+ */
+export function drawFine(word: Word, cursor: number, rehash: Rehash): { value: number; cursor: number; word: Word } {
+  if (!Number.isInteger(cursor) || cursor < 0) throw new RangeError('cursor must be a non-negative integer');
+  const c: Cursor = { word, cursor, rehashes: 0 };
+
+  // Bounded, like the contract's: 64 tries is (5536/65536)^64 ~ 4e-69 away from
+  // being reached, and it reverts loudly rather than spinning.
+  for (let tries = 0; tries < 64; tries++) {
+    const value = window16(c, rehash) * 65_536 + window16(c, rehash);
+    if (value < FINE_LIMIT) return { value: value % DRAW_SPACE, cursor: c.cursor, word: c.word };
+  }
+  throw new Error('randomness exhausted: 64 rejected windows');
 }
 
 /** The manifest draw: which cargo the voyage carries. Mirrors CANDLE's shape. */

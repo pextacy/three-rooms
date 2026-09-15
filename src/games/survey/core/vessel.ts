@@ -6,7 +6,7 @@
  * ships in ten are sound, and these are dangerous waters. You may send
  * surveyors aboard; each one reports, each report is only as good as a surveyor
  * in 1728, and each costs you a slice of the premium. Then you call it:
- * **UNDERWRITE** her, or **DECLINE** and walk away with half your stake.
+ * **UNDERWRITE** her, or **DECLINE** and walk away with three fifths.
  *
  * The primitive is **sequential hypothesis testing** — Wald's problem. You are
  * not guessing a number, not refusing offers under a decay, and not climbing a
@@ -61,19 +61,43 @@ export const CUMULATIVE_WEIGHTS: readonly number[] = CARGOES.reduce<number[]>((a
 export const PRIOR_SOUND_NUM = 2;
 export const PRIOR_SOUND_DEN = 5;
 
-/** A surveyor is right three times in four — often, never certainly. */
+/**
+ * A surveyor is right three times in five — better than a coin, and not by
+ * much. A man rowed out to a hull in 1728 with a mallet and an hour of daylight
+ * was not an instrument.
+ *
+ * This number is the whole shape of the game and it is not a flavour choice.
+ * With `q = 3/5` one report multiplies the odds by exactly **3/2**, so no single
+ * surveyor settles anything and the player is genuinely running a SEQUENCE of
+ * tests rather than asking an oracle once. It is also what holds invariant I2:
+ * the more decisive the evidence, the more the informed player pulls away from
+ * the careless one, and at `q = 3/4` the careless end of the band fell to
+ * 89.7% — outside the jam's 93–98% window, which is not a band we are willing
+ * to publish (see `docs/phases.md`, and the table under `?`).
+ */
 export const ACCURACY_NUM = 3;
-export const ACCURACY_DEN = 4;
+export const ACCURACY_DEN = 5;
 
 /**
  * The premium ladder: what remains of your stake's reach after `k` surveys.
- * Six points of the premium per surveyor, so evidence is never free.
+ *
+ * A surveyor takes **a point and a half of the premium**, so evidence is never
+ * free — but it is cheap, which it has to be. Evidence this weak (`q = 3/5`)
+ * priced at six points a head made the player who surveys carefully and the
+ * player who cannot be bothered differ by seven points of RTP, and the careless
+ * one fell out of the jam's 93–98% band.
  */
-export const PREMIUM_BP: readonly number[] = [10_000, 9_400, 8_800, 8_200, 7_600, 7_000] as const;
+export const PREMIUM_BP: readonly number[] = [10_000, 9_850, 9_700, 9_550, 9_400, 9_250] as const;
 export const PREMIUM_DENOM = 10_000;
 
-/** Declining hands back half the stake. Walking away costs you; it is not free. */
-export const DECLINE_BP = 50;
+/**
+ * Declining hands back three fifths of the stake. Walking away costs you; it is
+ * not free, and it is not a refund.
+ *
+ * Three fifths, like the prior and the surveyor: every number a player has to
+ * hold in their head in this game is a fifth.
+ */
+export const DECLINE_BP = 60;
 
 export type Call = 'UNDERWRITE' | 'DECLINE';
 /** What a surveyor came back saying. */

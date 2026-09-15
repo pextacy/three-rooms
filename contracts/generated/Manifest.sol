@@ -7,8 +7,8 @@ pragma solidity ^0.8.30;
 //  Produced by `npm run gen:survey` from src/games/survey/core/. Edit those,
 //  re-run, and let the parity tests tell you what broke (claude.md §2).
 //
-//  Declared RTP under optimal play: 97.0303%
-//    exact: 49679521 / 51200000
+//  Declared RTP under optimal play: 97.4141%
+//    exact: 60883787 / 62500000
 // ===========================================================================
 
 library SurveyManifest {
@@ -24,14 +24,21 @@ library SurveyManifest {
   uint256 internal constant MAX_VALUE_BP = 2_000;
 
   /// @dev Declining hands back this much of the premium, whatever she was.
-  uint256 internal constant DECLINE_BP = 50;
+  uint256 internal constant DECLINE_BP = 60;
+
+  /// @dev The declared RTP under optimal play, as an exact rational — the
+  ///      supremum over policies, and therefore the honest worst case for the
+  ///      vault. `quoteRiskParams` quotes it rather than carrying a number a
+  ///      hand could edit.
+  uint256 internal constant RTP_NUM = 60_883_787;
+  uint256 internal constant RTP_DEN = 62_500_000;
 
   /// @dev Rejection sampling for the manifest: floor(65536/10000)*10000.
   uint256 internal constant RNG_LIMIT = 60_000;
   uint256 internal constant RNG_WINDOWS = 16;
 
   /// @dev Belief draws need a finer grid than the manifest: a report's odds run
-  ///      as fine as 2/731. Uniform on [0, DRAW_SPACE).
+  ///      as fine as 582/1375. Uniform on [0, DRAW_SPACE).
   uint256 internal constant DRAW_SPACE = 1_000_000;
   /// @dev The largest multiple of DRAW_SPACE inside 2^32.
   uint256 internal constant FINE_LIMIT = 4_294_000_000;
@@ -55,17 +62,17 @@ library SurveyManifest {
     if (valueBp ==  250) return true; // Wine
     if (valueBp ==  500) return true; // Silk
     if (valueBp == 2000) return true; // Indigo
-    return valueBp == 50; // the decline payout
+    return valueBp == 60; // the decline payout
   }
 
   /// @notice What remains of the premium after `surveys` surveyors.
   function premiumBpAt(uint256 surveys) internal pure returns (uint256) {
     if (surveys == 0) return 10_000;
-    if (surveys == 1) return 9_400;
-    if (surveys == 2) return 8_800;
-    if (surveys == 3) return 8_200;
-    if (surveys == 4) return 7_600;
-    if (surveys == 5) return 7_000;
+    if (surveys == 1) return 9_850;
+    if (surveys == 2) return 9_700;
+    if (surveys == 3) return 9_550;
+    if (surveys == 4) return 9_400;
+    if (surveys == 5) return 9_250;
     revert('survey: too many surveyors');
   }
 
@@ -73,33 +80,33 @@ library SurveyManifest {
   /// @dev Returned as (numerator, denominator) and compared by
   ///      cross-multiplication, so no probability is rounded into a constant.
   function predictiveSound(int256 margin) internal pure returns (uint256, uint256) {
-    if (margin == -5) return (   735,   2924); // predictive 0.251368
-    if (margin == -4) return (   249,    980); // predictive 0.254082
-    if (margin == -3) return (    87,    332); // predictive 0.262048
-    if (margin == -2) return (    33,    116); // predictive 0.284483
-    if (margin == -1) return (    15,     44); // predictive 0.340909
-    if (margin ==  0) return (     9,     20); // predictive 0.450000
-    if (margin ==  1) return (     7,     12); // predictive 0.583333
-    if (margin ==  2) return (    19,     28); // predictive 0.678571
-    if (margin ==  3) return (    55,     76); // predictive 0.723684
-    if (margin ==  4) return (   163,    220); // predictive 0.740909
-    if (margin ==  5) return (   487,    652); // predictive 0.746933
+    if (margin == -5) return (   330,    793); // predictive 0.416141
+    if (margin == -4) return (   582,   1375); // predictive 0.423273
+    if (margin == -3) return (    42,     97); // predictive 0.432990
+    if (margin == -2) return (    78,    175); // predictive 0.445714
+    if (margin == -1) return (     6,     13); // predictive 0.461538
+    if (margin ==  0) return (    12,     25); // predictive 0.480000
+    if (margin ==  1) return (     1,      2); // predictive 0.500000
+    if (margin ==  2) return (    13,     25); // predictive 0.520000
+    if (margin ==  3) return (     7,     13); // predictive 0.538462
+    if (margin ==  4) return (    97,    175); // predictive 0.554286
+    if (margin ==  5) return (    55,     97); // predictive 0.567010
     revert('survey: margin out of range');
   }
 
   /// @notice P(she was sound | margin), drawn only once the call is committed.
   function posteriorSound(int256 margin) internal pure returns (uint256, uint256) {
-    if (margin == -5) return (     2,    731); // posterior  0.002736
-    if (margin == -4) return (     2,    245); // posterior  0.008163
-    if (margin == -3) return (     2,     83); // posterior  0.024096
-    if (margin == -2) return (     2,     29); // posterior  0.068966
-    if (margin == -1) return (     2,     11); // posterior  0.181818
+    if (margin == -5) return (    64,    793); // posterior  0.080706
+    if (margin == -4) return (    32,    275); // posterior  0.116364
+    if (margin == -3) return (    16,     97); // posterior  0.164948
+    if (margin == -2) return (     8,     35); // posterior  0.228571
+    if (margin == -1) return (     4,     13); // posterior  0.307692
     if (margin ==  0) return (     2,      5); // posterior  0.400000
-    if (margin ==  1) return (     2,      3); // posterior  0.666667
-    if (margin ==  2) return (     6,      7); // posterior  0.857143
-    if (margin ==  3) return (    18,     19); // posterior  0.947368
-    if (margin ==  4) return (    54,     55); // posterior  0.981818
-    if (margin ==  5) return (   162,    163); // posterior  0.993865
+    if (margin ==  1) return (     1,      2); // posterior  0.500000
+    if (margin ==  2) return (     3,      5); // posterior  0.600000
+    if (margin ==  3) return (     9,     13); // posterior  0.692308
+    if (margin ==  4) return (    27,     35); // posterior  0.771429
+    if (margin ==  5) return (    81,     97); // posterior  0.835052
     revert('survey: margin out of range');
   }
 }

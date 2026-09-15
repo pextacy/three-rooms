@@ -31,7 +31,7 @@ export const GAMES: readonly GameEntry[] = [
     primitive: 'Sequential hypothesis testing',
     provenance:
       "Wald's problem, with a priced stopping rule. You are not guessing a number and not refusing offers — you are buying evidence, and the only question is when you have bought enough.",
-    rtp: '97.0303%',
+    rtp: '97.4141%',
     maxPayout: '20×',
     status: 'building',
   },

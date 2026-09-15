@@ -43,7 +43,9 @@
     "deploy:contract": "node scripts/deploy-contract.mjs",
     "contracts:build": "forge build",
     "verify:survey": "vite-node scripts/verify-survey.ts",
-    "gen:survey": "vite-node scripts/gen-survey-constants.ts"
+    "verify:brokers": "vite-node scripts/verify-brokers.ts",
+    "gen:survey": "vite-node scripts/gen-survey-constants.ts",
+    "gen:brokers": "vite-node scripts/gen-brokers-constants.ts"
   },
   "dependencies": {
     "penpal": "^7.0.6",

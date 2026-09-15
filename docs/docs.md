@@ -1,20 +1,27 @@
-# DOCS — CANDLE technical reference
+# DOCS — technical reference
 
-**v1.0 · 2026-09-14**
+**v1.1 · 2026-09-15** — two entries on one origin.
 Companion to `prd.md` (what & why), `claude.md` (working rules), `plan.md` (schedule).
+
+Sections 1–9 were written for CANDLE and still describe it. **§10 is THE SURVEY**:
+what it shares (everything structural), what is its own (its maths, its scene, its
+voice), and the one place where it is not merely CANDLE with different nouns — the
+reversed generative order, which is why a `view`-only contract that emits its whole
+state can still hide whether a ship is sound.
 
 ---
 
 ## 1. System overview
 
 ```
-┌─ Player browser ───────────────────────┐
-│  ui/           React shell, no logic   │
-│  render/       one canvas scene        │
-│  audio/        three Web Audio graphs  │
-│  game/         PURE core (mirror)      │
-│  bridge/       useCasinoHost | demoHost│
-└───────────┬────────────────────────────┘
+┌─ Player browser ────────────────────────────────┐
+│  games/<slug>/app/ui/      React shell, no logic│
+│  games/<slug>/app/render/  one canvas scene     │
+│  games/<slug>/app/audio/   its voice + graphs   │
+│  games/<slug>/core/        PURE core (mirror)   │
+│  games/<slug>/app/bridge/  its session + adapter│
+│  shared/                   light, engine, chain │
+└───────────┬─────────────────────────────────────┘
             │ penpal postMessage
 ┌───────────▼─ chain.wtf host ───────────┐
 │  SDK bridge — session lifecycle        │
@@ -23,6 +30,7 @@ Companion to `prd.md` (what & why), `claude.md` (working rules), `plan.md` (sche
             │
 ┌───────────▼─ on-chain ─────────────────┐
 │  Candle.sol  (ICasinoGameV2)           │
+│  Survey.sol  (ICasinoGameV2)           │
 │  Verify Network VRF  ──> bytes32 word  │
 └────────────────────────────────────────┘
 
@@ -277,7 +285,24 @@ escrowed stake**. A slow VRF node cannot cost the player anything.
 
 ---
 
-## 4. Bridge (`src/bridge/`)
+## 4. Bridge (`src/shared/bridge/` + `games/<slug>/app/bridge/`)
+
+Since v1.1 the bridge is generic. `shared/bridge/host.ts` declares
+`GameHost<S, A>` — a subscribe/snapshot store, `openSession`, `submitAction`,
+`revealOutcome`, `dealAgain` — parameterised by whatever a game keeps in its
+session and by its action type. `shared/bridge/chain.ts` implements the whole
+penpal path against that interface with exactly two game-shaped holes:
+
+```ts
+createChainHost<SurveySessionView, SurveyAction>({
+  maxMultiplierX: 20,
+  encodeAction,                 // one byte the contract reads
+  mapSession({ row, phase, ... }) { /* DECODE the row. Never recompute. */ },
+})
+```
+
+Each game's adapter is about a hundred lines and holds only its ghost and its
+own decoding. Everything below in §4.1 and §4.2 is true of both.
 
 ### 4.1 `useCasinoHost.ts`
 
@@ -909,3 +934,103 @@ surplus ships by the inch · the pin pushed into the wax at Lloyd's so its fall
 marked the end · the wick's flare just before it dies, which Pepys records a bidder
 using as his cue · surviving annual candle auctions at Tatworth and Chedzoy,
 Somerset.
+
+
+---
+
+## 10. THE SURVEY
+
+The second entry. Same origin, same room, same everything structural — and a
+different bet object: **sequential hypothesis testing** rather than discounted
+optimal stopping.
+
+### 10.1 What it shares, unchanged
+
+`shared/bridge` (the `GameHost` interface, the whole penpal path, the PRNG),
+`shared/render/light.ts`, `shared/audio/engine.ts` and `pacing.ts`,
+`shared/math/rational.ts`, `shared/rng.ts` (the 16-bit windows, the rejection
+limit, the rehash cap), `shared/ui/tokens.css` and `table.css`. Its React shell
+is the same shape, its `?` panel is the same shape, its log is the same shape,
+and the same rules govern all of it: the contract is the only authority, the host
+owns the balance, nothing is written to browser storage.
+
+### 10.2 The core (`src/games/survey/core/`)
+
+| File | What it holds |
+|---|---|
+| `vessel.ts` | THE MANIFEST: six cargoes, the prior (2/5), the surveyor's accuracy (3/5), the premium ladder, the decline payout, and the one payout rule. |
+| `belief.ts` | The posterior and the predictive, in exact rationals. `margin` is a sufficient statistic; two disagreeing reports cancel exactly. |
+| `draw.ts` | Where randomness enters, and in which order. Mirrors `Survey.sol` window for window. |
+| `round.ts` | `(state, input) -> state`. OFFERED → WEIGHING → COMMITTED → SETTLED, or → DECLINED. |
+| `solve.ts` | The DP over `(surveys, margin)` per cargo, the policies, the strategy band. |
+
+### 10.3 The reversed generative order — the security model
+
+Every hook on `Survey.sol` is `view`, so the only state is `ctx.gameState`, which
+the facet emits on every step and the player echoes back. It is public, and so is
+every VRF word. **If the ship's condition were drawn at the start it could simply
+be read.**
+
+So the model is factored the other way:
+
+- a **report** is drawn from the PREDICTIVE distribution, which depends only on
+  the margin so far and is therefore safe to compute in the open;
+- her **condition** is drawn at SETTLEMENT from the POSTERIOR given the final
+  margin, out of a word requested by `UNDERWRITE` — a word that does not exist
+  until the call is already locked in.
+
+The joint distribution over (reports, truth) is identical either way; it is the
+same probability model, factored so that nothing which decides the voyage exists
+while the player can still act on it. `npm run bench` checks the two
+factorisations agree over 10⁶ voyages, at every margin a report was drawn at, and
+`npm run round-trip:survey` checks on chain that the settling word appears in no
+step the player could have acted on.
+
+`DECLINE` settles in the same transaction and needs no word at all: it pays the
+same whatever she was. A player who walks away can never be left waiting on
+randomness — which is what makes `cancelStuckRandomness` refunding only the
+escrowed stake survivable here.
+
+### 10.4 `gameState`, five bytes
+
+`abi.encodePacked(uint16 valueBp, uint8 surveys, uint8 margin + 128, uint8 phase)`.
+The margin is signed and the state is bytes, so it travels biased by 128. The
+decoder refuses a margin that is impossible for the number of reports — out of
+range, or of the wrong parity — and refuses a `valueBp` the manifest never issued.
+
+### 10.5 The scene, and what it claims
+
+Two claims, both measurable, both checked by `npm run verify:light` and
+`test/survey-scene.spec.ts`:
+
+- **The fog is the doubt.** The ink over the window is exactly
+  `1 − P(the better call is right)`. A disagreeing pair of reports puts it back to
+  the digit, which is the game's one mathematical claim made visible.
+- **The light is the day.** Every surveyor costs an hour of daylight and the room
+  walks CANDLE's own 100 → 40% ladder, ending at the brightness the candle
+  gutters at. Deliberately NOT the premium ladder: 1.5 points a head is invisible
+  and inside 8-bit rounding, and a claim a reviewer cannot measure is one we do
+  not make (`app/daylight.ts`).
+
+The canvas reserves the bottom of its box for the DOM readout and draws nothing
+there. That rule exists because it was broken first.
+
+### 10.6 The numbers
+
+| | |
+|---|---|
+| Declared RTP, optimal play | **97.4141%** = `60883787 / 62500000` |
+| House edge | 2.5859% |
+| Maximum payout | 20× (no surveys, and she comes home) |
+| Prior | 2/5 — four ships in ten |
+| A surveyor is right | 3/5 — one report multiplies the odds by 3/2 |
+| A surveyor costs | 150 bp of the premium |
+| Declining pays | 0.60× of the premium |
+| Mean surveyors bought | 2.548 |
+| Published band | 93.295% (send everybody) … 97.414% (optimal) |
+
+**Every** published policy is inside the jam's 93–98% window, including sending
+nobody and sending everybody. That is a stricter form of I2 than CANDLE manages
+and it is the constraint the manifest was tuned around: sharper evidence pays the
+careful player out of the top of the band and drops the careless one below the
+bottom of it. `docs/phases.md` §7 records the search.

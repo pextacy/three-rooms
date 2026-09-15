@@ -40,3 +40,26 @@ time after 09-20.
   flares and *then* dies, so the flare should decay into the gutter rather than
   sitting at full brightness until the round settles. Cheap; it just needs the
   settle event to drive it, which is phase 4's pacing work anyway.
+
+
+## From phase 7 (THE SURVEY)
+
+- **A third light claim: the sea state.** The roads are calm whatever the belief
+  is. Running the swell harder as the posterior turns against her would be a
+  third measurable mapping, and it is the one a player would feel before they
+  read anything. Not done because `prefers-reduced-motion` would have to turn it
+  off, and a claim that is only true for some players is not one we want to
+  publish.
+
+- **Share the two demo hosts' pacing loop.** `demoHost.ts` and
+  `survey/app/bridge/demoHost.ts` both hold the same "draw the word now, reveal
+  it after a derived dwell" machinery around different state machines. It is
+  about thirty lines each and they are not quite the same shape — CANDLE reveals
+  one lot per step, THE SURVEY has three different kinds of step — so pulling it
+  up would need a third abstraction to earn its place.
+
+- **Let a player see the two games' bands side by side.** Both `?` panels publish
+  their own; nothing publishes the comparison, and the comparison is the
+  interesting part — one game's careless end is at 93.577% because the decision
+  is about patience, the other's is at 93.295% because the decision is about
+  information. A lobby page could show both.

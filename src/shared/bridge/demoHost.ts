@@ -16,6 +16,7 @@ import {lotById, lotForDraw, type LotId, drawLot} from '../../games/candle/core/
 import { INCHES, payoutBase } from '../../games/candle/core/wax';
 import { createPrng, seedFromCrypto, type Prng } from './prng';
 import { dwellWithTurbo } from '../../games/candle/app/audio/voice';
+import { createViewStore } from './host';
 import type { CandleHost, HostView, PlayerAction, SessionView } from './types';
 
 /** 18 decimals, like the production token, so the arithmetic matches exactly. */
@@ -49,16 +50,13 @@ export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
   let sessionCounter = 0;
   let pending: ReturnType<typeof setTimeout> | null = null;
   let destroyed = false;
-  const listeners = new Set<(view: HostView) => void>();
 
   /**
-   * The view object is cached and only rebuilt when something changes, so
-   * `snapshot()` returns a STABLE reference. `useSyncExternalStore` re-renders
-   * forever if the snapshot is a fresh object every call.
+   * The store keeps `snapshot()` reference-stable, which is not a nicety:
+   * `useSyncExternalStore` re-renders forever if the snapshot is a fresh object
+   * every call. Shared with the chain host and with THE SURVEY (`host.ts`).
    */
-  let cached: HostView | null = null;
-
-  const build = (): HostView => ({
+  const store = createViewStore<HostView>(() => ({
     kind: 'demo',
     connected: true,
     canBet: !destroyed,
@@ -73,15 +71,9 @@ export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
     theme: 'dark',
     session,
     fatal: null,
-  });
+  }));
 
-  const view = (): HostView => (cached ??= build());
-
-  const emit = () => {
-    cached = null;
-    const next = view();
-    for (const listener of listeners) listener(next);
-  };
+  const emit = () => store.emit();
 
   const patch = (next: Partial<SessionView>) => {
     if (!session) return;
@@ -147,19 +139,8 @@ export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
   return {
     kind: 'demo',
 
-    /**
-     * Registers only — the listener is NOT called synchronously. Callers read
-     * the current value with `snapshot()`; React requires a store's subscribe
-     * not to fire during subscription.
-     */
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-
-    snapshot: view,
+    subscribe: store.subscribe,
+    snapshot: store.view,
 
     async openSession(stakeBase) {
       if (destroyed) throw new Error('demo host destroyed');
@@ -231,7 +212,7 @@ export function createDemoHost(options: DemoHostOptions = {}): CandleHost {
       destroyed = true;
       if (pending !== null) clearTimeout(pending);
       pending = null;
-      listeners.clear();
+      store.clear();
     },
   };
 }

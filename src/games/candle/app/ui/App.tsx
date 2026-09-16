@@ -458,8 +458,9 @@ function TopBar({
       {view.kind === 'demo' ? (
         <>
           <span className="top__badge">{COPY.demoBadge}</span>
-          <span className="top__purse">
-            {COPY.purse} {formatAmount(view.purseBase ?? 0n, view.tokenDecimals)}
+          <span className="top__reading">
+            <span className="top__reading-label">{COPY.purse}</span>
+            <span className="top__reading-value">{formatAmount(view.purseBase ?? 0n, view.tokenDecimals)}</span>
           </span>
           {host?.refill ? (
             <button className="btn btn--ghost" onClick={() => host.refill?.()}>
@@ -468,20 +469,27 @@ function TopBar({
           ) : null}
         </>
       ) : null}
-      <span className="top__spacer" />
-      <button className="btn btn--ghost" onClick={onLedger}>
-        {COPY.ledgerTitle} <kbd>{COPY.ledgerKey}</kbd>
-        {ledgerCount > 0 ? <span className="top__count">{ledgerCount}</span> : null}
-      </button>
-      <button className="btn btn--ghost" onClick={onTurbo} aria-pressed={turbo}>
-        {turbo ? COPY.turboOn : COPY.turboOff} <kbd>{COPY.turboKey}</kbd>
-      </button>
-      <button className="btn btn--ghost" onClick={onSound} aria-pressed={soundOn}>
-        {soundOn ? COPY.soundOn : COPY.soundOff} <kbd>{COPY.soundKey}</kbd>
-      </button>
-      <button className="btn btn--ghost" onClick={onHelp}>
-        <kbd>{COPY.helpKey}</kbd>
-      </button>
+      {/*
+        One instrument, not four buttons. The book and the three switches are
+        set into a single bordered panel and ruled apart by hairlines, so the
+        row reads as "the panel" rather than as a count of controls — and the
+        whole of the chrome stays on one line instead of wrapping onto two.
+      */}
+      <div className="cluster">
+        <button className="btn btn--ghost" onClick={onLedger}>
+          {COPY.ledgerTitle} <kbd>{COPY.ledgerKey}</kbd>
+          {ledgerCount > 0 ? <span className="top__count">{ledgerCount}</span> : null}
+        </button>
+        <button className="btn btn--ghost" onClick={onTurbo} aria-pressed={turbo}>
+          {turbo ? COPY.turboOn : COPY.turboOff} <kbd>{COPY.turboKey}</kbd>
+        </button>
+        <button className="btn btn--ghost" onClick={onSound} aria-pressed={soundOn}>
+          {soundOn ? COPY.soundOn : COPY.soundOff} <kbd>{COPY.soundKey}</kbd>
+        </button>
+        <button className="btn btn--ghost" onClick={onHelp}>
+          <kbd>{COPY.helpKey}</kbd>
+        </button>
+      </div>
     </header>
   );
 }

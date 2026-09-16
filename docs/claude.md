@@ -293,6 +293,17 @@ One direction sentence, and everything obeys it:
   fee rides on the accessible name instead, which is what a screen reader has in
   place of the column it cannot see.
 
+- **Readings are not controls.** The chrome was six identical outlined pills in
+  two wrapped rows — the game's name, a badge, a purse, REFILL, the book and
+  three switches, all the same weight and shape. Six equal objects is what a
+  toolbar looks like when nobody decided what any of them was. There are three
+  kinds and they now look like three: the **identity** (the name, and whether
+  this is play money), the **readings** (the purse is a figure the room tells
+  you, set like the figures in the readout, because it is one), and the
+  **instrument** — the book and the three switches inside one bordered panel,
+  ruled apart by hairlines and carrying its room's own edge. A switch that is on
+  is lit rather than merely labelled.
+
 - **One page, one job.** A player who wants to play does not scroll past a
   derivation, and a judge who wants the derivation does not hunt for it inside a
   modal. So the model, the tables, the strategy band and the verification

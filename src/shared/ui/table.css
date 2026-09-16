@@ -53,11 +53,6 @@
   padding: 0.15rem 0.4rem;
 }
 
-.top__purse {
-  font-family: var(--font-num);
-  font-size: var(--t-label);
-  color: var(--brass);
-}
 
 .top__count {
   margin-left: 0.35rem;
@@ -66,9 +61,6 @@
   opacity: 0.75;
 }
 
-.top__spacer {
-  flex: 1;
-}
 
 /* --- stage: the one canvas, plus the accessible readout --------------- */
 .stage {
@@ -731,4 +723,110 @@ kbd {
 */
 [data-room='candle'] .stage {
   min-height: clamp(13rem, 46vh, 26rem);
+}
+
+/* ==========================================================================
+   The chrome: readings are not controls.
+
+   This row was six identical outlined pills that wrapped onto a second line —
+   the game's name, a badge, a purse, REFILL, the book and three switches, all
+   the same weight, all the same shape. Six equal objects is what a toolbar looks
+   like when nobody decided what any of them was.
+
+   There are three kinds here and now they look like three:
+
+     the identity   the game's name, and whether this is play money
+     the readings   the purse — a FIGURE the room tells you, not a button
+     the instrument the book and the switches: one panel with keys on it,
+                    divided by hairlines, not four separate objects
+
+   One row, and the vertical it gives back goes to the room.
+   ========================================================================== */
+
+.top {
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+}
+
+/* A reading. Same shape as a figure in the readout, because it is one. */
+.top__reading {
+  display: grid;
+  row-gap: 0.05rem;
+}
+
+.top__reading-label {
+  font-family: var(--font-num);
+  font-size: 0.5625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.top__reading-value {
+  font-family: var(--font-num);
+  font-size: 0.8125rem;
+  color: var(--brass);
+}
+
+/*
+  The instrument. One bordered object with switches set into it, hairline-ruled
+  between — so a player reads "the panel" once rather than counting four buttons.
+  It keeps its room's own edge: dashed on the slate, square everywhere.
+*/
+.cluster {
+  display: flex;
+  align-items: stretch;
+  margin-left: auto;
+  border: 1px solid var(--chrome-rule);
+}
+
+/*
+  The row is capped at 46rem and the cluster always shares it with the name, the
+  badge and the purse, so it is set tight: this is an instrument at the edge of
+  the table, not a navigation bar.
+*/
+.cluster .btn--ghost {
+  width: auto;
+  border: 0;
+  border-left: 1px solid var(--chrome-rule);
+  border-radius: 0;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+}
+
+.cluster .btn--ghost:first-child {
+  border-left: 0;
+}
+
+.cluster .btn--ghost:hover,
+.cluster .btn--ghost:focus-visible {
+  opacity: 1;
+}
+
+/* A switch that is ON is lit, not merely labelled. */
+.cluster .btn--ghost[aria-pressed='true'] {
+  background: rgb(from var(--tallow) r g b / 0.09);
+  opacity: 1;
+}
+
+[data-room='floor'] .cluster {
+  border-style: dashed;
+}
+
+[data-room='roads'] .cluster {
+  border-left-width: 3px;
+}
+
+@media (max-width: 34rem) {
+  .cluster {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .cluster .btn--ghost {
+    flex: 1;
+    justify-content: center;
+  }
 }

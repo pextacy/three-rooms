@@ -504,8 +504,9 @@ function TopBar({
       {view.kind === 'demo' ? (
         <>
           <span className="top__badge">{COPY.demoBadge}</span>
-          <span className="top__purse">
-            {COPY.purse} {formatAmount(view.purseBase ?? 0n, view.tokenDecimals)}
+          <span className="top__reading">
+            <span className="top__reading-label">{COPY.purse}</span>
+            <span className="top__reading-value">{formatAmount(view.purseBase ?? 0n, view.tokenDecimals)}</span>
           </span>
           {host?.refill ? (
             <button className="btn btn--ghost" onClick={() => host.refill?.()}>
@@ -514,20 +515,21 @@ function TopBar({
           ) : null}
         </>
       ) : null}
-      <span className="top__spacer" />
-      <button className="btn btn--ghost" onClick={onBook}>
+      <div className="cluster">
+        <button className="btn btn--ghost" onClick={onBook}>
         {COPY.ledgerTitle} <kbd>{COPY.ledgerKey}</kbd>
         {bookCount > 0 ? <span className="top__count">{bookCount}</span> : null}
       </button>
-      <button className="btn btn--ghost" onClick={onTurbo} aria-pressed={turbo}>
+        <button className="btn btn--ghost" onClick={onTurbo} aria-pressed={turbo}>
         {turbo ? COPY.turboOn : COPY.turboOff} <kbd>{COPY.turboKey}</kbd>
       </button>
-      <button className="btn btn--ghost" onClick={onSound} aria-pressed={soundOn}>
+        <button className="btn btn--ghost" onClick={onSound} aria-pressed={soundOn}>
         {soundOn ? COPY.soundOn : COPY.soundOff} <kbd>{COPY.soundKey}</kbd>
       </button>
-      <button className="btn btn--ghost" onClick={onHelp}>
-        <kbd>{COPY.helpKey}</kbd>
-      </button>
+        <button className="btn btn--ghost" onClick={onHelp}>
+          <kbd>{COPY.helpKey}</kbd>
+        </button>
+      </div>
     </header>
   );
 }

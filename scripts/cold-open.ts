@@ -234,7 +234,7 @@ console.log(`\n${B('Where the bytes go')}`);
 console.log(D(`  react + react-dom is roughly 45 KB gz of the ${(totalGz / 1024).toFixed(0)} KB total — the single`));
 console.log(D('  largest line item, for a UI that is two buttons, a stake field and a canvas.'));
 console.log(D('  Aliasing preact/compat would cut it to about 40 KB and take ~200 ms off slow 4G.'));
-console.log(D('  Not done: it is a dependency decision, not a rendering one. See LATER.md.'));
+console.log(D('  Not done: it is a dependency decision, not a rendering one (docs.md §8).'));
 
 console.log(
   D(

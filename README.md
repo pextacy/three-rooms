@@ -152,9 +152,9 @@ careless end. We are not selling an information edge over the player.
 | Optimal — *the declared RTP* | **96.996%** | ✅ in band |
 | Claim >= 1.00x — *the printed rule* | **96.546%** | ✅ in band |
 | Claim >= 0.50x (anything non-empty) — *the impatient player* | **93.577%** | ✅ in band |
-| Hold for >= 2.00x — *the greedy player* | **78.308%** | — |
-| Hold for >= 5.00x | **52.959%** | — |
-| Claim the first lot regardless — *unreachable — nobody claims an empty crate* | **44.000%** | — |
+| Hold for >= 2.00x — *the greedy player* | **78.308%** | outside the window |
+| Hold for >= 5.00x | **52.959%** | outside the window |
+| Claim the first lot regardless — *unreachable — nobody claims an empty crate* | **44.000%** | outside the window |
 
 Every policy a human would plausibly adopt sits inside the window. Only
 deliberately perverse play falls out of it, which is true of blackjack and video
@@ -295,14 +295,24 @@ you the whole truth about your position.
 | Send two, then call | **94.525%** | ✅ in band |
 | Call it blind — send no one — *the impatient player* | **94.400%** | ✅ in band |
 | Send all five, always — *the anxious player* | **93.295%** | ✅ in band |
+| Underwrite her, whatever the reports say — *the player who never walks away — the evidence is bought by nobody and read by nobody* | **88.600%** | outside the window — reads no evidence |
+| Decline every time — *three fifths back, every voyage, forever* | **60.000%** | outside the window — reads no evidence |
 
-**Every published policy is inside the window**, from sending nobody to sending
-everybody — which is stricter than CANDLE manages, and it is the constraint the
-manifest was tuned around rather than a happy accident. Sharper surveyors or a
-steeper premium pay the careful player out of the top of the band and drop the
-careless one below the bottom of it: the more decisive the evidence, the further
-apart the two ends of the band are pulled. Weak, cheap evidence is what keeps a
-game *about* information inside a 93–98% window at all.
+**Every way of buying evidence is inside the window**, from sending nobody to
+sending everybody, and that is the constraint the manifest was tuned around
+rather than a happy accident. Sharper surveyors or a steeper premium pay the
+careful player out of the top of the band and drop the careless one below the
+bottom of it: the more decisive the evidence, the further apart the two ends of
+the band are pulled. Weak, cheap evidence is what keeps a game *about*
+information inside a 93–98% window at all.
+
+The last two rows are outside it, and they are printed for that reason. There
+are **two** decisions in this game — how much evidence to buy, and which way to
+call — and a band that varied only the first could not say what the second is
+worth. Underwriting every voyage blind returns 88.600%; declining every voyage
+returns exactly 60.000%, which is the decline payout with no premium spent and
+nothing probabilistic left in it. Reading the reports at all is worth six points
+over the first and thirty-seven over the second.
 
 The knife edge: the **Coal at two reports, margin +2**. Underwriting her and sending one more man are worth the same thing to four decimal places, and the room holds on that state for a full second because the numbers say it should.
 
@@ -363,6 +373,12 @@ The Ghost Report — what the *next* surveyor would have said — is drawn only 
 the call is locked in, changes no payout, and is stated once and flatly. On a
 voyage where every surveyor had already reported there is no ghost, because there
 was nobody left to send.
+
+Which distribution it comes from depends on whether the voyage has a truth yet.
+After a decline nothing was ever drawn about her, so the ghost is the predictive
+draw — the same one the contract would have made for a sixth surveyor. After an
+underwrite she has been resolved, and the ghost is a reading of *that* condition,
+right three times in five like every surveyor before him.
 
 ---
 
@@ -457,8 +473,8 @@ cannot be reached.
 | Ask the three best by index | **95.732%** | ✅ in band |
 | Ask the two best by index | **95.082%** | ✅ in band |
 | Ask one, by index — *the printed rule* | **95.028%** | ✅ in band |
+| Shop in order of average price — *the natural mistake — the right stopping rule, the wrong order* | **93.959%** | ✅ in band |
 | Ask everybody, then take the best — *the restless player* | **93.946%** | ✅ in band |
-| Ask the best average, while it beats what you hold — *the natural mistake* | **93.500%** | ✅ in band |
 | Take what the house names — *the impatient player* | **93.500%** | ✅ in band |
 
 Every published policy is inside the window, and the decision is worth three
@@ -502,9 +518,6 @@ payout, and is stated once and flatly.
 | `npm run play` · `play:survey` | Either loop played in a terminal, worded exactly as its UI words it. |
 | `npm run spike` | Every SDK symbol used, exercised end to end. |
 
-See [DEMO.md](./DEMO.md) for a one-minute reviewer runbook with the expected output
-inline.
-
 ---
 
 ## The contracts
@@ -518,7 +531,7 @@ RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract -- survey
 Two contracts, one interface, the same discipline: no constructor arguments, no
 storage, every hook `view`, no unbounded loops. Session state travels in four
 bytes of `gameState` for CANDLE and five for THE SURVEY, which the facet emits
-and takes back. The deployed bytecode is **2,614 bytes** for CANDLE, **3,808 bytes** for THE SURVEY and **3,235 bytes** for THE BROKERS — between a tenth and a sixth of the EIP-170 limit.
+and takes back. The deployed bytecode is **2,614 bytes** for CANDLE, **3,809 bytes** for THE SURVEY and **3,235 bytes** for THE BROKERS — between a tenth and a sixth of the EIP-170 limit.
 
 `deploy:contract` has no default chain on purpose, and reads each contract back
 after deploying — against that game's own generated constants, so a retuned
@@ -534,16 +547,17 @@ its whole state can still hide whether a ship is sound.
 ```
 contracts/Candle.sol         ICasinoGameV2. Five hooks, one _payout(), one word per inch.
 contracts/Survey.sol         The same, and the reversed generative order.
+contracts/Brokers.sol        The same again, and one word per price named.
 contracts/ICasinoGameV2.sol  Vendored from the SDK, so a standard toolchain can build it.
 contracts/generated/         Mirrored from each game's core. Never hand-edited.
 
-src/shared/                  What both games use, and nothing that knows which is calling.
+src/shared/                  What all three games use, and nothing that knows which is calling.
   bridge/host.ts             GameHost<S, A> — generic over whatever a session holds.
   bridge/chain.ts            The whole penpal path. Two game-shaped holes: encode an
                              action byte, read your own session out of a row.
   render/light.ts            The measurable light model. Takes a level in basis points.
   audio/engine.ts            Context, master gain, beds, Poisson grains. No files.
-  audio/pacing.ts            One pacing rule, two games.
+  audio/pacing.ts            One pacing rule, three games.
   math/rational.ts           Exact BigInt rationals. No float touches a declared number.
   ui/                        tokens.css + table.css: the room and the furniture.
 
@@ -553,12 +567,13 @@ src/games/<slug>/app/        Its bridge adapter, its canvas, its voice, its Reac
 
 **One VRF word per step, and the step is always an on-chain action.** `LET IT
 BURN` requests the next lot; `SEND A SURVEYOR` requests the next report;
-`UNDERWRITE` requests the word that decides the ship. In every case the word is
+`UNDERWRITE` requests the word that decides the ship; `ASK` requests the word
+that becomes one broker's price. In every case the word is
 causally after the action that asked for it and cannot be read, predicted or
 front-run. Randomness is mapped by **rejection sampling** over 16-bit windows —
 `word % n` is biased and is not used anywhere, in either language.
 
-Neither contract holds storage: every hook is `view`, and session state travels
+No contract here holds storage: every hook is `view`, and session state travels
 in the `gameState` bytes the facet emits and takes back.
 
 ---
@@ -581,14 +596,17 @@ Keyboard: `Space`/`Enter` claim · `B`/`↓` let it burn · `Enter` deal again �
 
 ## Responsible design
 
-The mechanics were chosen partly because they behave well. Neither game **can
-lose more than the stake**, neither has a bust state, an accumulating sunk-cost
-ladder, autoplay, or near-miss theatre. In THE SURVEY the worst case is not even
-a total loss on most rounds: declining is always there, and it always pays.
+The mechanics were chosen partly because they behave well. **No game here can
+lose more than the stake**, and none of the three has a bust state, an
+accumulating sunk-cost ladder, autoplay, or near-miss theatre. In THE SURVEY the
+worst case is not even a total loss on most rounds: declining is always there,
+and it always pays. In THE BROKERS there is no losing state at all — the worst
+the game can do is 0.7030×, because the fees can never eat a whole stake.
 
 Each game shows a ghost — the lot that would have come next, the report the
-surveyor nobody sent would have made. Both are drawn only once the call is locked
-in, both change no payout, and both are stated once and flatly. There is a test
+surveyor nobody sent would have made, the price the man you did not ask would
+have named. All three are drawn only once the call is locked in, all three change
+no payout, and all three are stated once and flatly. There is a test
 per game that walks **every string in the UI** and fails on an exclamation mark,
 a "you were so close", or a "try again". No loss-chasing prompts, no escalating
 bet suggestions, no timers. The logs report your realised return against the
@@ -600,3 +618,5 @@ builds are free play and say so on every screen.
 *A lot is on the table. The candle is burning. Take it, or let an inch burn and see the next one — knowing the next one is worth less.*
 
 *A ship lies in the roads. Send surveyors aboard — each one reports, each one costs you a slice of the premium — then underwrite her or decline. When have you seen enough?*
+
+*You hold a claim on a wreck. The house values it for nothing and is not generous; four brokers will each name a price, and each charges a fee. Every price you are named stays on the table — so when have you shopped it enough?*

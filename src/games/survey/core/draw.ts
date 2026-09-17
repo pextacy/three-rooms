@@ -22,14 +22,18 @@
  * only discretisation is the draw space itself, and `test/survey-rng.spec.ts`
  * bounds what that costs.
  */
-import { posteriorSound, predictiveSound } from './belief';
+import { accuracy, posteriorSound, predictiveSound } from './belief';
+import { rat, sub } from '../../../shared/math/rational';
 import { cargoForDraw, WEIGHT_DENOM, type Cargo, type Report } from './vessel';
 import { draw, MAX_REHASHES, WINDOWS, type Rehash, type Word } from '../../../shared/rng';
 
 /**
  * One part per million. The manifest is drawn against 10,000 like CANDLE's
- * paytable, but a report's odds can run as fine as 2/731, so the belief draws
- * need a finer grid.
+ * paytable, but a report's odds are exact fractions with denominators as large
+ * as 1,375 (`predictiveSound(-4) = 582/1375`), so the belief draws need a finer
+ * grid than a ten-thousandth. The threshold is still compared by
+ * cross-multiplication rather than rounded into this grid; the grid only bounds
+ * how finely the draw itself can land.
  */
 export const DRAW_SPACE = 1_000_000;
 
@@ -111,6 +115,38 @@ export function drawReport(
   const p = predictiveSound(margin);
   const result = drawFine(word, cursor, rehash);
   // value/DRAW_SPACE < n/d  <=>  value * d < n * DRAW_SPACE
+  const sound = BigInt(result.value) * p.d < p.n * BigInt(DRAW_SPACE);
+  return { report: sound ? 'SOUND' : 'ROTTEN', cursor: result.cursor, word: result.word };
+}
+
+/**
+ * What a surveyor would say about a ship whose condition is ALREADY KNOWN.
+ *
+ * Only reachable after settlement, and only for the Ghost Report. Once
+ * `drawCondition` has spoken there is a truth on the table, and the next
+ * surveyor is a noisy reading OF THAT TRUTH: he says it right with probability
+ * `q`, exactly as every surveyor before him did. He is not another draw from
+ * the predictive distribution — that one averages over a condition that is no
+ * longer in question, and a ghost drawn from it comes back statistically
+ * INDEPENDENT of the voyage the player just watched resolve.
+ *
+ * The demo host drew the ghost that way until this audit, so after a ship came
+ * home sound the "next surveyor" agreed with her only as often as the prior
+ * said he might, instead of the three times in five the game promises. It paid
+ * nothing either way — but this game's whole claim is that its beliefs are
+ * coherent, and an incoherent ghost is the one place a player could catch it
+ * not being.
+ */
+export function drawReportGiven(
+  isSound: boolean,
+  word: Word,
+  cursor: number,
+  rehash: Rehash,
+): { report: Report; cursor: number; word: Word } {
+  const q = accuracy();
+  // He says SOUND with q when she is sound, and with 1 - q when she is not.
+  const p = isSound ? q : sub(rat(1n), q);
+  const result = drawFine(word, cursor, rehash);
   const sound = BigInt(result.value) * p.d < p.n * BigInt(DRAW_SPACE);
   return { report: sound ? 'SOUND' : 'ROTTEN', cursor: result.cursor, word: result.word };
 }

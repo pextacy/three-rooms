@@ -67,7 +67,7 @@ be worse than never having had it.
 | # | Invariant | Where it is enforced |
 |---|---|---|
 | I1 | Theoretical RTP under optimal play = **96.9961%** for CANDLE (`7577820426157 / 7812500000000`), **97.4141%** for THE SURVEY (`60883787 / 62500000`) and **96.9637%** for THE BROKERS (`1551418623 / 1600000000`) | `test/rtp.spec.ts`, `test/survey-rtp.spec.ts`, `test/brokers-rtp.spec.ts` — recomputed from each DP, never hardcoded anywhere else |
-| I2 | **Every** reasonable fixed strategy lands inside the jam's 93–98% band. CANDLE's worst sensible policy is 93.577%; THE SURVEY and THE BROKERS hold the stricter form — **every policy they publish** is in band, THE BROKERS from taking the house's first price (93.500%) to asking everybody (93.946%) | `test/strategy-band.spec.ts`, `test/survey-rtp.spec.ts`, `test/brokers-rtp.spec.ts` |
+| I2 | **Every** reasonable fixed strategy lands inside the jam's 93–98% band. CANDLE's worst sensible policy is 93.577%; THE SURVEY holds it for every way of **buying evidence**, from sending nobody (94.400%) to sending everybody (93.295%); THE BROKERS holds the strictest form — every policy it publishes is in band, from taking the house's first price (93.500%) to asking everybody (93.946%). CANDLE and THE SURVEY each also publish policies BELOW the window on purpose, marked as such: waiting out a 2.00× lot (78.308%), and the two that read no evidence at all (88.600% and 60.000%). A band narrowed until everything fits inside it would not be a constraint | `test/strategy-band.spec.ts`, `test/survey-rtp.spec.ts`, `test/brokers-rtp.spec.ts` |
 | I3 | Randomness is drawn by **rejection sampling**, never `word % n` | `Candle.sol`, `Survey.sol`, `Brokers.sol`, `src/shared/rng.ts`, `test/rng.spec.ts` |
 | I4 | The player's decision is committed **before** the word that answers it exists — the next inch in CANDLE, the ship's condition in THE SURVEY, a broker's price in THE BROKERS | contract state machines; on chain in every `round-trip:*` |
 | I5 | Max payout is exactly **25× stake** (CANDLE) / **20×** (THE SURVEY) / **4.9905×** (THE BROKERS — the best price on the floor, less the fee of the only man who names it), and `onSessionStart` reserves the whole win above the stake so the facet's cap (`escrowedStake + reservedProfit`) meets it with no slack | `Candle.sol`, `Survey.sol`, `Brokers.sol`, `test/caps.spec.ts`, `test/survey-parity.spec.ts`, `test/brokers-parity.spec.ts` |
@@ -86,7 +86,7 @@ If you need to change a number, change it in **one** place —
 `src/games/candle/core/paytable.ts`, `src/games/survey/core/vessel.ts` or
 `src/games/brokers/core/market.ts` — regenerate the Solidity with
 `npm run gen:constants` / `gen:survey` / `gen:brokers`, regenerate the documents
-with `npm run gen:readme` and `gen:demo`, and let the tests tell you what broke.
+with `npm run gen:readme` and `gen:pages`, and let the tests tell you what broke.
 Never hand-edit the generated Solidity, and never type a number into a contract
 that a DP could have produced: THE SURVEY's and THE BROKERS' declared RTPs are
 `RTP_NUM / RTP_DEN` out of their generated libraries for exactly that reason, and
@@ -135,7 +135,7 @@ so is `MAX_PAYOUT_BP`.
 │                             gates, play*, round-trip*
 ├── spikes/                   throwaway SDK spikes + their .sol. Deleted after use.
 ├── sdk/casino-sdk/           the downloaded SDK. Not vendored, not committed.
-├── docs/                     docs.md  prd.md  plan.md  phases.md  claude.md
+├── docs/                     docs.md  prd.md  plan.md  claude.md
 └── vercel.json
 ```
 
@@ -169,7 +169,12 @@ judge will read.
 - **Small commits, conventional format.** `feat(render): blackbody falloff on wax`,
   `fix(rng): reject 16-bit windows >= 60000`.
 - **No new dependencies** without a line in `docs.md` §Dependencies explaining why.
-  The bundle budget is 150 KB gzipped for the whole game.
+  The bundle budget is 150 KB gzipped for the whole game — measured per ENTRY,
+  the document plus every chunk it loads, because that is what one player
+  downloads and three entries share this origin. The generated documents
+  (`/verify/`, `/<slug>/about/`, the four `how` leaves) carry no bundle at all
+  and have a budget of their own: 40 KB gzipped for every one of them together,
+  which is the gate that governs adding pages.
 - **TypeScript strict.** No `any`, no `@ts-ignore`. If the types fight you, the
   design is wrong.
 - Prefer a boring 20-line function over a clever 5-line one. A reviewer will read

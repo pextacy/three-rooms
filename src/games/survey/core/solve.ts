@@ -139,6 +139,38 @@ export function solve(): Solution {
 /** Send another surveyor, or call? */
 export type Policy = (cargo: Cargo, surveys: number, margin: number) => boolean;
 
+/**
+ * And having stopped — WHICH call?
+ *
+ * A stopping rule alone is only half of how this game is played, and for a long
+ * while the published band only varied that half: every row called optimally at
+ * the point it stopped, so the band could not express the two policies a
+ * careless player most plausibly adopts. "Underwrite her whatever the reports
+ * say" returns 88.6% and "decline every time" returns 60.0%, and neither could
+ * appear beside the note claiming the whole band was published.
+ *
+ * So the call is a policy too. `alwaysBestCall` is the default and is what
+ * every evidence-buying row still uses, which keeps those rows comparable: they
+ * differ in how much they pay to learn, and in nothing else.
+ */
+export type CallRule = (cargo: Cargo, surveys: number, margin: number) => Call;
+
+/** Call whichever way is worth more at this state. The rule the DP assumes. */
+export const alwaysBestCall: CallRule = (cargo, surveys, margin) => bestCall(cargo, surveys, margin).call;
+
+/** "Take the risk, whatever the reports say." */
+export const alwaysUnderwrite: CallRule = () => 'UNDERWRITE';
+
+/** "Never take the risk." Walks away with three fifths of the premium, always. */
+export const alwaysDecline: CallRule = () => 'DECLINE';
+
+/** What a given call is worth at a state, as a multiple of the stake. */
+export function callValue(rule: CallRule, cargo: Cargo, surveys: number, margin: number): Rational {
+  return rule(cargo, surveys, margin) === 'DECLINE'
+    ? declineValue(surveys)
+    : underwriteValue(cargo, surveys, margin);
+}
+
 export function optimalPolicy(solution: Solution = solve()): Policy {
   const lookup = new Map(solution.byCargo.map(s => [s.cargo.id, s.shouldSurvey]));
   return (cargo, surveys, margin) => lookup.get(cargo.id)?.[surveys]?.[index(margin)] === true;
@@ -155,23 +187,26 @@ export function untilMargin(n: number): Policy {
 }
 
 /** Expected return of a policy, over the whole manifest. Exact. */
-export function evaluate(policy: Policy): Rational {
-  return CARGOES.reduce<Rational>((sum, cargo) => add(sum, mul(cargoProbability(cargo), evaluateCargo(policy, cargo))), ZERO);
+export function evaluate(policy: Policy, call: CallRule = alwaysBestCall): Rational {
+  return CARGOES.reduce<Rational>(
+    (sum, cargo) => add(sum, mul(cargoProbability(cargo), evaluateCargo(policy, cargo, call))),
+    ZERO,
+  );
 }
 
-export function evaluateCargo(policy: Policy, cargo: Cargo): Rational {
+export function evaluateCargo(policy: Policy, cargo: Cargo, call: CallRule = alwaysBestCall): Rational {
   const value: (Rational | undefined)[][] = [];
   for (let k = 0; k <= MAX_SURVEYS; k++) value[k] = new Array<Rational | undefined>(WIDTH).fill(undefined);
 
   for (let m = -MAX_SURVEYS; m <= MAX_SURVEYS; m++) {
     if (!isReachable(MAX_SURVEYS, m)) continue;
-    value[MAX_SURVEYS]![index(m)] = bestCall(cargo, MAX_SURVEYS, m).value;
+    value[MAX_SURVEYS]![index(m)] = callValue(call, cargo, MAX_SURVEYS, m);
   }
   for (let k = MAX_SURVEYS - 1; k >= 0; k--) {
     for (let m = -k; m <= k; m += 2) {
       if (!isReachable(k, m)) continue;
       if (!policy(cargo, k, m)) {
-        value[k]![index(m)] = bestCall(cargo, k, m).value;
+        value[k]![index(m)] = callValue(call, cargo, k, m);
         continue;
       }
       const pSound = predictiveSound(m);
@@ -186,16 +221,47 @@ export function evaluateCargo(policy: Policy, cargo: Cargo): Rational {
   return out;
 }
 
-export type NamedPolicy = { readonly label: string; readonly policy: Policy; readonly note?: string };
+export type NamedPolicy = {
+  readonly label: string;
+  readonly policy: Policy;
+  /** How this player calls it once they stop. Optimal unless stated. */
+  readonly call?: CallRule;
+  readonly note?: string;
+  /**
+   * Is this a way of playing a person might plausibly settle into, and so one
+   * the jam's 93–98% window has to hold?
+   *
+   * The two rows that ignore the evidence are not: they are published so the
+   * band is honest about where the floor actually is, the same way CANDLE
+   * publishes "claim the first lot regardless" at 44%. Marking them is what
+   * lets the invariant stay a real constraint instead of being widened until
+   * everything fits inside it.
+   */
+  readonly sensible?: boolean;
+};
 
 export function strategyBand(solution: Solution = solve()): readonly NamedPolicy[] {
   return [
-    { label: 'Optimal', policy: optimalPolicy(solution), note: 'the declared RTP' },
-    { label: 'Send one surveyor, then call', policy: fixedSurveys(1), note: 'the printed rule' },
-    { label: 'Survey until the reports are 2 clear', policy: untilMargin(2), note: "Wald's shape" },
-    { label: 'Send two, then call', policy: fixedSurveys(2) },
-    { label: 'Call it blind — send no one', policy: fixedSurveys(0), note: 'the impatient player' },
-    { label: 'Send all five, always', policy: fixedSurveys(MAX_SURVEYS), note: 'the anxious player' },
+    { label: 'Optimal', policy: optimalPolicy(solution), note: 'the declared RTP', sensible: true },
+    { label: 'Send one surveyor, then call', policy: fixedSurveys(1), note: 'the printed rule', sensible: true },
+    { label: 'Survey until the reports are 2 clear', policy: untilMargin(2), note: "Wald's shape", sensible: true },
+    { label: 'Send two, then call', policy: fixedSurveys(2), sensible: true },
+    { label: 'Call it blind — send no one', policy: fixedSurveys(0), note: 'the impatient player', sensible: true },
+    { label: 'Send all five, always', policy: fixedSurveys(MAX_SURVEYS), note: 'the anxious player', sensible: true },
+    {
+      label: 'Underwrite her, whatever the reports say',
+      policy: fixedSurveys(0),
+      call: alwaysUnderwrite,
+      note: 'the player who never walks away — the evidence is bought by nobody and read by nobody',
+      sensible: false,
+    },
+    {
+      label: 'Decline every time',
+      policy: fixedSurveys(0),
+      call: alwaysDecline,
+      note: 'three fifths back, every voyage, forever',
+      sensible: false,
+    },
   ];
 }
 

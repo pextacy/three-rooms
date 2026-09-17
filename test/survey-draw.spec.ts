@@ -15,9 +15,9 @@
 import { describe, it, expect } from 'vitest';
 import { keccak256 } from 'viem';
 import { readFileSync } from 'node:fs';
-import { drawCargo, drawReport, drawCondition, drawFine, DRAW_SPACE } from '../src/games/survey/core/draw';
+import { drawCargo, drawReport, drawReportGiven, drawCondition, drawFine, DRAW_SPACE } from '../src/games/survey/core/draw';
 import { CARGOES, WEIGHT_DENOM, MAX_SURVEYS, cargoForDraw } from '../src/games/survey/core/vessel';
-import { posteriorSound, predictiveSound } from '../src/games/survey/core/belief';
+import { accuracy, posteriorSound, predictiveSound } from '../src/games/survey/core/belief';
 import { wordToBytes, wordFromBytes, MAX_REHASHES, type Rehash } from '../src/shared/rng';
 import * as R from '../src/shared/math/rational';
 
@@ -220,5 +220,40 @@ describe('the bound the contract also carries', () => {
   it('and compares every threshold by cross-multiplication, never by a rounded constant', () => {
     const solidity = readFileSync(new URL('../contracts/Survey.sol', import.meta.url), 'utf8');
     expect(solidity).toContain('drawn * d < n * SurveyManifest.DRAW_SPACE');
+  });
+});
+
+/**
+ * The Ghost Report is the one draw that happens AFTER the voyage has a truth,
+ * and it has to be a reading of that truth rather than another draw from a
+ * belief the settlement has already retired.
+ *
+ * The demo host drew it from the predictive distribution in both cases, which
+ * left the ghost independent of the outcome the player had just watched. It
+ * moved no money; it made the one game in the room that sells coherent belief
+ * the one place a patient player could catch it being incoherent.
+ */
+describe('the ghost, once she has been resolved', () => {
+  const N = 20_000;
+
+  it('agrees with a sound ship exactly as often as a surveyor is right', () => {
+    const stream = words(4_242n);
+    let sound = 0;
+    for (let i = 0; i < N; i++) if (drawReportGiven(true, stream.next().value, 0, rehash).report === 'SOUND') sound++;
+    expect(Math.abs(sound / N - R.toNumber(accuracy()))).toBeLessThan(0.02);
+  });
+
+  it('and calls a rotten ship sound only as often as he is wrong', () => {
+    const stream = words(4_243n);
+    let sound = 0;
+    for (let i = 0; i < N; i++) if (drawReportGiven(false, stream.next().value, 0, rehash).report === 'SOUND') sound++;
+    expect(Math.abs(sound / N - (1 - R.toNumber(accuracy())))).toBeLessThan(0.02);
+  });
+
+  it('which is NOT what the predictive draw would have said at the same margin', () => {
+    // The gap is the whole bug: at the prior the predictive draw says SOUND
+    // 48% of the time whatever she turned out to be, and a surveyor reading a
+    // sound ship says it 60% of the time.
+    expect(R.compare(predictiveSound(0), accuracy())).not.toBe(0);
   });
 });

@@ -34,7 +34,6 @@
     "bundle:single": "node scripts/bundle-single.mjs",
     "gen:readme": "vite-node scripts/gen-readme.ts",
     "gen:pages": "vite-node scripts/gen-pages.ts",
-    "gen:demo": "vite-node scripts/gen-demo.ts",
     "gates:iframe": "node scripts/iframe-check.mjs",
     "deploy": "vercel deploy --prod",
     "verify:live": "node scripts/gates.mjs --headers-only --origin",

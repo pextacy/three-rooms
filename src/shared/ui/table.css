@@ -830,3 +830,13 @@ kbd {
     justify-content: center;
   }
 }
+
+/**
+ * A table too wide for a phone scrolls inside its own box rather than pushing
+ * the panel sideways. Used by the survey's "when to call" grid, which is
+ * indexed by cargo AND by how many surveyors have reported.
+ */
+.panel__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

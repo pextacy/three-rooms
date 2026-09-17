@@ -52,8 +52,9 @@ jobs:
       - name: build
         run: npm run build
 
-      # README.md and the Solidity constants are generated. A stale one is a
-      # published number that no longer matches the code.
+      # README.md, the site's documents and the Solidity constants are all
+      # generated. A stale one is a published number that no longer matches the
+      # code.
       - name: generated files are current
         run: |
           npm run gen:constants
@@ -61,9 +62,8 @@ jobs:
           npm run gen:brokers
           npm run gen:pages
           npm run gen:readme
-          npm run gen:demo
-          git diff --exit-code -- README.md DEMO.md contracts/generated/ public/ \
-            || { echo "::error::a generated file is stale — run npm run gen:constants gen:survey gen:brokers gen:pages gen:readme gen:demo"; exit 1; }
+          git diff --exit-code -- README.md contracts/generated/ public/ \
+            || { echo "::error::a generated file is stale — run npm run gen:constants gen:survey gen:brokers gen:pages gen:readme"; exit 1; }
 
       - name: gates
         run: npm run gates

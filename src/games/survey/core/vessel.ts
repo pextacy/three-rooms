@@ -73,7 +73,7 @@ export const PRIOR_SOUND_DEN = 5;
  * the more decisive the evidence, the more the informed player pulls away from
  * the careless one, and at `q = 3/4` the careless end of the band fell to
  * 89.7% — outside the jam's 93–98% window, which is not a band we are willing
- * to publish (see `docs/phases.md`, and the table under `?`).
+ * to publish (see the table under `?`).
  */
 export const ACCURACY_NUM = 3;
 export const ACCURACY_DEN = 5;

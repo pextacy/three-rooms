@@ -93,6 +93,7 @@ export const COPY = {
   bandTitle: 'What other ways of playing return',
   bandPolicy: 'How you play',
   bandRtp: 'Returns',
+  bandOutside: 'outside the window',
   bandNote:
     'This is a game with a decision, so the return depends on how you play it. The whole band is published, including the careless end.',
   verifyNote: 'Every number here is recomputed by npm run verify:rtp from the paytable.',

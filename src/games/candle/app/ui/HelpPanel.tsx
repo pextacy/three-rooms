@@ -76,11 +76,21 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
     const optimal = optimalPolicy(s);
     return {
       solution: s,
-      band: strategyBand(s).map(entry => ({
-        label: entry.label,
-        rtp: R.toPercent(evaluate(entry.policy), 3),
-        note: entry.note,
-      })),
+      /**
+       * The band, with each row saying for itself whether it lands in the jam's
+       * 93–98% window. The marker is not decoration: this table prints policies
+       * that fall well below the floor, and a reader who cannot tell which is
+       * which has been handed six numbers and no way to read them.
+       */
+      band: strategyBand(s).map(entry => {
+        const value = evaluate(entry.policy);
+        return {
+          label: entry.label,
+          rtp: R.toPercent(value, 3),
+          note: entry.note,
+          inBand: R.compare(value, R.rat(93n, 100n)) >= 0 && R.compare(value, R.rat(98n, 100n)) <= 0,
+        };
+      }),
       // "In practice" is derived from the policy, not asserted in prose.
       practice: Array.from({ length: INCHES }, (_, i) => {
         const inch = i + 1;
@@ -209,6 +219,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
                   <td>
                     {entry.label}
                     {entry.note ? <span className="muted"> — {entry.note}</span> : null}
+                    {entry.inBand ? null : <span className="muted"> · {COPY.bandOutside}</span>}
                   </td>
                   <td className="num">{entry.rtp}%</td>
                 </tr>

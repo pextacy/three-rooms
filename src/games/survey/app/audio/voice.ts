@@ -37,9 +37,22 @@ import { dwellFromTension, withTurbo } from '../../../../shared/audio/pacing';
 
 export { DWELL_FAST_MS, DWELL_SLOW_MS, TURBO_SCALE } from '../../../../shared/audio/pacing';
 
-/** The bell at the deepest belief in rot (margin -5, P(sound) = 0.27%). */
+/**
+ * The two ends of the bell's range, in Hz, mapped from P(sound) in [0, 1].
+ *
+ * They are the ends of the SCALE, not of the game: the reachable posteriors run
+ * from 8.07% at a margin of -5 to 83.51% at +5, so the bell actually sounds
+ * between about 200 Hz and 770 Hz. Fixing the scale at the full range rather
+ * than the reachable one keeps the pitch a reading of the belief itself — a
+ * given posterior rings at the same note whatever the manifest does next.
+ *
+ * These carried "(margin -5, P(sound) = 0.27%)" and "(margin +5, 99.4%)" until
+ * this audit. Those are the posteriors of a surveyor who is right three times in
+ * FOUR; `vessel.ts` moved him to three in five to hold the strategy band, and
+ * the comment did not follow. The numbers were only ever prose, so nothing
+ * sounded wrong — which is exactly why a stale one survives.
+ */
 export const BELL_HZ_MIN = 174;
-/** The bell at the deepest belief in soundness (margin +5, P(sound) = 99.4%). */
 export const BELL_HZ_MAX = 1_046;
 
 /**

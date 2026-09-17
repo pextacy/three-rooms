@@ -349,18 +349,32 @@ The host resolves a manifest with `new URL('game.manifest.json', gameUrl)` —
 several entries, each in its own directory with its own manifest beside it:
 
 ```
-/                       the lobby — NOT an entry, no jam widget, no metrics
+/                       the door — NOT an entry, no jam widget, no metrics
+/verify/                how every figure on the site is made, and checked
 /candle/                an entry: its own page, manifest and contract
 /candle/game.manifest.json
+/candle/about/          the threshold — what this room is, and why it is not a clone
+/candle/how/            leaf i of four: the problem
+/candle/how/table/      leaf ii: what is on the table
+/candle/how/band/       leaf iii: what other ways of playing return
+/candle/how/check/      leaf iv: how to check it
 ```
 
 A game's entry URL must therefore end in a slash, or the manifest resolves to the
 origin root and the host reads the wrong one.
 
-**The lobby is a door, not a casino.** It lists the games and links to them. It
-has no balance, no deposit and no wallet, because inside chain.wtf the host owns
-all three (§4.1, `claude.md` §7) — and because a game origin that asks for money
-is the exact shape of a phishing page.
+Everything except the three `/<slug>/` pages is **generated** by
+`npm run gen:pages`, ships zero JavaScript, and is not an entry — no widget, no
+manifest, no metrics. The four `how` leaves are a **sequence**: you cannot read
+the strategy band before you know what is on the table, which is the only reason
+they carry numerals at all.
+
+**The door is a door, not a casino.** It lists the rooms and lets you into them,
+and it carries nothing else — no balance, no deposit and no wallet, because
+inside chain.wtf the host owns all three (§4.1, `claude.md` §7), and because a
+game origin that asks for money is the exact shape of a phishing page. It used
+to carry three paragraphs of provenance, a table of figures each and a colophon
+on verification as well; each of those has its own page now, listed above.
 
 ### 5.1 Manifest
 Served at the origin as **`/game.manifest.json`** — that exact filename, on the
@@ -601,10 +615,11 @@ implementing `ICasinoGameV2` dropped there is compiled with the bundled solc
 picker within a couple of seconds — no restart, no external toolchain.
 `contracts/Candle.sol` is *copied* there rather than deployed by hand.
 
-### 7.2 Reviewer runbook (`DEMO.md`)
+### 7.2 Reviewer runbook
 A one-minute path: install, `npm test`, `npm run verify:rtp`, then a full
-bet → burn → burn → claim → payout round against the bundled simulator, with the
-expected output pasted inline so a mismatch is obvious.
+bet → burn → burn → claim → payout round against the bundled simulator
+(`npm run round-trip`). Every figure the site publishes is re-derived by the
+`verify:*` commands, which is what `/verify/` on the origin points a reviewer at.
 
 ### 7.3 SDK notes
 
@@ -710,7 +725,7 @@ reserve but never said to *take* it; that omission is now closed.
 Do **not** taper the reserve as the wax burns, even though the reachable maximum
 falls with it. The delta is applied *before* the payout is checked, so a step that
 both releases reserve and pays out is checked against the already-lowered cap.
-One reserve, taken once, released never. (Capital efficiency is noted in `LATER.md`,
+One reserve, taken once, released never. (Capital efficiency is a post-v1 note,
 not v1.)
 
 #### 7.3.4 `quoteCaps` / `quoteRiskParams` — measured values
@@ -840,7 +855,8 @@ parachute, not a plan. See `plan.md` §Risks.
 
 ## 8. Dependencies
 
-Every dependency needs a line here. Budget: 150 KB gzipped total.
+Every dependency needs a line here. Budget: 150 KB gzipped per entry — the
+document plus every chunk it loads, which is what one player downloads.
 
 | Package | Why |
 |---|---|
@@ -1048,13 +1064,30 @@ there. That rule exists because it was broken first.
 | A surveyor costs | 150 bp of the premium |
 | Declining pays | 0.60× of the premium |
 | Mean surveyors bought | 2.548 |
-| Published band | 93.295% (send everybody) … 97.414% (optimal) |
+| Published band, buying evidence | 93.295% (send everybody) … 97.414% (optimal) |
+| Published band, reading none | 88.600% (underwrite blind) · 60.000% (decline always) |
 
-**Every** published policy is inside the jam's 93–98% window, including sending
-nobody and sending everybody. That is a stricter form of I2 than CANDLE manages
-and it is the constraint the manifest was tuned around: sharper evidence pays the
-careful player out of the top of the band and drops the careless one below the
-bottom of it. `docs/phases.md` §7 records the search.
+**Every way of buying evidence** is inside the jam's 93–98% window, including
+sending nobody and sending everybody. That is the constraint the manifest was
+tuned around: sharper evidence pays the careful player out of the top of the band
+and drops the careless one below the bottom of it.
+
+There are **two** decisions in this game, though — how much evidence to buy, and
+which way to call — and for a long while the band varied only the first. Every
+row called optimally at the point it stopped, so the two policies a careless
+player most plausibly adopts could not be expressed at all, and the note beside
+the band claimed to publish a careless end it did not contain. `CallRule` in
+`core/solve.ts` makes the call a policy too. Underwriting every voyage blind
+returns **88.600%**; declining every voyage returns exactly **60.000%** — the
+decline payout with no premium spent, and nothing probabilistic left in it.
+Reading the reports at all is worth six points over the first and thirty-seven
+over the second.
+
+Both sit below the window, and both are printed for that reason, marked `outside
+the window` in the `?` panel, on `/survey/how/band/` and in the README. I2 is
+asserted over the evidence-buying rows, which is the honest scope: asserting it
+over the whole band would mean either never publishing those two numbers or
+widening the window until it stopped constraining anything.
 
 ---
 
@@ -1178,6 +1211,6 @@ for the same reason.
 **Every** published policy is inside the jam's 93–98% window — the same stricter
 form of I2 that THE SURVEY holds. The fees are what hold it there: they are large
 enough that asking everybody is a real mistake (93.946%) and small enough that
-taking the first price is not a disaster (93.500%). `docs/phases.md` §8 records
+taking the first price is not a disaster (93.500%). The tuning search behind it is
 the search, including the version where a flat opening offer made the decision
 worthless.

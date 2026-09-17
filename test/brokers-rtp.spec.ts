@@ -22,6 +22,7 @@ import {
   askValue,
   maximumPayout,
   roundShape,
+  askByMeanOrder,
   probabilityAtLeast,
   MASKS,
   PRICES,
@@ -232,10 +233,24 @@ describe('I2 — the strategy band', () => {
     expect(R.compare(gap, R.rat(2n, 100n))).toBeGreaterThan(0);
   });
 
-  it('the natural mistake — asking by average price — costs more than a point', () => {
+  it('the natural mistake — shopping in order of average price — costs more than a point', () => {
     const band = Object.fromEntries(strategyBand(solution).map(entry => [entry.label, evaluate(entry.policy)]));
-    const byAverage = band['Ask the best average, while it beats what you hold'] as R.Rational;
-    expect(R.compare(R.sub(solution.rtp, byAverage), R.rat(1n, 100n))).toBeGreaterThan(0);
+    const byMean = band['Shop in order of average price'] as R.Rational;
+    expect(R.compare(R.sub(solution.rtp, byMean), R.rat(1n, 100n))).toBeGreaterThan(0);
+  });
+
+  /**
+   * The row exists to show what the ORDER alone costs, so it has to actually
+   * shop. The policy it replaced stopped on the average rather than the index
+   * and therefore asked nobody at all: it scored, to the digit, what never
+   * shopping returns, under a label that called it a mistake.
+   */
+  it('and it is a different player from the one who never shops', () => {
+    const band = Object.fromEntries(strategyBand(solution).map(entry => [entry.label, evaluate(entry.policy)]));
+    const byMean = band['Shop in order of average price'] as R.Rational;
+    const house = band['Take what the house names'] as R.Rational;
+    expect(R.compare(byMean, house)).not.toBe(0);
+    expect(R.toFixed(roundShape(askByMeanOrder()).meanAsked, 3)).not.toBe('0.000');
   });
 });
 

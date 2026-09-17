@@ -106,8 +106,8 @@ describe('the door is a door', () => {
     }
   });
 
-  it('and every live entry has somewhere to play and somewhere to read', () => {
-    for (const game of GAMES.filter(g => g.status === 'live')) {
+  it('and every entry has somewhere to play and somewhere to read', () => {
+    for (const game of GAMES) {
       expect(game.slug).toMatch(/^[a-z]+$/);
       expect(game.source.length).toBeGreaterThan(0);
       expect(game.provenance.length).toBeGreaterThan(80);

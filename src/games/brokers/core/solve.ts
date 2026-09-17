@@ -36,7 +36,7 @@ import {
   allPrices,
   type Broker,
 } from './market';
-import { priceValue, reservationPrice, pandoraChoice, indices } from './weitzman';
+import { priceValue, reservationPrice, meanPrice, pandoraChoice, indices } from './weitzman';
 import { rat, add, mul, compare, max as maxOf, ZERO, type Rational } from '../../../shared/math/rational';
 
 /** Every mask of brokers who have been asked. */
@@ -176,25 +176,38 @@ export function askFixed(n: number): Policy {
 }
 
 /**
- * "Ask whoever has the best average price, while it beats what you hold."
+ * "Shop in order of average price" — the rule a player invents on round three,
+ * and the one the index exists to correct.
  *
- * The rule a player invents on round three, and the one the index exists to
- * correct: it asks the brokers in exactly the wrong order.
+ * It keeps Pandora's STOPPING rule and breaks only its ORDER, which is what
+ * isolates the mistake: every other way of getting this wrong also changes how
+ * long you shop, and then the band cannot say what the ordering alone costs.
+ *
+ * An earlier version of this policy stopped on the average instead — "ask the
+ * best average while it beats what you hold" — and on this market that asks
+ * NOBODY: the house's man averages 0.9350x and the best broker averages
+ * 0.7490x, so his price already beats every average on the floor. The row sat
+ * in the published band labelled "the natural mistake" and returned, to the
+ * digit, what never shopping at all returns. A band row that duplicates another
+ * row teaches nothing, and calling it a mistake when it makes none is worse
+ * than not printing it.
  */
-export function askByAverage(): Policy {
-  const byMean = [...BROKER_LIST].sort((a, b) => {
-    const meanA = a.quotes.reduce((sum, q) => sum + q.priceBp * q.weight, 0);
-    const meanB = b.quotes.reduce((sum, q) => sum + q.priceBp * q.weight, 0);
-    return meanB - meanA;
-  });
+export function askByMeanOrder(): Policy {
+  const byMean = [...BROKER_LIST].sort((a, b) => compare(meanPrice(b), meanPrice(a)));
+  const z = indices();
   return (mask, bestBp) => {
     const next = byMean.find(broker => (mask & (1 << broker.id)) === 0);
-    if (!next) return null;
-    const mean = next.quotes.reduce<Rational>(
-      (sum, q) => add(sum, mul(rat(q.weight, WEIGHT_DENOM), priceValue(q.priceBp))),
-      ZERO,
-    );
-    return compare(mean, priceValue(bestBp)) > 0 ? next : null;
+    if (next === undefined) return null;
+    // Pandora's own stopping rule: hold once what you have beats the best index
+    // still unasked. Only the order the brokers are reached in is wrong.
+    let top: Rational | null = null;
+    for (const broker of BROKER_LIST) {
+      if (mask & (1 << broker.id)) continue;
+      const index = z[broker.id] as Rational;
+      if (top === null || compare(index, top) > 0) top = index;
+    }
+    if (top === null) return null;
+    return compare(priceValue(bestBp), top) >= 0 ? null : next;
   };
 }
 
@@ -237,8 +250,8 @@ export function strategyBand(solution: Solution = solve()): readonly NamedPolicy
     { label: 'Ask the three best by index', policy: askFixed(3) },
     { label: 'Ask the two best by index', policy: askFixed(2) },
     { label: 'Ask one, by index', policy: askFixed(1), note: 'the printed rule' },
+    { label: 'Shop in order of average price', policy: askByMeanOrder(), note: 'the natural mistake — the right stopping rule, the wrong order' },
     { label: 'Ask everybody, then take the best', policy: askEverybody(), note: 'the restless player' },
-    { label: 'Ask the best average, while it beats what you hold', policy: askByAverage(), note: 'the natural mistake' },
     { label: 'Take what the house names', policy: takeTheHouse(), note: 'the impatient player' },
   ];
 }

@@ -101,6 +101,7 @@ export const COPY = {
   bandTitle: 'What other ways of playing return',
   bandPolicy: 'How you play',
   bandRtp: 'Returns',
+  bandOutside: 'outside the window',
   bandNote:
     'This is a game with a decision, so the return depends on how you play it. The whole band is published, careless end included — and every way of playing it that a person would actually adopt sits inside the jam’s 93–98% window.',
   verifyNote: 'Every number here is recomputed by npm run verify:brokers from the market.',

@@ -52,11 +52,10 @@ function nextView(host: BrokersHost, predicate: (v: BrokersView) => boolean): Pr
 }
 
 /**
- * Four ways a person actually plays this. "Ask the best average" is not among
- * them because on this market it collapses into "take the house" exactly — no
- * broker's average beats the house's worst price — and `verify:brokers`
- * already publishes both at 93.500%. A row that is a duplicate of another row
- * teaches nothing here.
+ * Four ways a person actually plays this. "Shop in order of average price" is
+ * not among them: the band already prints what the wrong ORDER costs, and what
+ * this script is for is watching a session move, which the mis-ordered player
+ * does in the same shape as the restless one.
  */
 const POLICIES: ReadonlyArray<readonly [string, Policy]> = [
   ['the index', optimal],

@@ -73,17 +73,17 @@ const rows: ReadonlyArray<readonly [string, string]> = [
 for (const [k, v] of rows) console.log(`  ${k.padEnd(28)} ${v}`);
 
 console.log(`\n${B('Strategy band')}`);
-console.log(D('  Every way of playing this a person would actually adopt — including sending'));
-console.log(D('  nobody, and including sending everybody — sits inside the jam band. That is'));
-console.log(D('  what the surveyor\'s accuracy and the price of a survey were chosen to hold:'));
-console.log(D('  sharper evidence would pay the careful player out of the window.'));
-for (const { label, policy, note } of strategyBand(solution)) {
-  const value = evaluate(policy);
+console.log(D('  Every way of BUYING EVIDENCE that a person would actually adopt — including'));
+console.log(D('  sending nobody, and including sending everybody — sits inside the jam band.'));
+console.log(D('  That is what the surveyor\'s accuracy and the price of a survey were chosen'));
+console.log(D('  to hold: sharper evidence would pay the careful player out of the window.'));
+console.log(D('  The last two rows ignore the evidence entirely and are outside it. They are'));
+console.log(D('  printed because a band that only contains what flatters it is not a band.'));
+for (const { label, policy, call, note, sensible } of strategyBand(solution)) {
+  const value = evaluate(policy, call);
   const inBand = R.compare(value, R.rat(93n, 100n)) >= 0 && R.compare(value, R.rat(98n, 100n)) <= 0;
-  console.log(
-    `  ${label.padEnd(38)}${pct(value, 3).padStart(9)}  ` +
-      `${inBand ? '\x1b[32min band\x1b[0m' : '\x1b[33mbelow 93%\x1b[0m'}${note ? D(`  ${note}`) : ''}`,
-  );
+  const mark = inBand ? '\x1b[32min band\x1b[0m' : sensible ? '\x1b[31mOUT OF BAND\x1b[0m' : D('out of band');
+  console.log(`  ${label.padEnd(40)}${pct(value, 3).padStart(9)}  ${mark}${note ? D(`  ${note}`) : ''}`);
 }
 
 console.log(`\n${B('Every reachable (surveys, margin) state')}`);
@@ -100,7 +100,22 @@ const assert = (label: string, ok: boolean, detail = '') => {
 assert('manifest weights sum to the denominator', weightSum === WEIGHT_DENOM);
 assert('the declared RTP sits inside the jam band 93–98%',
   R.compare(solution.rtp, R.rat(93n, 100n)) >= 0 && R.compare(solution.rtp, R.rat(98n, 100n)) <= 0, pct(solution.rtp));
-assert('no policy beats the DP', strategyBand(solution).slice(1).every(p => R.compare(evaluate(p.policy), solution.rtp) <= 0));
+assert('no policy beats the DP', strategyBand(solution).slice(1).every(p => R.compare(evaluate(p.policy, p.call), solution.rtp) <= 0));
+assert(
+  'every way of buying evidence lands inside the jam band 93–98%',
+  strategyBand(solution)
+    .filter(p => p.sensible)
+    .every(p => {
+      const v = evaluate(p.policy, p.call);
+      return R.compare(v, R.rat(93n, 100n)) >= 0 && R.compare(v, R.rat(98n, 100n)) <= 0;
+    }),
+  'the evidence-buying rows, which is what the manifest was tuned to hold',
+);
+assert(
+  'and the band also publishes what ignoring the evidence returns',
+  strategyBand(solution).some(p => p.sensible === false),
+  'below the window, printed rather than hidden',
+);
 assert('the premium ladder has one rung per survey plus the start', PREMIUM_BP.length === MAX_SURVEYS + 1);
 assert('a disagreeing pair of reports cancels exactly',
   R.compare(posteriorSound(0), prior()) === 0, 'margin 0 is the prior, whatever was bought');

@@ -102,9 +102,21 @@ contract SurveyGame is ICasinoGameV2 {
 
   /// @dev Uniform on [0, DRAW_SPACE). Two windows, because the finest odds in
   ///      the belief table need more resolution than 10,000 can carry.
+  ///
+  ///      THE TWO WINDOWS ARE READ INTO NAMED LOCALS, IN ORDER, ON PURPOSE.
+  ///      `_window` advances the cursor, so `(_window(c) << 16) | _window(c)`
+  ///      depends on which operand solc evaluates first — and Solidity does not
+  ///      specify that. The IR pipeline this repo compiles with goes
+  ///      left-to-right, the legacy one goes right-to-left, so that expression
+  ///      silently swaps the high and low halves of the draw under a settings
+  ///      change nobody would think to re-audit. `drawFine` in
+  ///      src/games/survey/core/draw.ts reads high first; so does this, and now
+  ///      it says so rather than inheriting it from a compiler flag.
   function _drawFine(Cursor memory c) private pure returns (uint256) {
     for (uint256 tries = 0; tries < 64; tries++) {
-      uint256 v = (_window(c) << 16) | _window(c);
+      uint256 high = _window(c);
+      uint256 low = _window(c);
+      uint256 v = (high << 16) | low;
       if (v < SurveyManifest.FINE_LIMIT) return v % SurveyManifest.DRAW_SPACE;
     }
     revert Survey__RandomnessExhausted();

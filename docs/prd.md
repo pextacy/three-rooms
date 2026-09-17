@@ -293,7 +293,7 @@ toasts, any mechanic that can lose more than the stake.
 |---|---|
 | Cold open (blank tab → playable) | p95 < 400 ms; hard budget 1,200 ms |
 | Frame time during a burn | p95 < 12 ms (60 fps budget 16.7) |
-| Bundle | < 150 KB gzipped, zero audio files, no image over 8 KB |
+| Bundle | < 150 KB gzipped **per entry** — the document plus every chunk it loads; the generated documents have their own budget, 40 KB for all of them together. Zero audio files, no image over 8 KB |
 | Embeddability | `frame-ancestors *`, no `X-Frame-Options` anywhere |
 | Accessibility | Full keyboard path; no information carried by colour alone; sound is additive |
 | Determinism | Contract and client agree on all 30 reachable states, bit-for-bit |

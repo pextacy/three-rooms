@@ -77,6 +77,9 @@ const manifest = JSON.parse(readFileSync(resolve(here, '../public/candle/game.ma
 const surveyManifest = JSON.parse(
   readFileSync(resolve(here, '../public/survey/game.manifest.json'), 'utf8'),
 ) as GameManifest;
+const brokersManifest = JSON.parse(
+  readFileSync(resolve(here, '../public/brokers/game.manifest.json'), 'utf8'),
+) as GameManifest;
 /** The live URL lives in package.json, so it is never retyped into prose. */
 const { homepage } = JSON.parse(readFileSync(resolve(here, '../package.json'), 'utf8')) as { homepage?: string };
 
@@ -136,7 +139,7 @@ const bandRows = strategyBand(solution)
   .map(entry => {
     const value = evaluate(entry.policy);
     const inBand = R.compare(value, R.rat(93n, 100n)) >= 0 && R.compare(value, R.rat(98n, 100n)) <= 0;
-    return `| ${entry.label}${entry.note ? ` — *${entry.note}*` : ''} | **${pct(value, 3)}** | ${inBand ? '✅ in band' : '—'} |`;
+    return `| ${entry.label}${entry.note ? ` — *${entry.note}*` : ''} | **${pct(value, 3)}** | ${inBand ? '✅ in band' : 'outside the window'} |`;
   })
   .join('\n');
 
@@ -182,9 +185,10 @@ const premiumRows = PREMIUM_BP.map((bp, k) => {
 
 const surveyBandRows = surveyBand(survey)
   .map(entry => {
-    const value = evaluateSurvey(entry.policy);
+    const value = evaluateSurvey(entry.policy, entry.call);
     const inBand = R.compare(value, R.rat(93n, 100n)) >= 0 && R.compare(value, R.rat(98n, 100n)) <= 0;
-    return `| ${entry.label}${entry.note ? ` — *${entry.note}*` : ''} | **${pct(value, 3)}** | ${inBand ? '✅ in band' : '—'} |`;
+    const mark = inBand ? '✅ in band' : 'outside the window — reads no evidence';
+    return `| ${entry.label}${entry.note ? ` — *${entry.note}*` : ''} | **${pct(value, 3)}** | ${mark} |`;
   })
   .join('\n');
 
@@ -220,7 +224,7 @@ const brokersBandRows = brokersBand(brokers)
   .map(entry => {
     const value = evaluateBrokers(entry.policy);
     const inBand = R.compare(value, R.rat(93n, 100n)) >= 0 && R.compare(value, R.rat(98n, 100n)) <= 0;
-    return `| ${entry.label}${entry.note ? ` — *${entry.note}*` : ''} | **${pct(value, 3)}** | ${inBand ? '✅ in band' : '—'} |`;
+    return `| ${entry.label}${entry.note ? ` — *${entry.note}*` : ''} | **${pct(value, 3)}** | ${inBand ? '✅ in band' : 'outside the window'} |`;
   })
   .join('\n');
 
@@ -482,13 +486,21 @@ ${premiumRows}
 |---|---|---|
 ${surveyBandRows}
 
-**Every published policy is inside the window**, from sending nobody to sending
-everybody — which is stricter than CANDLE manages, and it is the constraint the
-manifest was tuned around rather than a happy accident. Sharper surveyors or a
-steeper premium pay the careful player out of the top of the band and drop the
-careless one below the bottom of it: the more decisive the evidence, the further
-apart the two ends of the band are pulled. Weak, cheap evidence is what keeps a
-game *about* information inside a 93–98% window at all.
+**Every way of buying evidence is inside the window**, from sending nobody to
+sending everybody, and that is the constraint the manifest was tuned around
+rather than a happy accident. Sharper surveyors or a steeper premium pay the
+careful player out of the top of the band and drop the careless one below the
+bottom of it: the more decisive the evidence, the further apart the two ends of
+the band are pulled. Weak, cheap evidence is what keeps a game *about*
+information inside a 93–98% window at all.
+
+The last two rows are outside it, and they are printed for that reason. There
+are **two** decisions in this game — how much evidence to buy, and which way to
+call — and a band that varied only the first could not say what the second is
+worth. Underwriting every voyage blind returns 88.600%; declining every voyage
+returns exactly 60.000%, which is the decline payout with no premium spent and
+nothing probabilistic left in it. Reading the reports at all is worth six points
+over the first and thirty-seven over the second.
 
 ${surveyEdge ? `The knife edge: the **${surveyEdge.cargo.name} at ${ORDINALS[surveyEdge.surveys]} report${surveyEdge.surveys === 1 ? '' : 's'}, margin ${surveyEdge.margin > 0 ? `+${surveyEdge.margin}` : surveyEdge.margin}**. Underwriting her and sending one more man are worth the same thing to four decimal places, and the room holds on that state for a full second because the numbers say it should.` : ''}
 
@@ -544,6 +556,12 @@ The Ghost Report — what the *next* surveyor would have said — is drawn only 
 the call is locked in, changes no payout, and is stated once and flatly. On a
 voyage where every surveyor had already reported there is no ghost, because there
 was nobody left to send.
+
+Which distribution it comes from depends on whether the voyage has a truth yet.
+After a decline nothing was ever drawn about her, so the ghost is the predictive
+draw — the same one the contract would have made for a sixth surveyor. After an
+underwrite she has been resolved, and the ghost is a reading of *that* condition,
+right three times in five like every surveyor before him.
 
 ---
 
@@ -673,9 +691,6 @@ payout, and is stated once and flatly.
 | \`npm run play\` · \`play:survey\` | Either loop played in a terminal, worded exactly as its UI words it. |
 | \`npm run spike\` | Every SDK symbol used, exercised end to end. |
 
-See [DEMO.md](./DEMO.md) for a one-minute reviewer runbook with the expected output
-inline.
-
 ---
 
 ## The contracts
@@ -705,16 +720,17 @@ its whole state can still hide whether a ship is sound.
 \`\`\`
 contracts/Candle.sol         ICasinoGameV2. Five hooks, one _payout(), one word per inch.
 contracts/Survey.sol         The same, and the reversed generative order.
+contracts/Brokers.sol        The same again, and one word per price named.
 contracts/ICasinoGameV2.sol  Vendored from the SDK, so a standard toolchain can build it.
 contracts/generated/         Mirrored from each game's core. Never hand-edited.
 
-src/shared/                  What both games use, and nothing that knows which is calling.
+src/shared/                  What all three games use, and nothing that knows which is calling.
   bridge/host.ts             GameHost<S, A> — generic over whatever a session holds.
   bridge/chain.ts            The whole penpal path. Two game-shaped holes: encode an
                              action byte, read your own session out of a row.
   render/light.ts            The measurable light model. Takes a level in basis points.
   audio/engine.ts            Context, master gain, beds, Poisson grains. No files.
-  audio/pacing.ts            One pacing rule, two games.
+  audio/pacing.ts            One pacing rule, three games.
   math/rational.ts           Exact BigInt rationals. No float touches a declared number.
   ui/                        tokens.css + table.css: the room and the furniture.
 
@@ -724,12 +740,13 @@ src/games/<slug>/app/        Its bridge adapter, its canvas, its voice, its Reac
 
 **One VRF word per step, and the step is always an on-chain action.** \`LET IT
 BURN\` requests the next lot; \`SEND A SURVEYOR\` requests the next report;
-\`UNDERWRITE\` requests the word that decides the ship. In every case the word is
+\`UNDERWRITE\` requests the word that decides the ship; \`ASK\` requests the word
+that becomes one broker's price. In every case the word is
 causally after the action that asked for it and cannot be read, predicted or
 front-run. Randomness is mapped by **rejection sampling** over 16-bit windows —
 \`word % n\` is biased and is not used anywhere, in either language.
 
-Neither contract holds storage: every hook is \`view\`, and session state travels
+No contract here holds storage: every hook is \`view\`, and session state travels
 in the \`gameState\` bytes the facet emits and takes back.
 
 ---
@@ -752,14 +769,17 @@ Keyboard: \`Space\`/\`Enter\` claim · \`B\`/\`↓\` let it burn · \`Enter\` de
 
 ## Responsible design
 
-The mechanics were chosen partly because they behave well. Neither game **can
-lose more than the stake**, neither has a bust state, an accumulating sunk-cost
-ladder, autoplay, or near-miss theatre. In THE SURVEY the worst case is not even
-a total loss on most rounds: declining is always there, and it always pays.
+The mechanics were chosen partly because they behave well. **No game here can
+lose more than the stake**, and none of the three has a bust state, an
+accumulating sunk-cost ladder, autoplay, or near-miss theatre. In THE SURVEY the
+worst case is not even a total loss on most rounds: declining is always there,
+and it always pays. In THE BROKERS there is no losing state at all — the worst
+the game can do is ${R.toFixed(brokersWorst, 4)}×, because the fees can never eat a whole stake.
 
 Each game shows a ghost — the lot that would have come next, the report the
-surveyor nobody sent would have made. Both are drawn only once the call is locked
-in, both change no payout, and both are stated once and flatly. There is a test
+surveyor nobody sent would have made, the price the man you did not ask would
+have named. All three are drawn only once the call is locked in, all three change
+no payout, and all three are stated once and flatly. There is a test
 per game that walks **every string in the UI** and fails on an exclamation mark,
 a "you were so close", or a "try again". No loss-chasing prompts, no escalating
 bet suggestions, no timers. The logs report your realised return against the
@@ -771,6 +791,8 @@ builds are free play and say so on every screen.
 *${manifest.locales['en']?.description ?? ''}*
 
 *${surveyManifest.locales['en']?.description ?? ''}*
+
+*${brokersManifest.locales['en']?.description ?? ''}*
 `;
 
 writeFileSync(OUT, readme);

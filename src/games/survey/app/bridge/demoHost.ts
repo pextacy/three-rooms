@@ -20,7 +20,7 @@
  * load and `REFILL` is right there.
  */
 import { MAX_SURVEYS, type Report } from '../../core/vessel';
-import { drawCargo, drawReport, drawCondition } from '../../core/draw';
+import { drawCargo, drawReport, drawReportGiven, drawCondition } from '../../core/draw';
 import { openRound, transition, declinePayout, underwritePayout, type RoundState } from '../../core/round';
 import { dwellWithTurbo } from '../audio/voice';
 import { createPrng, seedFromCrypto, type Prng } from '../../../../shared/bridge/prng';
@@ -90,14 +90,28 @@ export function createDemoSurveyHost(options: DemoSurveyOptions = {}): SurveyHos
   /**
    * The Ghost Report: what the NEXT surveyor would have said.
    *
-   * Drawn from the same predictive distribution the contract would have used,
-   * and only once the call is already locked in — so it cannot have leaked into
-   * the decision, and it settles nothing. Null when all five have reported:
+   * Drawn only once the call is already locked in, so it cannot have leaked
+   * into the decision and it settles nothing. Null when all five have reported:
    * there was no next surveyor, and inventing one would be a lie.
+   *
+   * WHICH distribution depends on whether the voyage has a truth yet. After a
+   * DECLINE nothing was ever drawn about her, so the honest ghost is the
+   * predictive one — the same draw the contract would have made for a sixth
+   * surveyor. After an UNDERWRITE she has been resolved, and the ghost is a
+   * reading of THAT condition, right three times in five like every surveyor
+   * before him.
+   *
+   * Drawing the predictive one in both cases — which this host did — leaves the
+   * ghost independent of the outcome the player has just watched, so a ship that
+   * came home sound got a "next surveyor" who agreed with her no more often than
+   * a coin. It changed no payout. It did quietly break the one thing this game
+   * claims, which is that its beliefs hang together.
    */
-  const drawGhost = (margin: number, surveys: number): Report | null => {
+  const drawGhost = (margin: number, surveys: number, wasSound: boolean | null): Report | null => {
     if (surveys >= MAX_SURVEYS) return null;
-    return drawReport(margin, word(), 0, rehash).report;
+    return wasSound === null
+      ? drawReport(margin, word(), 0, rehash).report
+      : drawReportGiven(wasSound, word(), 0, rehash).report;
   };
 
   /** Settle a finished round: pay the purse, freeze the view. */
@@ -113,7 +127,7 @@ export function createDemoSurveyHost(options: DemoSurveyOptions = {}): SurveyHos
       wasSound,
       payoutBase: next.payoutBase,
       isSettled: true,
-      ghostReport: drawGhost(next.margin, next.surveys),
+      ghostReport: drawGhost(next.margin, next.surveys, wasSound),
     });
   };
 

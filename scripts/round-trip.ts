@@ -1,5 +1,5 @@
 /**
- * The phase-1 exit gate (phases.md): a REAL round settles in the simulator.
+ * The phase-1 exit gate: a REAL round settles in the simulator.
  * Stake in, three inches burned, claim at the fourth, payout correct to the
  * base unit.
  *

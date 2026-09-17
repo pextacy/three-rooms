@@ -1,10 +1,13 @@
 /*
-  The List — the printed sheet in front of three lit rooms.
+  The door — a printed sheet with three rooms cut through it.
 
   The games are dark by nature and the door is not. That inversion is the whole
   design and every decision below follows from it: paper takes ink, not light,
   so the type is iron-gall dark, the rules are thin and physical, and the only
-  glowing things on the page are the three windows cut into it.
+  glowing things on the page are the three rooms cut into it. Nothing is ever
+  set in light ON the paper and nothing is ever set in ink INSIDE a room — that
+  line is the reason the page reads as one material with holes in it rather than
+  as three cards on a background.
 
   The three accents are NOT chosen here. Each is that room's own money ink,
   walked down its luminance by `inkOnPaper()` until it clears WCAG AA against
@@ -40,7 +43,15 @@
 
   --measure: 34rem;
   --gutter: clamp(1.25rem, 5vw, 3rem);
-  --column: min(64rem, 100% - var(--gutter) * 2);
+  --column: min(78rem, 100% - var(--gutter) * 2);
+
+  /*
+    The cut is the page. It is portrait because a doorway is, and it is sized
+    off the viewport rather than off an aspect ratio so that the masthead and
+    three rooms land together on a laptop screen with nothing below the fold
+    but the one line out to `/verify/`.
+  */
+  --cut: clamp(14rem, 42vh, 25rem);
 }
 
 html,
@@ -62,9 +73,9 @@ body {
   --accent: var(--accent-floor);
 }
 
-.sheet {
+.door {
   min-height: 100svh;
-  padding-block: clamp(2rem, 7vh, 4.5rem) clamp(3rem, 10vh, 6rem);
+  padding-block: clamp(1.75rem, 5vh, 3.25rem) clamp(2rem, 6vh, 3.5rem);
   background: var(--sheet);
   color: var(--iron);
   /* A laid sheet has a grain you can feel at a glance: two hairline gradients,
@@ -74,21 +85,44 @@ body {
     repeating-linear-gradient(0deg, rgb(23 20 15 / 0.01) 0 1px, transparent 1px 34px);
   display: grid;
   grid-template-columns: 1fr var(--column) 1fr;
-  row-gap: clamp(2.75rem, 8vh, 5rem);
+  align-content: start;
+  row-gap: clamp(1.75rem, 5vh, 3rem);
 }
 
-.sheet > * {
+/*
+  min-width: 0, and minmax(0, 1fr) on every single-column grid below.
+
+  A grid item's automatic minimum size is its max-content contribution, and a
+  <canvas> carries an intrinsic size from its width and height attributes — so
+  on the first frame, before the pane has been measured and painted, a 300 × 150
+  canvas given a fixed height contributes twice that height as a width, sizes
+  the track to it, and the sheet is wider than the phone from then on. Every
+  frame after that measures the blown-out width and keeps it.
+*/
+.door > * {
   grid-column: 2;
+  min-width: 0;
 }
 
 /* --- masthead ----------------------------------------------------------- */
 
+/*
+  Set as a masthead, not as a hero: the dateline sits above the rule the way a
+  running head sits above a folio, and the lede is a column beside the display
+  line rather than a paragraph under it. Stacking them cost 8vh that the rooms
+  needed, and a broadsheet does not stack its standfirst either.
+*/
 .masthead {
   display: grid;
-  row-gap: 1rem;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  column-gap: clamp(1.5rem, 5vw, 4rem);
+  row-gap: 0.85rem;
+  align-items: end;
 }
 
 .masthead__dateline {
+  grid-column: 1 / -1;
   margin: 0;
   font-family: var(--font-num);
   font-size: 0.6875rem;
@@ -98,6 +132,7 @@ body {
 }
 
 .masthead__rule {
+  grid-column: 1 / -1;
   width: 100%;
   height: 2px;
   margin: 0;
@@ -120,11 +155,11 @@ body {
 */
 .masthead__title {
   margin: 0;
-  max-width: 16ch;
-  font-size: clamp(2.5rem, 7vw, 4rem);
+  max-width: 14ch;
+  font-size: clamp(2.5rem, 6.5vw, 4.25rem);
   font-weight: 400;
-  line-height: 0.94;
-  letter-spacing: -0.022em;
+  line-height: 0.92;
+  letter-spacing: -0.024em;
   text-wrap: balance;
 }
 
@@ -136,88 +171,94 @@ body {
 }
 
 .masthead__lede {
-  margin: 0;
-  max-width: 42rem;
-  font-size: 1.0625rem;
-  line-height: 1.68;
+  margin: 0 0 0.3rem;
+  max-width: 38rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
   color: var(--iron-soft);
 }
 
-/* --- the signature: three lit windows cut into the sheet ---------------- */
+/* --- the signature: three rooms cut through the sheet -------------------- */
 
-.windows {
+/*
+  Three cuts, side by side, each half the viewport tall. They are the page.
+  Everything they used to sit on top of — three paragraphs of provenance, a
+  table of figures each, a colophon on verification — is on its own page now,
+  because a door that answers every question is a door nobody walks through.
+*/
+.rooms {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(0.75rem, 2vw, 1.25rem);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1rem, 2.5vw, 2rem);
 }
 
-.window {
+.room {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
   row-gap: 0.55rem;
+}
+
+.room__door {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 0.7rem;
   text-decoration: none;
   color: inherit;
 }
 
 /*
   The hole in the paper. The inset shadow is the cut edge — the sheet has a
-  thickness, and the room is behind it. This is the only shadow on the page.
+  thickness, and the room is behind it. These are the only shadows on the page.
 */
-.window__pane {
+.room__cut {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  max-width: 100%;
+  height: var(--cut);
   background: #0c0a07;
   box-shadow:
-    inset 0 1px 0 rgb(0 0 0 / 0.55),
+    inset 0 2px 5px rgb(0 0 0 / 0.6),
+    inset 0 -1px 0 rgb(255 255 255 / 0.05),
     0 0 0 1px var(--sheet-edge);
-  transition: box-shadow 200ms ease;
+  transition: box-shadow 220ms ease;
 }
 
-.window:hover .window__pane,
-.window:focus-visible .window__pane {
+.room[data-attended] .room__cut {
   box-shadow:
-    inset 0 1px 0 rgb(0 0 0 / 0.55),
+    inset 0 2px 5px rgb(0 0 0 / 0.6),
+    inset 0 -1px 0 rgb(255 255 255 / 0.05),
     0 0 0 1px var(--iron);
 }
 
-.window__name {
-  font-size: 0.8125rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+.room__plate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 0.35rem;
 }
-
-.window__lit {
-  font-family: var(--font-num);
-  font-size: 0.6875rem;
-  line-height: 1.5;
-  color: var(--iron-soft);
-}
-
-/* --- the entries -------------------------------------------------------- */
 
 /*
-  Ruled rows, not cards. A card is a box you put a product in; these are lines
-  in a list, which is what this page is. The rule above each one is the ledger's
-  own, and the primitive stands in the margin as the thing that actually
-  distinguishes them — not a number, because three games are not a sequence.
+  The name and the way in share a baseline, the way a door's plate and its
+  handle sit at the same height. Stacked, the affordance landed between the name
+  and the line of copy under it and read as a third label rather than an action.
 */
-.entries {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  row-gap: clamp(2rem, 6vh, 3.25rem);
+.room__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
 }
 
-.entry {
-  display: grid;
-  row-gap: 0.85rem;
-  padding-top: clamp(1.5rem, 4vh, 2.25rem);
-  border-top: 1px solid var(--sheet-edge);
-}
-
-.entry__primitive {
-  margin: 0;
+/*
+  The primitive stands where a numeral would. Three games are not a sequence —
+  nothing is first — so what goes in the margin is the one thing that actually
+  tells them apart: which decision problem each of them is.
+*/
+.room__primitive {
   font-family: var(--font-num);
   font-size: 0.6875rem;
   letter-spacing: 0.2em;
@@ -225,65 +266,45 @@ body {
   color: var(--accent);
 }
 
-.entry__name {
-  margin: 0;
-  font-size: clamp(1.6rem, 4.5vw, 2.4rem);
-  font-weight: 400;
+.room__name {
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
   line-height: 1;
-  letter-spacing: -0.015em;
-}
-
-.entry__title {
-  color: inherit;
-  text-decoration: none;
-  /* The underline is the ledger rule, so it sits low and stays thin. */
+  letter-spacing: -0.012em;
   border-bottom: 1px solid transparent;
+  justify-self: start;
 }
 
-.entry__title:hover,
-.entry__title:focus-visible {
+.room[data-attended] .room__name {
   border-bottom-color: var(--accent);
 }
 
-.entry__line {
-  margin: 0;
-  max-width: var(--measure);
-  font-size: 1.0625rem;
-  line-height: 1.6;
-}
-
-.entry__figures {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 2.5rem;
-  align-items: baseline;
-}
-
-.figure {
-  display: grid;
-  row-gap: 0.15rem;
-}
-
-/*
-  Class selectors only, never `.figure dd`. A type selector inside a class
-  selector outranks a plain class, so `.figure dd { font-size: .9375rem }` beat
-  `.figure__big { font-size: 1.5rem }` and quietly shrank the one number this
-  page exists to show. Every rule in this file is one flat class for that
-  reason.
-*/
-.figure__label {
+.room__go {
   font-family: var(--font-num);
-  font-size: 0.625rem;
-  letter-spacing: 0.14em;
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--iron-soft);
 }
 
-.figure__value {
-  margin: 0;
+.room__go::after {
+  content: '→';
+  display: inline-block;
+  margin-left: 0.45em;
+  transition: transform 220ms ease;
+}
+
+.room[data-attended] .room__go {
+  color: var(--accent);
+}
+
+.room[data-attended] .room__go::after {
+  transform: translateX(0.28em);
+}
+
+.room__line {
+  margin: 0.15rem 0 0;
   font-size: 0.9375rem;
-  line-height: 1.45;
+  line-height: 1.55;
   color: var(--iron-soft);
 }
 
@@ -292,124 +313,117 @@ body {
   first thing a judge looks for, so it is set as an object rather than as body
   copy: monospace, large, and in the room's own ink.
 */
-.figure__big {
-  margin: 0;
+.room__rtp {
+  margin: 0.2rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.6rem;
+}
+
+.room__rtp-value {
   font-family: var(--font-num);
-  font-size: 1.75rem;
+  font-size: 1.6rem;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  line-height: 1;
   color: var(--accent);
 }
 
-.figure--wide {
-  flex: 1 1 14rem;
+.room__rtp-label {
+  font-family: var(--font-num);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--iron-soft);
 }
 
-.entry__actions {
-  margin: 0.35rem 0 0;
+.room__aside {
+  margin: 0.15rem 0 0;
+}
+
+.room__aside-link {
+  font-family: var(--font-num);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--iron-soft);
+  text-decoration: none;
+  border-bottom: 1px solid var(--sheet-edge);
+}
+
+.room__aside-link:hover,
+.room__aside-link:focus-visible {
+  color: var(--iron);
+  border-bottom-color: var(--iron);
+}
+
+/* --- the foot ----------------------------------------------------------- */
+
+/*
+  One line, where a colophon used to be. The argument it points at is the one
+  the site actually has to win, and it was four screens below the fold.
+*/
+.foot {
+  margin: 0;
+  padding-top: clamp(1rem, 3vh, 1.5rem);
+  border-top: 2px solid var(--iron);
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  align-items: baseline;
+  gap: 0.35rem 1.25rem;
+  font-size: 0.9375rem;
 }
 
-.btn-play {
-  padding: 0.7rem 1.4rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--sheet);
-  background: var(--accent);
-}
-
-.btn-read {
-  padding: 0.7rem 1.4rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--iron);
-  border: 1px solid var(--sheet-edge);
-}
-
-.btn-read:hover,
-.btn-read:focus-visible {
-  border-color: var(--iron);
-}
-
-.btn-play:hover,
-.btn-play:focus-visible {
-  filter: brightness(0.86);
-}
-
-/* --- colophon ----------------------------------------------------------- */
-
-.colophon {
-  display: grid;
-  row-gap: 0.9rem;
-  padding-top: clamp(1.5rem, 4vh, 2.25rem);
-  border-top: 2px solid var(--iron);
-}
-
-.colophon__head {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 400;
+.foot__lead {
   font-style: italic;
 }
 
-.colophon__body {
-  margin: 0;
-  max-width: var(--measure);
-  font-size: 0.9375rem;
-  line-height: 1.65;
-  color: var(--iron-soft);
-}
-
-.colophon__commands {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  row-gap: 0.35rem;
-}
-
-.colophon__commands li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  align-items: baseline;
-  font-size: 0.8125rem;
-}
-
-.colophon__commands code {
+.foot__link {
   font-family: var(--font-num);
-  font-size: 0.8125rem;
-  padding: 0.1rem 0.4rem;
-  background: var(--sheet-deep);
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--iron);
+  text-decoration: none;
+  border-bottom: 1px solid var(--iron);
 }
 
-.colophon__commands span {
-  color: var(--iron-soft);
-}
-
-.colophon__note {
-  margin: 0.5rem 0 0;
-  max-width: var(--measure);
-  font-size: 0.75rem;
-  line-height: 1.7;
-  color: var(--iron-soft);
+.foot__link:hover,
+.foot__link:focus-visible {
+  color: var(--accent-candle);
+  border-bottom-color: var(--accent-candle);
 }
 
 /* --- narrow ------------------------------------------------------------- */
 
-@media (max-width: 40rem) {
-  .windows {
-    grid-template-columns: 1fr;
+@media (max-width: 62rem) {
+  .masthead {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .window__pane {
-    aspect-ratio: 16 / 9;
+  .masthead__title {
+    max-width: 18ch;
+  }
+
+  :root {
+    --cut: clamp(13rem, 34vh, 20rem);
+  }
+}
+
+@media (max-width: 44rem) {
+  .rooms {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(1.75rem, 5vh, 2.5rem);
+  }
+
+  .room {
+    padding-top: clamp(1.25rem, 4vh, 1.75rem);
+    border-top: 1px solid var(--sheet-edge);
+  }
+
+  :root {
+    --cut: clamp(11rem, 30vh, 16rem);
   }
 }
 
@@ -419,7 +433,8 @@ body {
     transform: scaleX(1);
   }
 
-  .window__pane {
+  .room__cut,
+  .room__go::after {
     transition: none;
   }
 }

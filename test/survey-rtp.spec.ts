@@ -230,7 +230,7 @@ describe('the dynamic program', () => {
 describe('I2 — the strategy band', () => {
   it('no policy beats the DP', () => {
     for (const entry of strategyBand(solution)) {
-      expect(R.compare(evaluate(entry.policy), solution.rtp), entry.label).toBeLessThanOrEqual(0);
+      expect(R.compare(evaluate(entry.policy, entry.call), solution.rtp), entry.label).toBeLessThanOrEqual(0);
     }
   });
 
@@ -238,16 +238,43 @@ describe('I2 — the strategy band', () => {
     expect(R.compare(evaluate(optimal), solution.rtp)).toBe(0);
   });
 
-  it('EVERY published policy lands inside 93–98%, not merely the flattering ones', () => {
+  it('EVERY way of buying evidence lands inside 93–98%, not merely the flattering ones', () => {
     // I2. This is the invariant the manifest was tuned around: sharper surveyors
     // or a steeper premium pay the careful player straight out of the window and
-    // drop the careless one below 93%. Both ends are checked, and the whole
-    // published band is checked — including sending nobody and sending everybody.
-    for (const entry of strategyBand(solution)) {
-      const value = evaluate(entry.policy);
+    // drop the careless one below 93%. Both ends are checked — including sending
+    // nobody and sending everybody.
+    //
+    // It is scoped to the rows that READ the evidence, and that scope is the
+    // honest one. The band also publishes two policies that ignore it, and they
+    // are outside the window by design: underwriting blind returns 88.6% and
+    // declining forever returns exactly 60%. Asserting over the whole band would
+    // mean either never publishing those numbers or widening the window until it
+    // stopped constraining anything.
+    const sensible = strategyBand(solution).filter(entry => entry.sensible);
+    expect(sensible.length, 'the evidence-buying rows are the ones I2 is about').toBeGreaterThanOrEqual(5);
+    for (const entry of sensible) {
+      const value = evaluate(entry.policy, entry.call);
       expect(R.compare(value, R.rat(93n, 100n)), `${entry.label} is below the floor`).toBeGreaterThanOrEqual(0);
       expect(R.compare(value, R.rat(98n, 100n)), `${entry.label} is above the ceiling`).toBeLessThanOrEqual(0);
     }
+  });
+
+  it('and the band says out loud what ignoring the evidence returns', () => {
+    const band = Object.fromEntries(strategyBand(solution).map(e => [e.label, evaluate(e.policy, e.call)]));
+    const blind = band['Underwrite her, whatever the reports say'] as R.Rational;
+    const never = band['Decline every time'] as R.Rational;
+
+    // Both are real ways a person plays a risk game, and both are below the
+    // window. Printing them is the point: the note beside the band claims the
+    // careless end is published, and until this pair existed it was not.
+    expect(R.toPercent(blind, 3)).toBe('88.600');
+    expect(R.toPercent(never, 3)).toBe('60.000');
+    expect(R.compare(blind, R.rat(93n, 100n))).toBe(-1);
+    expect(R.compare(never, R.rat(93n, 100n))).toBe(-1);
+
+    // Declining forever is exactly the decline payout with no premium spent —
+    // there is nothing probabilistic left in it.
+    expect(R.compare(never, R.rat(60n, 100n))).toBe(0);
   });
 
   it('and so does every fixed number of surveys, and every Wald margin', () => {
@@ -265,10 +292,13 @@ describe('I2 — the strategy band', () => {
   it('publishes the careless end rather than hiding it', () => {
     const band = strategyBand(solution);
     expect(band.length).toBeGreaterThanOrEqual(5);
-    const worst = band.reduce((low, entry) => (R.compare(evaluate(entry.policy), evaluate(low.policy)) < 0 ? entry : low));
+    expect(band.some(entry => entry.sensible === false), 'the band reaches past what the window holds').toBe(true);
+    const worst = band.reduce((low, entry) =>
+      R.compare(evaluate(entry.policy, entry.call), evaluate(low.policy, low.call)) < 0 ? entry : low,
+    );
     // The worst published policy is meaningfully below the declared RTP: if it
     // were not, we would not be publishing anything the player cannot see.
-    expect(R.compare(evaluate(worst.policy), solution.rtp)).toBe(-1);
+    expect(R.compare(evaluate(worst.policy, worst.call), solution.rtp)).toBe(-1);
   });
 
   it('buying every survey always costs more than it returns', () => {

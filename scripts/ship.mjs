@@ -15,29 +15,38 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const run = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, { cwd: ROOT, stdio: 'inherit', ...opts });
 const ANSI = new RegExp(String.fromCharCode(27) + '\\[[0-9;?]*[A-Za-z]', 'g');
-const capture = (cmd, args) =>
-  execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] })
-    .replace(ANSI, '')
-    .trim();
 
 const B = s => `\x1b[1m${s}\x1b[0m`;
 const D = s => `\x1b[2m${s}\x1b[0m`;
 
-console.log(`\n${B('CANDLE — ship')}\n`);
+console.log(`\n${B('THREE ENTRIES — ship')}\n`);
 
 // --- everything that must be true before anything goes live ---------------
 console.log(B('1. gates, before the deploy'));
 run('npm', ['run', 'typecheck']);
 run('npm', ['test']);
+
+// Every entry's declared RTP, recomputed from its own DP. This used to run
+// CANDLE's alone, which meant two of the three submitted numbers went live
+// having been checked by nothing.
 run('npm', ['run', 'verify:rtp']);
+run('npm', ['run', 'verify:survey']);
+run('npm', ['run', 'verify:brokers']);
+run('npm', ['run', 'verify:light']);
+
 run('npm', ['run', 'gen:constants']);
+run('npm', ['run', 'gen:survey']);
+run('npm', ['run', 'gen:brokers']);
+run('npm', ['run', 'gen:pages']);
 run('npm', ['run', 'gen:readme']);
 
 // A stale generated file is a published number that no longer matches the code.
+// `public/` is in the list because the four how-leaves, the thresholds and
+// /verify/ print those numbers too, and they are the pages a judge reads.
 try {
-  execSync('git diff --exit-code -- README.md contracts/generated/', { cwd: ROOT, stdio: 'pipe' });
+  execSync('git diff --exit-code -- README.md contracts/generated/ public/', { cwd: ROOT, stdio: 'pipe' });
 } catch {
-  console.error('\n\x1b[31mREADME.md or the generated constants are stale.\x1b[0m');
+  console.error('\n\x1b[31mREADME.md, the generated constants or the site documents are stale.\x1b[0m');
   console.error('Commit the regenerated files before shipping.\n');
   process.exit(1);
 }

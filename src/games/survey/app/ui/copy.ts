@@ -112,10 +112,10 @@ export const COPY = {
   callTitle: 'When to call',
   callCargo: 'Cargo',
   callBlind: 'Called unseen',
-  callBand: 'Keep sending while the margin is',
-  callNever: 'never — underwrite unseen',
+  callSentHead: 'Send another surveyor while the margin stands at — by how many have already reported:',
+  callNever: 'never — underwrite her unseen',
   callNote:
-    'The band slides down as the cargo gets richer, and that is the whole strategy: the more she pays, the further the evidence has to run against her before another report stops being worth its price. Outside the band a surveyor cannot change the call, so he is a point and a half of premium spent on confirming what you already knew.',
+    'The band slides down as the cargo gets richer, and that is the whole strategy: the more she pays, the further the evidence has to run against her before another report stops being worth its price. Outside the band a surveyor cannot change the call, so he is a point and a half of premium spent on confirming what you already knew. It narrows as the reports come in, too — the same margin can be worth another man at one report and not at three, because the premium has gone and there are fewer left to send. Only the positions the rule can actually leave you standing in are shown.',
   rtpTitle: 'Return to player',
   rtpDeclared: 'Declared RTP, optimal play',
   rtpExact: 'Exact',
@@ -125,8 +125,9 @@ export const COPY = {
   bandTitle: 'What other ways of playing return',
   bandPolicy: 'How you play',
   bandRtp: 'Returns',
+  bandOutside: 'outside the window',
   bandNote:
-    'This is a game with a decision, so the return depends on how you play it. The whole band is published, including the careless end — and every way of playing it that a person would actually adopt sits inside the jam’s 93–98% window, which is what the surveyor’s accuracy and the price of a survey were chosen to hold.',
+    'This is a game with two decisions — how much evidence to buy, and which way to call — so the return depends on how you play it. Every way of BUYING EVIDENCE that a person would actually adopt sits inside the jam’s 93–98% window, which is what the surveyor’s accuracy and the price of a survey were chosen to hold. The last two rows read no evidence at all and fall below it. They are printed because a band that only contains what flatters it is not a band.',
   verifyNote: 'Every number here is recomputed by npm run verify:survey from the manifest.',
   /**
    * The full write-up lives on its own page, not in this panel and not on the

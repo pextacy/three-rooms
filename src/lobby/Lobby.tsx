@@ -1,32 +1,68 @@
 /**
- * The List.
+ * The door.
  *
- * Lloyd's List is the artifact this door is modelled on: a printed sheet you
- * read before you go in. So the page is PAPER and the three games are the only
- * lit things on it — three windows cut into the sheet, each under its own light.
- * That inversion is the whole design: everything a player will see afterwards is
- * a dark room, and the one place that is not is the page that sends them there.
+ * Lloyd's List was a printed sheet posted in the room, and that is what this is:
+ * paper takes ink, not light, so the type is iron-gall dark and the only glowing
+ * things on the page are the three rooms cut through it. That inversion is the
+ * whole design — everything a player sees afterwards is a dark room, and the one
+ * place that is not is the page that sends them there.
  *
- * A door, not a casino. It lists the games and links to them, and that is all it
- * is allowed to do: **no balance, no deposit, no wallet**. Inside chain.wtf the
- * host owns every one of those (`docs.md` §4.1, `claude.md` §7), and a game
- * origin that asks for money is the exact shape of a phishing page.
+ * What changed is the SCALE of it. The three rooms used to be 4:3 thumbnails
+ * above three paragraphs of provenance, a table of figures each, and a colophon
+ * about verification: an inversion stated at postcard size and then buried under
+ * the text it was supposed to replace. Now the cuts are half the viewport and
+ * they are the only thing on the page, and every paragraph they used to sit on
+ * top of has its own page — `/<slug>/about/`, four leaves of `/<slug>/how/`, and
+ * `/verify/`.
+ *
+ * A door, not a casino. It lists the rooms and lets you into them, and that is
+ * all it is allowed to do: **no balance, no deposit, no wallet**. Inside
+ * chain.wtf the host owns every one of those (`docs.md` §4.1, `claude.md` §7),
+ * and a game origin that asks for money is the exact shape of a phishing page.
  *
  * It carries no jam widget either: the widget marks an ENTRY, and this is not
- * one. Neither are the `how` pages it links to.
+ * one. Neither are the pages it links to.
  */
 import { useEffect, useRef, useState } from 'react';
 import { GAMES } from './catalogue';
-import { drawWindow, type WindowId } from './windows';
+import { ATTENDED, UNATTENDED, drawWindow, restingLevel, type WindowId } from './windows';
 import { COPY } from './copy';
 
-/** The window fades up over this long. One animation, and it is the lighting. */
+/** The room fades up over this long on load. One animation, and it is lighting. */
 const LIGHTING_MS = 900;
 /** Each room is lit after the one before it, as though someone walked the row. */
 const STAGGER_MS = 170;
+/**
+ * How fast a room answers attention, as an exponential time constant rather
+ * than a duration — so the easing is identical whatever the frame rate, and a
+ * pointer swept across all three leaves no room stranded mid-ladder.
+ */
+const ANSWER_TAU_MS = 130;
+/** Below this many basis points from target, the ladder has arrived. */
+const SETTLED_BP = 8;
 
-function Window({ id, delayMs }: { id: WindowId; delayMs: number }) {
+/** Where a room stands while `attended` is whatever it is. */
+function levelFor(id: WindowId, attended: WindowId | null): number {
+  if (attended === null) return restingLevel(id);
+  return attended === id ? ATTENDED : UNATTENDED;
+}
+
+/**
+ * One room, seen through the sheet.
+ *
+ * Two axes, and they compose. `lit` is the page-load sequence, 0 → 1 once.
+ * `level` is where the room stands on its own wax ladder, and it is what the
+ * pointer and the keyboard move — the same ladder the games dim along and
+ * `npm run verify:light` checks, run upwards.
+ */
+function Cut({ id, delayMs, attended }: { id: WindowId; delayMs: number; attended: WindowId | null }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
+  const level = useRef(restingLevel(id));
+  const target = useRef(restingLevel(id));
+  const lit = useRef(0);
+  const running = useRef(false);
+
+  target.current = levelFor(id, attended);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -36,8 +72,9 @@ function Window({ id, delayMs }: { id: WindowId; delayMs: number }) {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     let frame = 0;
     let started: number | null = null;
+    let last: number | null = null;
 
-    const paint = (lit: number) => {
+    const paint = () => {
       const ratio = Math.min(window.devicePixelRatio || 1, 2);
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
@@ -45,48 +82,107 @@ function Window({ id, delayMs }: { id: WindowId; delayMs: number }) {
       canvas.width = Math.round(width * ratio);
       canvas.height = Math.round(height * ratio);
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      drawWindow(ctx, width, height, id, lit);
+      drawWindow(ctx, width, height, id, lit.current, level.current);
     };
 
-    if (reduced) {
-      paint(1);
-      const onResize = () => paint(1);
-      window.addEventListener('resize', onResize);
-      return () => window.removeEventListener('resize', onResize);
-    }
-
+    /**
+     * Reduced motion removes the ANIMATION, not the feedback: the room still
+     * answers, it simply arrives at once. Which room you are pointed at is
+     * information the page is carrying in light, and withholding it would be a
+     * worse page rather than a gentler one.
+     */
     const step = (now: number) => {
+      running.current = true;
       started ??= now;
-      const elapsed = now - started - delayMs;
-      // Ease out: a wick takes hold quickly and then settles.
-      const t = Math.max(0, Math.min(1, elapsed / LIGHTING_MS));
-      paint(1 - (1 - t) ** 3);
-      if (t < 1) frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
+      const dt = last === null ? 16 : Math.min(now - last, 64);
+      last = now;
 
-    const onResize = () => paint(1);
+      if (reduced) {
+        lit.current = 1;
+        level.current = target.current;
+      } else {
+        const elapsed = now - started - delayMs;
+        // Ease out: a wick takes hold quickly and then settles.
+        const t = Math.max(0, Math.min(1, elapsed / LIGHTING_MS));
+        lit.current = 1 - (1 - t) ** 3;
+        level.current += (target.current - level.current) * (1 - Math.exp(-dt / ANSWER_TAU_MS));
+      }
+
+      paint();
+
+      const settling = Math.abs(target.current - level.current) > SETTLED_BP;
+      if (lit.current < 1 || settling) {
+        frame = requestAnimationFrame(step);
+      } else {
+        level.current = target.current;
+        running.current = false;
+        last = null;
+      }
+    };
+
+    frame = requestAnimationFrame(step);
+    const onResize = () => paint();
     window.addEventListener('resize', onResize);
     return () => {
       cancelAnimationFrame(frame);
+      running.current = false;
       window.removeEventListener('resize', onResize);
     };
   }, [id, delayMs]);
 
-  return <canvas className="window__pane" ref={ref} aria-hidden="true" />;
+  // The loop parks itself once the ladder has arrived; a change of attention is
+  // what starts it again.
+  useEffect(() => {
+    if (running.current) return;
+    const canvas = ref.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    let frame = 0;
+    let last: number | null = null;
+    const step = (now: number) => {
+      running.current = true;
+      const dt = last === null ? 16 : Math.min(now - last, 64);
+      last = now;
+      level.current += (target.current - level.current) * (1 - Math.exp(-dt / ANSWER_TAU_MS));
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      if (width > 0 && height > 0) {
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        drawWindow(ctx, width, height, id, lit.current, level.current);
+      }
+      if (Math.abs(target.current - level.current) > SETTLED_BP) {
+        frame = requestAnimationFrame(step);
+      } else {
+        level.current = target.current;
+        running.current = false;
+      }
+    };
+    frame = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(frame);
+      running.current = false;
+    };
+  }, [attended, id]);
+
+  return <canvas className="room__cut" ref={ref} aria-hidden="true" />;
 }
 
 export function Lobby() {
   // The masthead rule draws itself across on load. Held in state rather than CSS
   // so it cannot run before the fonts settle and jump.
   const [ruled, setRuled] = useState(false);
+  const [attended, setAttended] = useState<WindowId | null>(null);
+
   useEffect(() => {
     const id = requestAnimationFrame(() => setRuled(true));
     return () => cancelAnimationFrame(id);
   }, []);
 
   return (
-    <div className="sheet">
+    <div className="door">
       <header className="masthead">
         <p className="masthead__dateline">{COPY.dateline}</p>
         <hr className={`masthead__rule${ruled ? ' is-drawn' : ''}`} />
@@ -97,67 +193,51 @@ export function Lobby() {
         <p className="masthead__lede">{COPY.lede}</p>
       </header>
 
-      <section className="windows" aria-label={COPY.windowsLabel}>
+      <ol className="rooms" aria-label={COPY.windowsLabel}>
         {GAMES.map((game, i) => (
-          <a className="window" key={game.slug} href={`/${game.slug}/`} data-room={game.room}>
-            <Window id={game.room} delayMs={i * STAGGER_MS} />
-            <span className="window__name">{game.name}</span>
-            <span className="window__lit">{game.lit}</span>
-          </a>
-        ))}
-      </section>
+          <li
+            className="room"
+            key={game.slug}
+            data-room={game.room}
+            data-attended={attended === game.room ? 'true' : undefined}
+            onPointerEnter={() => setAttended(game.room)}
+            onPointerLeave={() => setAttended(current => (current === game.room ? null : current))}
+            onFocus={() => setAttended(game.room)}
+            onBlur={() => setAttended(current => (current === game.room ? null : current))}
+          >
+            <a className="room__door" href={`/${game.slug}/`}>
+              <Cut id={game.room} delayMs={i * STAGGER_MS} attended={attended} />
+              <span className="room__plate">
+                <span className="room__primitive">{game.primitive}</span>
+                <span className="room__title">
+                  <span className="room__name">{game.name}</span>
+                  <span className="room__go">{COPY.enter}</span>
+                </span>
+              </span>
+            </a>
 
-      <ol className="entries">
-        {GAMES.map(game => (
-          <li className="entry" key={game.slug} data-room={game.room}>
-            <p className="entry__primitive">{game.primitive}</p>
-            <h2 className="entry__name">
-              <a className="entry__title" href={`/${game.slug}/`}>
-                {game.name}
-              </a>
-            </h2>
-            <p className="entry__line">{game.line}</p>
+            <p className="room__line">{game.line}</p>
 
-            <dl className="entry__figures">
-              <div className="figure">
-                <dt className="figure__label">{COPY.figureRtp}</dt>
-                <dd className="figure__big">{game.rtp}</dd>
-              </div>
-              <div className="figure">
-                <dt className="figure__label">{COPY.figureMax}</dt>
-                <dd className="figure__big">{game.maxPayout}</dd>
-              </div>
-              <div className="figure figure--wide">
-                <dt className="figure__label">{COPY.figureFrom}</dt>
-                <dd className="figure__value">{game.source}</dd>
-              </div>
-            </dl>
+            <p className="room__rtp">
+              <span className="room__rtp-value">{game.rtp}</span>
+              <span className="room__rtp-label">{COPY.figureRtp}</span>
+            </p>
 
-            <p className="entry__actions">
-              <a className="btn-play" href={`/${game.slug}/`}>
-                {COPY.play}
-              </a>
-              <a className="btn-read" href={`/${game.slug}/how/`}>
-                {COPY.how}
+            <p className="room__aside">
+              <a className="room__aside-link" href={`/${game.slug}/about/`}>
+                {COPY.about}
               </a>
             </p>
           </li>
         ))}
       </ol>
 
-      <footer className="colophon">
-        <h2 className="colophon__head">{COPY.checkHead}</h2>
-        <p className="colophon__body">{COPY.checkBody}</p>
-        <ul className="colophon__commands">
-          {COPY.commands.map(([command, what]) => (
-            <li key={command}>
-              <code>{command}</code>
-              <span>{what}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="colophon__note">{COPY.colophon}</p>
-      </footer>
+      <p className="foot">
+        <span className="foot__lead">{COPY.footLead}</span>
+        <a className="foot__link" href="/verify/">
+          {COPY.footLink}
+        </a>
+      </p>
     </div>
   );
 }

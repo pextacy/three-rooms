@@ -17,6 +17,7 @@ import {
   CANDLELIGHT,
   DAYLIGHT,
   LAMPLIGHT,
+  LEVEL_FLOOR,
   LEVEL_FULL,
   css,
   cssAlpha,
@@ -129,15 +130,19 @@ function roadsPane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palet
 function floorPane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palette, lit: number): void {
   drawGrain(ctx, w, h, SLATE);
 
-  const glow = ctx.createRadialGradient(w * 0.5, 0, 0, w * 0.5, 0, Math.max(w, h) * 0.95);
-  glow.addColorStop(0, cssAlpha(p.tallow, 0.2 * lit));
-  glow.addColorStop(0.4, cssAlpha(p.brass, 0.06 * lit));
+  // An Argand lamp hangs over the board, so the light arrives from directly
+  // above and falls off down the slate. The cut is portrait and the fall-off is
+  // read across its whole height, which is why this is a steeper gradient than
+  // the one the thumbnail used to need.
+  const glow = ctx.createRadialGradient(w * 0.5, 0, 0, w * 0.5, 0, Math.max(w, h) * 1.05);
+  glow.addColorStop(0, cssAlpha(p.tallow, 0.26 * lit));
+  glow.addColorStop(0.35, cssAlpha(p.brass, 0.085 * lit));
   glow.addColorStop(1, cssAlpha(p.ink, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, w, h);
 
   // Chalked, so the rules break and vary — the same hand as the game's board.
-  for (const at of [0.3, 0.52, 0.74]) {
+  for (const at of [0.24, 0.42, 0.6, 0.78]) {
     const y = h * at;
     const step = Math.max(5, w * 0.05);
     ctx.fillStyle = cssAlpha(p.tallow, 0.1 * lit);
@@ -152,13 +157,13 @@ function floorPane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palet
   // one line that says which of them you are holding.
   const slips = [0.62, 0.42, 0.68, 0.22];
   for (const [i, at] of slips.entries()) {
-    const x = w * (0.12 + i * 0.22);
-    const y = h * (0.82 - at * 0.6);
-    ctx.fillStyle = cssAlpha(p.tallow, (at > 0.6 ? 0.5 : 0.24) * lit);
-    ctx.fillRect(x, y, w * 0.14, Math.max(2, h * 0.02));
+    const x = w * (0.11 + i * 0.22);
+    const y = h * (0.88 - at * 0.72);
+    ctx.fillStyle = cssAlpha(p.tallow, (at > 0.6 ? 0.55 : 0.26) * lit);
+    ctx.fillRect(x, y, w * 0.15, Math.max(2, h * 0.016));
   }
 
-  const best = h * (0.82 - 0.68 * 0.6);
+  const best = h * (0.88 - 0.68 * 0.72);
   ctx.fillStyle = cssAlpha(p.brass, 0.75 * lit);
   ctx.fillRect(0, best, w, Math.max(1, h * 0.006));
 }
@@ -175,16 +180,48 @@ export function paneFor(id: WindowId): Pane {
   return found;
 }
 
-/** Paint one window at a given stage of being lit. */
+/**
+ * The level a room rests at when nothing is asking for it: each caught
+ * mid-round rather than at full, so three cuts in a sheet read as three rooms
+ * someone is already in.
+ */
+export function restingLevel(id: WindowId): number {
+  return paneFor(id).level;
+}
+
+/**
+ * Where a room goes when it is the one being attended to, and where the other
+ * two go while it is.
+ *
+ * These are not opacities. They are positions on the SAME wax ladder the games
+ * dim along and `npm run verify:light` checks — so the door raising one room and
+ * lowering two is the identical physical operation as a candle burning down,
+ * run in both directions. A CSS fade would have been three lines shorter and
+ * would have meant the door lit its rooms by a rule nothing else in the repo
+ * obeys.
+ */
+export const ATTENDED = LEVEL_FULL;
+export const UNATTENDED = LEVEL_FLOOR;
+
+/**
+ * Paint one window at a given stage of being lit, and at a given level on the
+ * wax ladder.
+ *
+ * `lit` is the page-load sequence — 0 → 1, once, as the room comes up. `level`
+ * is where on its own ladder the room is standing, which is what the pointer and
+ * the keyboard move. They are different axes and they compose: a room can be
+ * half-lit on load AND standing at its floor.
+ */
 export function drawWindow(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   id: WindowId,
   lit: number,
+  level?: number,
 ): void {
   const pane = paneFor(id);
-  const palette = paletteAtWax(pane.level, pane.room);
+  const palette = paletteAtWax(level ?? pane.level, pane.room);
   const clamped = lit < 0 ? 0 : lit > 1 ? 1 : lit;
 
   ctx.fillStyle = css(palette.ink);

@@ -6,6 +6,8 @@
  * camera is not a plan. Load the winner with `?seed=<n>` and the sequence is the
  * same every time — free play only; nothing here can touch a host session.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createDemoHost } from '../src/shared/bridge/demoHost';
 import { seedFrom } from '../src/shared/bridge';
 import type { CandleHost, HostView } from '../src/shared/bridge/types';
@@ -16,6 +18,19 @@ import { formatFace } from '../src/games/candle/app/ui/format';
 
 const optimal = optimalPolicy(solve());
 const STAKE = 20n * 10n ** 18n;
+
+/**
+ * The seed belongs to CANDLE's page, not to the origin root.
+ *
+ * `/` was CANDLE back when the origin carried one game. It is the List now, and
+ * it reads no seed — so the two URLs printed below sent whoever was recording
+ * the video to a door that ignores them. The live one is read from
+ * package.json for the same reason gen-readme.ts reads it there: a URL typed
+ * into prose is a URL that goes stale the first time the deployment moves.
+ */
+const { homepage } = JSON.parse(readFileSync(resolve(import.meta.dirname, '../package.json'), 'utf8')) as {
+  homepage?: string;
+};
 
 function nextView(host: CandleHost, predicate: (v: HostView) => boolean): Promise<HostView> {
   const now = host.snapshot();
@@ -111,5 +126,8 @@ found.rounds.forEach((round, i) => {
   );
 });
 
-console.log(`\n\x1b[2mRecord with:\x1b[0m  npm run dev  \x1b[2mthen open\x1b[0m  http://localhost:3200/?seed=${found.seed}`);
-console.log(`\x1b[2mOr against the live build:\x1b[0m  https://candle-ashen-tau.vercel.app/?seed=${found.seed}\n`);
+console.log(`\n\x1b[2mRecord with:\x1b[0m  npm run dev  \x1b[2mthen open\x1b[0m  http://localhost:3200/candle/?seed=${found.seed}`);
+if (homepage) {
+  console.log(`\x1b[2mOr against the live build:\x1b[0m  ${homepage}/candle/?seed=${found.seed}`);
+}
+console.log('');

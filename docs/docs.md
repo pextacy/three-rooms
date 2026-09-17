@@ -599,14 +599,17 @@ longest hold in the game, and it is found by `knifeEdge()` rather than typed in.
 ### 7.1 Local stack
 ```
 cd sdk/casino-sdk && npm install && npm start
-#   simulator : http://localhost:3300   (point it at the game URL, pick CandleGame)
+#   simulator : http://localhost:3300   (point it at an ENTRY's URL, pick its game)
 #   coinflip  : http://localhost:3100   (the SDK's reference game, for comparison)
 #   chain+VRF : http://127.0.0.1:8545   (in-memory hardhat + a REAL ECVRF node)
 
 npm run dev                             # from the repo root
-#   game UI   : http://localhost:3200
-#   standalone: open http://localhost:3200 directly -> auto DEMO MODE
-#   in-host   : http://localhost:3300/?game=http://localhost:3200
+#   the List  : http://localhost:3200/            (the door — not an entry, no bridge)
+#   the games : http://localhost:3200/candle/     pick CandleGame in the simulator
+#               http://localhost:3200/survey/     pick SurveyGame
+#               http://localhost:3200/brokers/    pick BrokersGame
+#   standalone: open an ENTRY's URL directly -> auto DEMO MODE
+#   in-host   : http://localhost:3300/?game=http://localhost:3200/candle/
 ```
 
 The local node **watches `sdk/casino-sdk/simulator/contracts/`**: any `.sol`

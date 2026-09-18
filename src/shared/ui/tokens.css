@@ -38,6 +38,15 @@
   --t-body: 1rem;
   --t-label: 0.8125rem;
 
+  /*
+   * Two faces, and a rule for which is which: WORDS are set in the text face,
+   * FIGURES in the figure face. Every label in this interface used to be
+   * monospace — uppercase, tracked out — which is why a 1728 coffee house read
+   * as a terminal, and which is also harder to read at small sizes than a
+   * serif is. Monospace is kept for the three things it is actually for here:
+   * a number that has to align in a column, a key you press, and a command you
+   * type.
+   */
   --font: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --font-num: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 

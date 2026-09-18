@@ -69,6 +69,23 @@
   /* The scene needs room to be a room. On a short viewport it gives way to the
      switches rather than pushing them off the screen. */
   min-height: clamp(11rem, 38vh, 22rem);
+  /*
+    FULL BLEED. The room used to stop at the 46rem reading column, which drew a
+    hard lit rectangle on a dark page and made the scene read as a video player
+    embedded in a document rather than as the room the page is standing in. The
+    canvas now runs to both edges of the viewport and the light falls off into
+    the page's own ink, so there is no seam to notice.
+  */
+  margin-inline: calc(50% - 50vw);
+  width: 100vw;
+}
+
+/* The words stay in the reading column even though the room no longer does. */
+.stage > .readout {
+  width: min(46rem, 100%);
+  margin-inline: auto;
+  padding-inline: clamp(0.85rem, 4vw, 2.5rem);
+  box-sizing: border-box;
 }
 
 /*

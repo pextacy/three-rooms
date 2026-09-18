@@ -15,6 +15,7 @@ type Call = { readonly op: string; readonly style: string };
 
 function recorder() {
   const calls: Call[] = [];
+  const gradientOrigins: { x: number; y: number }[] = [];
   let gradients = 0;
   let fillStyle: unknown = '#000';
 
@@ -28,8 +29,11 @@ function recorder() {
     font: '',
     textAlign: 'left',
     textBaseline: 'alphabetic',
-    createRadialGradient() {
+    createRadialGradient(x0: number, y0: number, _r0: number, x1: number, y1: number) {
       gradients += 1;
+      gradientOrigins.push({ x: x0, y: y0 });
+      void x1;
+      void y1;
       const stops: string[] = [];
       return { addColorStop: (_o: number, c: string) => stops.push(c), __stops: stops };
     },
@@ -44,13 +48,25 @@ function recorder() {
     lineTo: () => {},
     arc: () => calls.push({ op: 'arc', style: String(fillStyle) }),
     quadraticCurveTo: () => {},
+    closePath: () => {},
+    save: () => {},
+    restore: () => {},
+    translate: () => {},
+    rotate: () => {},
+    createPattern: () => null,
+    globalAlpha: 1,
     fill: () => calls.push({ op: 'fill', style: String(fillStyle) }),
   };
 
-  return { stub: stub as unknown as CanvasRenderingContext2D, calls, gradientCount: () => gradients };
+  return {
+    stub: stub as unknown as CanvasRenderingContext2D,
+    calls,
+    gradientCount: () => gradients,
+    gradientOrigins: () => gradientOrigins,
+  };
 }
 
-const LOT: LotFace = { name: 'Cordage', faceText: '1.00×', isEmpty: false };
+const LOT: LotFace = { id: 2, name: 'Cordage', faceText: '1.00×', isEmpty: false };
 
 function state(overrides: Partial<SceneState> = {}): SceneState {
   return {
@@ -74,17 +90,38 @@ function coloursIn(calls: readonly Call[]): string[] {
 }
 
 describe('one canvas, one emitter', () => {
-  it('draws exactly one gradient — the flame\'s own falloff', () => {
-    const { stub, gradientCount } = recorder();
+  /**
+   * This used to assert there was exactly ONE gradient, which sounded like
+   * discipline and was in practice the reason every object in the room was a
+   * flat rectangle: with nothing but alpha to model form, a crate and a table
+   * and a candle are the same slab at different opacities. The rule it is
+   * replaced with is stricter about the thing that actually matters — a
+   * gradient may only come FROM THE FLAME. Shading a surface by its distance
+   * from the light is the light model applied per surface; shading it from
+   * anywhere else is decoration, and that is what was worth forbidding.
+   */
+  it('lights every surface from the flame and from nowhere else', () => {
+    const { stub, gradientOrigins, gradientCount } = recorder();
     drawScene(stub, 800, 600, state());
-    expect(gradientCount()).toBe(1);
+    const flame = { x: 800 * 0.22, y: 600 * 0.3 };
+
+    expect(gradientCount(), 'the room is modelled, not flat').toBeGreaterThan(1);
+    for (const origin of gradientOrigins()) {
+      expect(origin.x, 'a gradient that did not start at the flame').toBeCloseTo(flame.x, 6);
+      expect(origin.y, 'a gradient that did not start at the flame').toBeCloseTo(flame.y, 6);
+    }
   });
 
-  it('draws the same single gradient at every inch', () => {
+  it('and keeps every one of them on the flame at every inch', () => {
+    const flame = { x: 800 * 0.22, y: 600 * 0.3 };
     for (let inch = 1; inch <= INCHES; inch++) {
-      const { stub, gradientCount } = recorder();
+      const { stub, gradientOrigins } = recorder();
       drawScene(stub, 800, 600, state({ inch }));
-      expect(gradientCount(), `inch ${inch}`).toBe(1);
+      expect(gradientOrigins().length, `inch ${inch}`).toBeGreaterThan(1);
+      for (const origin of gradientOrigins()) {
+        expect(origin.x, `inch ${inch}`).toBeCloseTo(flame.x, 6);
+        expect(origin.y, `inch ${inch}`).toBeCloseTo(flame.y, 6);
+      }
     }
   });
 
@@ -151,9 +188,13 @@ describe('the candle', () => {
     const brightness = (flare: number) => {
       const { stub, calls } = recorder();
       drawScene(stub, 800, 600, state({ inch: INCHES, flare }));
-      const flame = calls.filter(c => c.op === 'fill');
-      const alphas = flame.map(c => Number(/\/ ([\d.]+)\)/.exec(c.style)?.[1] ?? 0));
-      return Math.max(0, ...alphas);
+      // The flame's hot core is always fully bright — it is the brightest thing
+      // in the room whether or not it is flaring. What the flare does is put
+      // MORE light out: a wider halo and a stronger body. So the measure is the
+      // total the flame emits, not its peak, which was the same number twice.
+      const flat = calls.filter(c => c.op === 'fill' && c.style.startsWith('rgb'));
+      const alphas = flat.map(c => Number(/\/ ([\d.]+)\)/.exec(c.style)?.[1] ?? 0));
+      return alphas.reduce((sum, a) => sum + a, 0);
     };
     expect(brightness(1)).toBeGreaterThan(brightness(0));
   });

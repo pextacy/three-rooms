@@ -53,7 +53,7 @@ export function App() {
   const lastLotRef = useRef<{ key: string; face: LotFace } | null>(null);
 
   const lotFace: LotFace | null = useMemo(
-    () => (lot ? { name: lot.name, faceText: formatFace(lot.faceBp), isEmpty: lot.faceBp === 0 } : null),
+    () => (lot ? { id: lot.id, name: lot.name, faceText: formatFace(lot.faceBp), isEmpty: lot.faceBp === 0 } : null),
     [lot],
   );
 

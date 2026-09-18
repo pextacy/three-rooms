@@ -80,7 +80,7 @@ function stubContext(): CanvasRenderingContext2D {
   return ctx as unknown as CanvasRenderingContext2D;
 }
 
-const LOT: LotFace = { name: 'The Sarah Christiana', faceText: '25.00×', isEmpty: false };
+const LOT: LotFace = { id: 2, name: 'The Sarah Christiana', faceText: '25.00×', isEmpty: false };
 
 /** The heaviest frame the game can produce: the flare, a receding lot, pins mid-fall. */
 function worstCase(time: number): SceneState {
@@ -150,7 +150,7 @@ const results = [
       flare: 0,
       burnedLot: null,
       burnedFade: 1,
-      lot: { name: 'Empty crate', faceText: '0.00×', isEmpty: true },
+      lot: { id: 2, name: 'Empty crate', faceText: '0.00×', isEmpty: true },
       pinFall: [0, 0, 0, 0, 0],
     })),
   },
@@ -293,7 +293,7 @@ check('all five inches and every lot render without throwing', (() => {
       drawScene(ctx, 1280, 720, {
         ...worstCase(0),
         inch,
-        lot: { name: lot.name, faceText: `${(lot.faceBp / 100).toFixed(2)}×`, isEmpty: lot.faceBp === 0 },
+        lot: { id: 2, name: lot.name, faceText: `${(lot.faceBp / 100).toFixed(2)}×`, isEmpty: lot.faceBp === 0 },
       });
     }
   }

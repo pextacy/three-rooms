@@ -282,12 +282,22 @@ function drawCandlestick(
   ctx.fillStyle = litFill(ctx, lamp, palette.brass, 1, palette.oxblood, 0.4);
   ctx.fill();
 
+  // The stem tapers from the pan down to the foot, the way a turned baluster
+  // does — a parallel bar between two discs reads as plumbing.
+  ctx.beginPath();
+  ctx.moveTo(x - s * 0.011, panY);
+  ctx.lineTo(x + s * 0.011, panY);
+  ctx.lineTo(x + s * 0.019, footY);
+  ctx.lineTo(x - s * 0.019, footY);
+  ctx.closePath();
   ctx.fillStyle = litFill(ctx, lamp, palette.brass, 0.95, palette.oxblood, 0.35);
-  ctx.fillRect(x - s * 0.016, panY, s * 0.032, footY - panY);
-  // A knop halfway down the stem — the one thing that says "turned metal".
-  ellipse(ctx, x, (panY + footY) / 2, s * 0.024, s * 0.014);
-  ctx.fillStyle = litFill(ctx, lamp, palette.brass, 1, palette.oxblood, 0.45);
   ctx.fill();
+  // Two knops, the wider one lower, which is where the weight of a stick is.
+  for (const [t, r] of [[0.42, 0.022], [0.72, 0.027]] as const) {
+    ellipse(ctx, x, panY + (footY - panY) * t, s * r, s * r * 0.58);
+    ctx.fillStyle = litFill(ctx, lamp, palette.brass, 1, palette.oxblood, 0.45);
+    ctx.fill();
+  }
 
   ellipse(ctx, x, panY, s * 0.062, s * 0.015);
   ctx.fillStyle = litFill(ctx, lamp, palette.brass, 1, palette.oxblood, 0.5);
@@ -450,9 +460,16 @@ function drawLot(
   ctx.fillText(state.lot.name, x, height * TABLE_Y - s * 0.045 + lift);
 
   if (state.payoutText) {
-    ctx.font = `${Math.max(12, s * 0.03)}px ui-monospace, Menlo, monospace`;
+    // Chalked on the boards in front of the lot, with a rule under it — the
+    // auctioneer's own mark. It used to be a bare figure floating on the table
+    // with nothing to say it belonged to anything.
+    const py = baseY + s * 0.072 + lift;
+    ctx.font = `${Math.max(12, s * 0.032)}px ui-monospace, Menlo, monospace`;
+    const rule = s * 0.075;
+    ctx.fillStyle = cssAlpha(palette.brass, receded ? 0.35 : 0.5);
+    ctx.fillRect(x - rule, py + s * 0.012, rule * 2, Math.max(1, s * 0.0025));
     ctx.fillStyle = cssAlpha(palette.brass, receded ? 0.7 : 0.95);
-    ctx.fillText(state.payoutText, x, baseY + s * 0.075 + lift);
+    ctx.fillText(state.payoutText, x, py);
   }
 }
 

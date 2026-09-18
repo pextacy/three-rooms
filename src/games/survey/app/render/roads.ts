@@ -200,13 +200,68 @@ function drawFog(
 }
 
 /** The desk in front of the window: where the manifest lies. */
+/**
+ * The underwriter's desk, and the slip lying on it.
+ *
+ * This was a flat fill and one hairline, which left the bottom half of the
+ * window empty — the ship had a sea to sit in and the decision had nothing.
+ * The room's own mark is an underwriter's slip: a ruled left margin and a
+ * ledger's double rule at its head (claude.md §5). So that is what is on the
+ * desk, and the tally of reports is written across it.
+ *
+ * Nothing here uses room ink with an alpha: `survey-scene.spec.ts` identifies
+ * the FOG by exactly that, and furniture that shaded itself with it would read
+ * as doubt.
+ */
 function drawDesk(ctx: CanvasRenderingContext2D, width: number, height: number, palette: Palette): void {
   const y = height * DESK_Y;
   ctx.fillStyle = css(palette.ink);
   ctx.fillRect(0, y, width, height - y);
-  // Its edge catches the lamp. One hairline, no gradient.
+  // The edge of the desk catches the window. One hairline.
   ctx.fillStyle = cssAlpha(palette.brass, 0.3);
   ctx.fillRect(0, y, width, Math.max(1, height * 0.002));
+
+  // The slip itself, squared up on the desk.
+  const left = width * 0.16;
+  const right = width * 0.84;
+  const top = y + height * 0.05;
+  const bottom = height * 0.97;
+  ctx.fillStyle = cssAlpha(palette.tallow, 0.085);
+  ctx.fillRect(left, top, right - left, bottom - top);
+
+  // A ledger's double rule at its head.
+  ctx.fillStyle = cssAlpha(palette.tallow, 0.3);
+  ctx.fillRect(left, top + height * 0.022, right - left, Math.max(1, height * 0.0022));
+  ctx.fillRect(left, top + height * 0.03, right - left, Math.max(1, height * 0.0012));
+
+  // The ruled margin an underwriter writes his name against.
+  const margin = left + (right - left) * 0.1;
+  ctx.fillStyle = cssAlpha(palette.oxblood, 0.4);
+  ctx.fillRect(margin, top, Math.max(1, height * 0.0016), bottom - top);
+
+  // Feint rules across the body of it, stopping short of the foot the way a
+  // printed slip does.
+  for (let i = 1; i <= 5; i++) {
+    const ry = top + height * 0.045 + i * height * 0.028;
+    if (ry > bottom - height * 0.02) break;
+    ctx.fillStyle = cssAlpha(palette.tallow, 0.07);
+    ctx.fillRect(margin + width * 0.012, ry, right - margin - width * 0.03, Math.max(1, height * 0.001));
+  }
+
+  // The inkwell, standing off the top-right corner of the slip.
+  const ix = right - (right - left) * 0.05;
+  const iy = top + height * 0.055;
+  const ir = Math.min(width, height) * 0.018;
+  ctx.beginPath();
+  ctx.moveTo(ix - ir, iy);
+  ctx.lineTo(ix + ir, iy);
+  ctx.lineTo(ix + ir * 0.72, iy + ir * 1.5);
+  ctx.lineTo(ix - ir * 0.72, iy + ir * 1.5);
+  ctx.closePath();
+  ctx.fillStyle = cssAlpha(palette.oxblood, 0.55);
+  ctx.fill();
+  ctx.fillStyle = cssAlpha(palette.brass, 0.35);
+  ctx.fillRect(ix - ir, iy, ir * 2, Math.max(1, height * 0.002));
 }
 
 // ---------------------------------------------------------------------------

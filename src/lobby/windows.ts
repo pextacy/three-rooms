@@ -23,6 +23,7 @@ import {
   cssAlpha,
   paletteAtWax,
   type Palette,
+  type Rgb,
   type Room,
 } from '../shared/render/light';
 import { drawGrain, SOOT, DAMP, SLATE, type GrainSpec } from '../shared/render/grain';
@@ -45,127 +46,229 @@ type Pane = {
  */
 
 /** CANDLE — a flame, a stem, five pins, and the last inch about to go. */
-function candlePane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palette, lit: number): void {
-  const x = w * 0.5;
-  const flameY = h * 0.3;
+/**
+ * Each pane is a MINIATURE OF ITS ROOM, drawn in the same language the room
+ * uses. They were drawn in an older one — a bare candle with tick marks, a
+ * trapezoid with three sticks for a ship, a board with nothing on it — so the
+ * door promised one thing and the room behind it delivered another. A window
+ * cut into the sheet has to show what is through it.
+ */
 
-  const glow = ctx.createRadialGradient(x, flameY, 0, x, flameY, Math.max(w, h) * 0.72);
-  glow.addColorStop(0, cssAlpha(p.tallow, 0.34 * lit));
-  glow.addColorStop(0.25, cssAlpha(p.brass, 0.13 * lit));
-  glow.addColorStop(1, cssAlpha(p.ink, 0));
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, w, h);
+/** A fill that falls off from this pane's own light, and from nothing else. */
+function lit(
+  ctx: CanvasRenderingContext2D,
+  lx: number,
+  ly: number,
+  reach: number,
+  near: Rgb,
+  nearA: number,
+  far: Rgb,
+  farA: number,
+): CanvasGradient {
+  const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, reach);
+  g.addColorStop(0, cssAlpha(near, nearA));
+  g.addColorStop(0.55, cssAlpha(near, nearA * 0.6 + farA * 0.4));
+  g.addColorStop(1, cssAlpha(far, farA));
+  return g;
+}
+
+function candlePane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palette, l: number): void {
+  const x = w * 0.42;
+  const flameY = h * 0.3;
+  const table = h * 0.8;
+  const reach = Math.max(w, h) * 0.62;
+
+  // The panelling and the table, so the candle stands IN something.
+  ctx.fillStyle = lit(ctx, x, flameY, reach, p.tallow, 0.09 * l, p.tallow, 0.012 * l);
+  ctx.fillRect(0, 0, w, table);
+  ctx.fillStyle = lit(ctx, x, flameY, reach * 1.2, p.brass, 0.22 * l, p.tallow, 0.03 * l);
+  ctx.fillRect(0, table, w, h - table);
+  ctx.fillStyle = lit(ctx, x, flameY, reach, p.brass, 0.5 * l, p.ink, 0);
+  ctx.fillRect(0, table, w, Math.max(1, h * 0.005));
 
   drawGrain(ctx, w, h, SOOT);
 
-  // The stem, standing on the table. Two inches gone, three left.
-  const stemW = Math.max(4, w * 0.055);
-  const top = h * 0.36;
-  const table = h * 0.86;
-  ctx.fillStyle = cssAlpha(p.tallow, 0.5 * lit);
-  ctx.fillRect(x - stemW / 2, top, stemW, table - top);
+  // The stick: a foot, a stem and a drip pan, the same three parts as the room.
+  const stemW = Math.max(4, w * 0.05);
+  const panY = table - h * 0.03;
+  ctx.fillStyle = lit(ctx, x, flameY, reach, p.brass, 0.95 * l, p.oxblood, 0.4 * l);
+  ctx.fillRect(x - w * 0.055, table - h * 0.02, w * 0.11, Math.max(2, h * 0.018));
+  ctx.fillRect(x - stemW * 0.34, panY, stemW * 0.68, table - panY);
+  ctx.fillRect(x - w * 0.042, panY - h * 0.012, w * 0.084, Math.max(2, h * 0.016));
 
-  // The pins: an inch is worth less than the one before it, so they are the
-  // scale the whole game is read from.
+  // The candle, and the pins down its side.
+  const top = h * 0.36;
+  ctx.fillStyle = lit(ctx, x, flameY, reach, p.tallow, 1 * l, p.oxblood, 0.5 * l);
+  ctx.fillRect(x - stemW / 2, top, stemW, panY - top);
   for (let i = 0; i < 4; i++) {
-    const y = top + ((table - top) / 4) * (i + 1);
-    ctx.fillStyle = cssAlpha(p.tallow, (i === 0 ? 0.75 : 0.4) * lit);
-    ctx.fillRect(x + stemW * 0.75, y, Math.max(2, w * 0.018), Math.max(1, h * 0.008));
+    const y = top + ((panY - top) / 5) * (i + 1);
+    ctx.fillStyle = cssAlpha(p.tallow, (i === 0 ? 0.9 : 0.55) * l);
+    ctx.fillRect(x + stemW * 0.5, y, Math.max(2, w * 0.016), Math.max(1, h * 0.007));
   }
 
-  // The flame.
-  const fh = h * 0.1 * (0.9 + 0.1 * lit);
-  ctx.beginPath();
-  ctx.moveTo(x, flameY - fh);
-  ctx.quadraticCurveTo(x + stemW * 0.5, flameY - fh * 0.3, x, flameY + h * 0.06);
-  ctx.quadraticCurveTo(x - stemW * 0.5, flameY - fh * 0.3, x, flameY - fh);
-  ctx.fillStyle = cssAlpha(p.tallow, 0.95 * lit);
-  ctx.fill();
+  // The flame, in the room's three layers.
+  const fh = h * 0.105;
+  const drop = (hh: number, ww: number, a: number, ink: Rgb) => {
+    ctx.beginPath();
+    ctx.moveTo(x, top - hh);
+    ctx.quadraticCurveTo(x + ww, top - hh * 0.32, x, top + h * 0.006);
+    ctx.quadraticCurveTo(x - ww, top - hh * 0.32, x, top - hh);
+    ctx.closePath();
+    ctx.fillStyle = cssAlpha(ink, a * l);
+    ctx.fill();
+  };
+  drop(fh * 1.35, stemW * 0.7, 0.24, p.brass);
+  drop(fh, stemW * 0.36, 0.9, p.tallow);
+  drop(fh * 0.5, stemW * 0.16, 1, p.tallow);
 
-  ctx.fillStyle = cssAlpha(p.brass, 0.22 * lit);
-  ctx.fillRect(0, table, w, Math.max(1, h * 0.004));
+  // A crate on the table: the thing the whole game is about.
+  const cx = w * 0.76;
+  const cw = w * 0.2;
+  const ch = h * 0.11;
+  ctx.fillStyle = cssAlpha(p.ink, 0.6 * l);
+  ctx.fillRect(cx - cw / 2, table - ch, cw, ch);
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = lit(ctx, x, flameY, reach * 1.6, p.brass, 0.8 * l, p.ink, 0.06);
+    ctx.fillRect(cx - cw / 2, table - ch + (ch / 3) * i + h * 0.006, cw, ch / 3 - h * 0.009);
+  }
+  // Corner battens. Three horizontal bands alone read as bullion, not as a
+  // crate — it is the uprights that say the boards are nailed to something.
+  ctx.fillStyle = lit(ctx, x, flameY, reach * 1.6, p.brass, 0.95 * l, p.ink, 0.08);
+  ctx.fillRect(cx - cw / 2, table - ch, cw * 0.1, ch);
+  ctx.fillRect(cx + cw / 2 - cw * 0.1, table - ch, cw * 0.1, ch);
+  ctx.fillRect(cx - cw / 2, table - ch, cw, Math.max(1, h * 0.006));
 }
 
-/** THE SURVEY — a horizon, a hull, and the day coming in flat over the water. */
-function roadsPane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palette, lit: number): void {
+function roadsPane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palette, l: number): void {
   const horizon = h * 0.46;
 
-  // Daylight is a sheet, not a pool. Same direction as the game's own room.
-  const sheet = ctx.createLinearGradient(0, horizon - h * 0.34, 0, h);
-  sheet.addColorStop(0, cssAlpha(p.tallow, 0.24 * lit));
-  sheet.addColorStop(0.4, cssAlpha(p.tallow, 0.08 * lit));
-  sheet.addColorStop(1, cssAlpha(p.ink, 0));
-  ctx.fillStyle = sheet;
-  ctx.fillRect(0, 0, w, h);
+  // Daylight is a SHEET from the horizon, not a pool — the room's own rule.
+  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+  sky.addColorStop(0, cssAlpha(p.ink, 0));
+  sky.addColorStop(1, cssAlpha(p.tallow, 0.16 * l));
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, horizon);
+
+  ctx.fillStyle = cssAlpha(p.ink, 0.55 * l);
+  ctx.fillRect(0, horizon, w, h - horizon);
+  ctx.fillStyle = cssAlpha(p.tallow, 0.26 * l);
+  ctx.fillRect(0, horizon, w, Math.max(1, h * 0.003));
 
   drawGrain(ctx, w, h, DAMP);
 
-  ctx.fillStyle = cssAlpha(p.tallow, 0.3 * lit);
-  ctx.fillRect(0, horizon, w, Math.max(1, h * 0.003));
+  // Her, at anchor: a hull with a raised stern, three masts carrying furled
+  // canvas, and a reflection broken into bands.
+  const x = w * 0.52;
+  const hullW = w * 0.34;
+  const hullH = h * 0.06;
+  const deck = horizon + h * 0.04;
 
-  // Her hull and three masts, at the distance a surveyor is sent over.
-  const beam = w * 0.34;
-  const cx = w * 0.54;
-  const deck = horizon + h * 0.12;
   ctx.beginPath();
-  ctx.moveTo(cx - beam / 2, deck);
-  ctx.lineTo(cx + beam / 2, deck);
-  ctx.lineTo(cx + beam * 0.34, deck + h * 0.07);
-  ctx.lineTo(cx - beam * 0.4, deck + h * 0.07);
+  ctx.moveTo(x - hullW / 2, deck - hullH);
+  ctx.quadraticCurveTo(x, deck - hullH * 1.2, x + hullW * 0.4, deck - hullH);
+  ctx.lineTo(x + hullW * 0.44, deck - hullH * 1.5);
+  ctx.lineTo(x + hullW * 0.52, deck - hullH * 1.45);
+  ctx.lineTo(x + hullW * 0.5, deck);
+  ctx.quadraticCurveTo(x, deck + hullH * 0.45, x - hullW * 0.48, deck - hullH * 0.2);
   ctx.closePath();
-  ctx.fillStyle = cssAlpha(p.tallow, 0.62 * lit);
+  ctx.fillStyle = cssAlpha(p.tallow, 0.85 * l);
   ctx.fill();
+  ctx.fillStyle = cssAlpha(p.tallow, 0.55 * l);
+  ctx.fillRect(x - hullW * 0.46, deck - hullH * 0.52, hullW * 0.94, hullH * 0.52);
 
-  for (const at of [-0.3, 0, 0.3]) {
-    ctx.fillStyle = cssAlpha(p.tallow, 0.45 * lit);
-    ctx.fillRect(cx + beam * at, deck - h * 0.2, Math.max(1, w * 0.007), h * 0.2);
+  for (let i = 0; i < 3; i++) {
+    const mx = x - hullW * 0.24 + i * hullW * 0.24;
+    const mh = h * (0.24 - i * 0.032);
+    ctx.fillStyle = cssAlpha(p.tallow, 0.8 * l);
+    ctx.fillRect(mx - Math.max(1, w * 0.004), deck - hullH - mh, Math.max(1, w * 0.008), mh);
+    for (const t of [0.8, 0.52]) {
+      const yw = w * 0.05 * (1 - i * 0.12);
+      const yy = deck - hullH - mh * t;
+      ctx.fillRect(mx - yw, yy, yw * 2, Math.max(1, h * 0.004));
+      ctx.beginPath();
+      ctx.moveTo(mx - yw * 0.92, yy);
+      ctx.quadraticCurveTo(mx, yy + h * 0.02, mx + yw * 0.92, yy);
+      ctx.closePath();
+      ctx.fillStyle = cssAlpha(p.tallow, 0.4 * l);
+      ctx.fill();
+      ctx.fillStyle = cssAlpha(p.tallow, 0.8 * l);
+    }
   }
 
-  // Her reflection, because the water is what makes this room cold.
-  ctx.fillStyle = cssAlpha(p.tallow, 0.08 * lit);
-  ctx.fillRect(cx - beam / 2, deck + h * 0.09, beam, Math.max(1, h * 0.05));
+  for (let i = 0; i < 4; i++) {
+    const rw = hullW * (0.6 - i * 0.09);
+    ctx.fillStyle = cssAlpha(p.tallow, (0.14 - i * 0.03) * l);
+    ctx.fillRect(x - rw / 2, deck + hullH * (0.35 + i * 0.3), rw, Math.max(1, hullH * 0.14));
+  }
 }
 
-/** THE BROKERS — a slate board, chalk rules, and one price standing above them. */
-function floorPane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palette, lit: number): void {
-  drawGrain(ctx, w, h, SLATE);
+function floorPane(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palette, l: number): void {
+  const lx = w * 0.5;
+  const ly = h * 0.07;
+  const reach = Math.max(w, h) * 0.95;
+  const top = h * 0.1;
+  const bottom = h * 0.78;
 
-  // An Argand lamp hangs over the board, so the light arrives from directly
-  // above and falls off down the slate. The cut is portrait and the fall-off is
-  // read across its whole height, which is why this is a steeper gradient than
-  // the one the thumbnail used to need.
-  const glow = ctx.createRadialGradient(w * 0.5, 0, 0, w * 0.5, 0, Math.max(w, h) * 1.05);
-  glow.addColorStop(0, cssAlpha(p.tallow, 0.26 * lit));
-  glow.addColorStop(0.35, cssAlpha(p.brass, 0.085 * lit));
-  glow.addColorStop(1, cssAlpha(p.ink, 0));
-  ctx.fillStyle = glow;
+  ctx.fillStyle = lit(ctx, lx, ly, reach, p.tallow, 0.08 * l, p.tallow, 0.012 * l);
   ctx.fillRect(0, 0, w, h);
 
-  // Chalked, so the rules break and vary — the same hand as the game's board.
-  for (const at of [0.24, 0.42, 0.6, 0.78]) {
-    const y = h * at;
-    const step = Math.max(5, w * 0.05);
-    ctx.fillStyle = cssAlpha(p.tallow, 0.1 * lit);
-    for (let x = 0; x < w; x += step) {
-      ctx.globalAlpha = ((Math.sin((x + y) * 0.07) + 1) / 2) * 0.5 + 0.5;
-      ctx.fillRect(x, y, Math.min(step * 0.78, w - x), Math.max(1, h * 0.004));
+  // The slate in its frame, with the ledge under it.
+  ctx.fillStyle = lit(ctx, lx, ly, reach, p.oxblood, 0.75 * l, p.oxblood, 0.12 * l);
+  ctx.fillRect(w * 0.02, top - h * 0.02, w * 0.96, bottom - top + h * 0.045);
+  ctx.fillStyle = lit(ctx, lx, ly, reach, p.ink, 0.94, p.ink, 0.99);
+  ctx.fillRect(w * 0.045, top, w * 0.91, bottom - top);
+
+  drawGrain(ctx, w, h, SLATE);
+
+  // The lamp over it, seen from below.
+  ctx.fillStyle = cssAlpha(p.oxblood, 0.85 * l);
+  ctx.beginPath();
+  ctx.moveTo(lx - w * 0.075, ly + h * 0.02);
+  ctx.lineTo(lx + w * 0.075, ly + h * 0.02);
+  ctx.lineTo(lx + w * 0.026, ly - h * 0.022);
+  ctx.lineTo(lx - w * 0.026, ly - h * 0.022);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = cssAlpha(p.tallow, 0.9 * l);
+  ctx.fillRect(lx - w * 0.02, ly + h * 0.02, w * 0.04, Math.max(2, h * 0.012));
+
+  // Chalked rules, and three prices pinned at their own heights.
+  for (const t of [0.26, 0.5, 0.74]) {
+    const y = top + (bottom - top) * t;
+    const step = Math.max(5, w * 0.03);
+    ctx.fillStyle = cssAlpha(p.tallow, 0.26 * l);
+    for (let x = w * 0.06; x < w * 0.94; x += step) {
+      ctx.fillRect(x, y, step * 0.75, Math.max(1, h * 0.003));
     }
-    ctx.globalAlpha = 1;
   }
 
-  // Four slips at four prices, and the best one in hand: the whole game is the
-  // one line that says which of them you are holding.
-  const slips = [0.62, 0.42, 0.68, 0.22];
-  for (const [i, at] of slips.entries()) {
-    const x = w * (0.11 + i * 0.22);
-    const y = h * (0.88 - at * 0.72);
-    ctx.fillStyle = cssAlpha(p.tallow, (at > 0.6 ? 0.55 : 0.26) * lit);
-    ctx.fillRect(x, y, w * 0.15, Math.max(2, h * 0.016));
+  const slips: readonly [number, number, boolean][] = [
+    [0.2, 0.62, false],
+    [0.45, 0.34, true],
+    [0.72, 0.7, false],
+  ];
+  for (const [sx, sy, best] of slips) {
+    const x = w * sx;
+    const y = top + (bottom - top) * sy;
+    const sw = w * 0.13;
+    const sh = h * 0.08;
+    ctx.beginPath();
+    ctx.moveTo(x - sw / 2, y);
+    ctx.lineTo(x + sw / 2, y);
+    ctx.lineTo(x + sw / 2, y + sh * 0.8);
+    ctx.lineTo(x + sw * 0.3, y + sh);
+    ctx.lineTo(x - sw / 2, y + sh * 0.94);
+    ctx.closePath();
+    ctx.fillStyle = cssAlpha(p.tallow, (best ? 0.62 : 0.4) * l);
+    ctx.fill();
+    ctx.fillStyle = cssAlpha(best ? p.brass : p.oxblood, 0.9 * l);
+    ctx.fillRect(x - Math.max(1, w * 0.005), y, Math.max(2, w * 0.01), Math.max(2, h * 0.014));
   }
 
-  const best = h * (0.88 - 0.68 * 0.72);
-  ctx.fillStyle = cssAlpha(p.brass, 0.75 * lit);
-  ctx.fillRect(0, best, w, Math.max(1, h * 0.006));
+  // The line in hand: the one blue thing on this floor, because it is money.
+  const bestY = top + (bottom - top) * 0.34;
+  ctx.fillStyle = cssAlpha(p.brass, 0.95 * l);
+  ctx.fillRect(w * 0.045, bestY, w * 0.91, Math.max(1, h * 0.005));
 }
 
 const PANES: readonly Pane[] = [

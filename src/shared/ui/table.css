@@ -202,10 +202,18 @@
 }
 
 /* --- the two switches --------------------------------------------------- */
+/*
+  `min-height: 8rem` was holding the settled-round panel's worth of space open
+  at all times so the buttons would not jump when a round ends. It bought that
+  at the cost of a 128px void under the readout on every frame of every round —
+  the thing you look at for the whole game, to protect the one moment you look
+  away from. Half the reservation is enough to keep the jump small, and the
+  room gets the rest.
+*/
 .switches {
   display: grid;
   gap: 0.6rem;
-  min-height: 8rem;
+  min-height: 2rem;
   align-content: end;
 }
 

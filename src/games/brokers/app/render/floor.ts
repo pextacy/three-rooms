@@ -425,30 +425,34 @@ function drawDesks(
     const looking = desk?.looking === true;
     const x = columnX(width, column);
 
-    // His desk: a sloped lectern under his column, so the floor has men at it
-    // rather than five labels in a row.
-    const dw = slotWidth * 0.58;
-    const dy = bottom + height * 0.075;
-    const dh = height * 0.04;
-    ctx.beginPath();
-    ctx.moveTo(x - dw / 2, dy + dh);
-    ctx.lineTo(x + dw / 2, dy + dh);
-    ctx.lineTo(x + dw * 0.42, dy);
-    ctx.lineTo(x - dw * 0.42, dy + dh * 0.28);
-    ctx.closePath();
-    ctx.fillStyle = litFill(ctx, lamp, palette.oxblood, looking ? 0.95 : named ? 0.78 : 0.5, palette.ink, 0.1, 1.4);
-    ctx.fill();
+    /*
+     * His place at the board: a shelf edge under his column.
+     *
+     * This was a sloped lectern, and under the slate's own frame and ledge it
+     * came out as a brown wedge half-swallowed by them — five of them in a row,
+     * reading as shelving rather than as men. A single heavy rule under the
+     * column, with his name beneath it, says the same thing and stops competing
+     * with the board it hangs from.
+     */
+    const dw = slotWidth * 0.62;
+    const dy = bottom + height * 0.088;
+    ctx.fillStyle = litFill(ctx, lamp, palette.oxblood, looking ? 1 : named ? 0.85 : 0.55, palette.ink, 0.12, 1.4);
+    ctx.fillRect(x - dw / 2, dy, dw, Math.max(1, height * 0.005));
 
     const name = column === 0 ? 'the house' : (desk?.name ?? BROKER_LIST[column - 1]?.name ?? '');
     const fee = column === 0 ? 'no fee' : (desk?.feeText ?? '');
 
-    ctx.font = `${Math.max(9, height * 0.023)}px ui-monospace, Menlo, monospace`;
-    ctx.fillStyle = cssAlpha(palette.tallow, looking ? 0.95 : named ? 0.78 : 0.6);
+    // A man's NAME is a word, so it is set in the word face — the same rule the
+    // rest of the interface follows. His fee is a figure and stays monospaced,
+    // because five of them have to read down a row as a column of numbers.
+    ctx.font = `${Math.max(11, height * 0.027)}px ui-serif, Georgia, serif`;
+    ctx.fillStyle = cssAlpha(palette.tallow, looking ? 0.95 : named ? 0.82 : 0.66);
     ctx.fillText(name, x, bottom + height * 0.135);
     // The house charges nothing, so he is never "paid" — he is just there.
     const owed = named && column > 0;
-    ctx.fillStyle = cssAlpha(owed ? palette.oxblood : palette.tallow, owed ? 0.85 : 0.5);
-    ctx.fillText(owed ? 'paid' : fee, x, bottom + height * 0.16);
+    ctx.font = `${Math.max(9, height * 0.023)}px ui-monospace, Menlo, monospace`;
+    ctx.fillStyle = cssAlpha(owed ? palette.oxblood : palette.tallow, owed ? 0.9 : 0.6);
+    ctx.fillText(owed ? 'paid' : fee, x, bottom + height * 0.162);
 
     if (looking) {
       // He is reading it: a pen moving, with no number attached to it yet.

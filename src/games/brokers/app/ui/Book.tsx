@@ -10,6 +10,7 @@
  * It lives for one page load, like the purse. Nothing is written to storage.
  */
 import { COPY } from './copy';
+import { useFocusTrap } from '../../../../shared/ui/useFocusTrap';
 import { formatAmount, formatFee, formatPrice } from './format';
 import { brokerById, feesForMask, type BrokerId } from '../../core/market';
 import { solve } from '../../core/solve';
@@ -51,8 +52,10 @@ export function Book({
   const declared = solve().rtp;
   const realised = staked > 0n ? R.rat(returned, staked) : null;
 
+  const trapRef = useFocusTrap(onClose);
+
   return (
-    <div className="panel" role="dialog" aria-modal="true" aria-label={COPY.ledgerTitle}>
+    <div className="panel" role="dialog" aria-modal="true" aria-label={COPY.ledgerTitle} ref={trapRef}>
       <div className="panel__inner">
         <header className="panel__head">
           <h2 className="panel__title">{COPY.ledgerTitle}</h2>

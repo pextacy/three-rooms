@@ -7,67 +7,14 @@
  * whole strategy band, including the careless end: we are not selling an
  * information edge over the player.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
+import { useFocusTrap } from '../../../../shared/ui/useFocusTrap';
 import { COPY } from './copy';
 import { formatFace, formatWax, formatWeight } from './format';
 import { LOTS, WEIGHT_DENOM, MAX_FACE_BP, FACE_DENOM } from '../../core/paytable';
 import { INCHES, WAX_BP } from '../../core/wax';
 import { solve, strategyBand, evaluate, optimalPolicy } from '../../core/solve';
 import * as R from '../../../../shared/math/rational';
-
-/**
- * Keeps keyboard focus inside the dialog while it is open, and gives it back to
- * whatever opened it on close.
- *
- * Without this, `aria-modal="true"` is a claim the panel does not honour: Tab
- * walks straight out into a game the player cannot see, and on close focus is
- * lost to the document body — which strands anyone not using a mouse.
- */
-function useFocusTrap(onClose: () => void) {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    const panel = ref.current;
-
-    const focusable = () =>
-      Array.from(
-        panel?.querySelectorAll<HTMLElement>('a[href], button, input, [tabindex]:not([tabindex="-1"])') ?? [],
-      ).filter(element => !element.hasAttribute('disabled'));
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-
-      const items = focusable();
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (!first || !last) return;
-
-      // Wrap at both ends, so Tab can never leave the dialog.
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    panel?.addEventListener('keydown', onKeyDown);
-    return () => {
-      panel?.removeEventListener('keydown', onKeyDown);
-      // Give focus back to the control that opened the panel.
-      opener?.focus?.();
-    };
-  }, [onClose]);
-
-  return ref;
-}
 
 export function HelpPanel({ onClose }: { onClose: () => void }) {
   const trapRef = useFocusTrap(onClose);

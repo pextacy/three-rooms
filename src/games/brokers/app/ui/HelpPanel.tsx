@@ -10,55 +10,14 @@
  * an information edge over them; we are selling the ten seconds in which they
  * decide whether to believe it.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
+import { useFocusTrap } from '../../../../shared/ui/useFocusTrap';
 import { COPY } from './copy';
 import { formatFee, formatPrice } from './format';
 import { BROKER_LIST, HOUSE, WEIGHT_DENOM, PRICE_DENOM, MAX_PAYOUT_BP } from '../../core/market';
 import { reservationPrice, meanPrice, askingOrder } from '../../core/weitzman';
 import { solve, strategyBand, evaluate, takeValue } from '../../core/solve';
 import * as R from '../../../../shared/math/rational';
-
-function useFocusTrap(onClose: () => void) {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    const panel = ref.current;
-
-    const focusable = () =>
-      Array.from(
-        panel?.querySelectorAll<HTMLElement>('a[href], button, input, [tabindex]:not([tabindex="-1"])') ?? [],
-      ).filter(element => !element.hasAttribute('disabled'));
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const items = focusable();
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    panel?.addEventListener('keydown', onKeyDown);
-    return () => {
-      panel?.removeEventListener('keydown', onKeyDown);
-      opener?.focus?.();
-    };
-  }, [onClose]);
-
-  return ref;
-}
 
 export function HelpPanel({ onClose }: { onClose: () => void }) {
   const trapRef = useFocusTrap(onClose);

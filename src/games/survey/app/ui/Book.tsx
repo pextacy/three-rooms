@@ -18,6 +18,7 @@
  * It lives for one page load, like the purse. Nothing is written to storage.
  */
 import { COPY } from './copy';
+import { useFocusTrap } from '../../../../shared/ui/useFocusTrap';
 import { formatAmount, formatValue } from './format';
 import { cargoById, type CargoId, type Call, type Report } from '../../core/vessel';
 import { solve } from '../../core/solve';
@@ -54,8 +55,10 @@ export function Book({
   // side by side. Integer maths; no float touches a published number.
   const realised = staked > 0n ? R.rat(returned, staked) : null;
 
+  const trapRef = useFocusTrap(onClose);
+
   return (
-    <div className="panel" role="dialog" aria-modal="true" aria-label={COPY.ledgerTitle}>
+    <div className="panel" role="dialog" aria-modal="true" aria-label={COPY.ledgerTitle} ref={trapRef}>
       <div className="panel__inner">
         <header className="panel__head">
           <h2 className="panel__title">{COPY.ledgerTitle}</h2>

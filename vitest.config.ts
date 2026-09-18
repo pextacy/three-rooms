@@ -18,5 +18,8 @@ export default defineConfig({
     // are not this project's to run or to keep green.
     include: ['test/**/*.spec.ts', 'test/**/*.spec.tsx', 'src/**/*.spec.ts'],
     exclude: ['node_modules/**', 'dist/**', 'sdk/**', 'spikes/**'],
+    // Silences jsdom's "Not implemented: getContext" narration. It changes no
+    // code path and costs no coverage — test/setup.ts says why.
+    setupFiles: ['test/setup.ts'],
   },
 });

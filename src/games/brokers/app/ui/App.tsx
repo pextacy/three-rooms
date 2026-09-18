@@ -24,6 +24,7 @@ import { useBrokersAudio } from './useAudio';
 import { BROKER_LIST, brokerById, feesForMask, payoutBase, type BrokerId } from '../../core/market';
 import type { Desk, Slip } from '../render/floor';
 import type { BrokersAction, BrokersHost, BrokersView } from '../bridge';
+import { mayAutoDeal } from '../../../../shared/bridge';
 
 export function App() {
   const { host, view } = useBrokersHost();
@@ -141,8 +142,9 @@ export function App() {
       .catch(() => {})
       .then(() => {
         host.dealAgain();
-        const affordable = view.purseBase === null || view.purseBase >= stakeBase;
-        if (view.kind === 'demo' && !stakeError && affordable) {
+        // Free play keeps dealing; the host path returns to the stake control,
+        // because opening a real session is the player's to trigger.
+        if (mayAutoDeal(view, stakeBase, stakeError)) {
           void host.openSession(stakeBase).catch(() => {});
         }
       });

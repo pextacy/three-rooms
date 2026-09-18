@@ -24,6 +24,7 @@ import { cargoById, premiumBpAt, payoutBase, DECLINE_BP, MAX_SURVEYS } from '../
 import { daylightAt } from '../daylight';
 import type { Manifest } from '../render/roads';
 import type { SurveyAction, SurveyHost, SurveyView } from '../bridge';
+import { mayAutoDeal } from '../../../../shared/bridge';
 
 export function App() {
   const { host, view } = useSurveyHost();
@@ -124,8 +125,7 @@ export function App() {
         host.dealAgain();
         // Free play keeps dealing; the host path returns to the stake control,
         // because opening a real session is the player's to trigger.
-        const affordable = view.purseBase === null || view.purseBase >= stakeBase;
-        if (view.kind === 'demo' && !stakeError && affordable) {
+        if (mayAutoDeal(view, stakeBase, stakeError)) {
           void host.openSession(stakeBase).catch(() => {});
         }
       });

@@ -264,7 +264,10 @@ obviously resets.
 
 ### v1 — must ship by 09-20
 - `Candle.sol` implementing `ICasinoGameV2`, five-inch session lifecycle
-- Pure TS game core mirroring the contract, 100% covered
+- Pure TS game core mirroring the contract, checked against it at **every
+  reachable state** — not a coverage percentage but an enumeration: all 30
+  `(inch, lot)` states here, and `npm run verify:rtp` plus `test/parity.spec.ts`
+  are where a reviewer sees it
 - Host bridge + standalone demo host
 - Single canvas renderer, candlelight scene, five-pin candle, lot table
 - Three audio graphs
@@ -284,6 +287,14 @@ obviously resets.
 ### Never
 Autoplay, turbo-through-100-rounds, leaderboards, chat, referrals, loss-chasing
 toasts, any mechanic that can lose more than the stake.
+
+> **`T` is not the turbo this forbids.** What ships scales the house's own dwell
+> — how long the room waits before showing you the next lot — by 0.35, and
+> nothing else (`shared/audio/pacing.ts`). The player still makes every decision
+> by hand, one round at a time, and the pacing never gated a decision in the
+> first place: you cannot act until the thing is on the table either way. The
+> forbidden thing is a machine that plays rounds FOR you, and there is no code
+> path in any of the three games that takes a turn on the player's behalf.
 
 ---
 

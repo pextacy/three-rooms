@@ -15,6 +15,7 @@ export * from './types';
 export type { BaseSessionView, GameHost, HostViewOf } from './host';
 export { createCasinoHost } from './useCasinoHost';
 export { isEmbedded, seedFrom } from './chain';
+export { mayAutoDeal, type AutoDealView } from './autoDeal';
 export { createDemoHost, DEMO_OPENING_PURSE, DEMO_DEFAULT_STAKE, DEMO_MIN_STAKE } from './demoHost';
 
 /** How long to wait for a host handshake before falling back to free play. */

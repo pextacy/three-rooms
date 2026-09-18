@@ -21,7 +21,7 @@ import { useCandleAudio } from './useAudio';
 import { lotById } from '../../core/paytable';
 import { INCHES, payoutBase, waxBpAt } from '../../core/wax';
 import type { LotFace } from '../render/scene';
-import type { CandleHost, HostView } from '../../../../shared/bridge';
+import { mayAutoDeal, type CandleHost, type HostView } from '../../../../shared/bridge';
 
 export function App() {
   const { host, view } = useCandleHost();
@@ -123,10 +123,7 @@ export function App() {
       host.dealAgain();
       // Free play keeps dealing; the host path returns to the stake control,
       // because opening a real session is the player's to trigger.
-      const affordable = view.purseBase === null || view.purseBase >= stakeBase;
-      if (view.kind === 'demo' && !stakeError && affordable) {
-        // A refused deal leaves the board empty with REFILL in reach, which is
-        // the honest outcome of a purse that has run out.
+      if (mayAutoDeal(view, stakeBase, stakeError)) {
         void host.openSession(stakeBase).catch(() => {});
       }
       });

@@ -484,6 +484,32 @@ if (origin) {
     check(`${slug}: and the live manifest names this entry's gameId`, manifest?.gameId === gameId, manifest?.gameId ?? 'missing');
   }
 
+  /**
+   * And it is serving THE BUILD IN dist/, not a different one.
+   *
+   * Vercel runs `vercel-build` in its own container rather than uploading what
+   * is here, and that build re-downloads the SDK — which is not pinned. When
+   * the SDK moved on 2026-09-17 the live chunks stopped matching the local ones
+   * and nothing noticed, because every other check on this page passes just as
+   * well against the wrong build (docs.md §7.3.11). Vite's hashes are content
+   * hashes, so comparing the script each page actually references is enough:
+   * same name, same bytes.
+   */
+  if (existsSync(DIST)) {
+    const scripts = html => [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.js)"/g)].map(m => m[1]).sort();
+    for (const page of [...GAMES.map(g => `/${g}/`), '/']) {
+      const localPath = join(DIST, page === '/' ? 'index.html' : join(page, 'index.html'));
+      if (!existsSync(localPath)) continue;
+      const localScripts = scripts(await readFile(localPath, 'utf8'));
+      const liveScripts = scripts(await (await fetch(new URL(page, origin).toString())).text());
+      check(
+        `${page} serves the build in dist/, not a different one`,
+        liveScripts.length > 0 && liveScripts.join() === localScripts.join(),
+        liveScripts.join() === localScripts.join() ? `${liveScripts.length} chunk(s)` : `live ${liveScripts.join(' ')} vs local ${localScripts.join(' ')}`,
+      );
+    }
+  }
+
   // The door and the cross-entry verification page. Neither is an entry, and a
   // 404 on either is a broken link printed in the README.
   for (const path of ['/', '/verify/']) {

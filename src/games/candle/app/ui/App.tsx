@@ -512,6 +512,15 @@ function useKeyboard(args: {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      /**
+       * A held key repeats at the OS rate — about thirty a second. Every one of
+       * these bindings is a decision, and inside a host a decision is a wallet
+       * transaction, so holding Space would have asked for thirty of them. The
+       * bridge refuses the duplicates now too, but a key that is still down is
+       * not a second decision and should never have reached it.
+       */
+      if (event.repeat) return;
+
       const target = event.target;
       const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 

@@ -18,6 +18,22 @@
 declare module '@chain/casino-sdk' {
   export type HexString = `0x${string}`;
 
+  /**
+   * The facet's phase enum, exported by the SDK as a VALUE as well as a type.
+   * `chain.ts` maps it onto our own names by index and by name, both by hand —
+   * `test/sdk-contract.spec.ts` pins that mapping to this object so a renumber
+   * or a new phase upstream cannot pass silently.
+   */
+  export const SessionPhase: {
+    readonly NONE: 0;
+    readonly WAITING_RANDOMNESS: 1;
+    readonly WAITING_PLAYER_ACTION: 2;
+    readonly SETTLED: 3;
+    readonly FORFEITED: 4;
+    readonly CANCELLED: 5;
+  };
+  export type SessionPhaseName = keyof typeof SessionPhase;
+
   export type CasinoGameManifestV1 = {
     schemaVersion: 1;
     apiVersion: 1;
@@ -111,7 +127,8 @@ declare module '@chain/casino-sdk' {
 
 declare module '@chain/casino-sdk/guest' {
   import type { GuestApiV1, HostApiV1, HostSnapshotV1 } from '@chain/casino-sdk';
-  export type { GuestApiV1, HostApiV1, HostSnapshotV1 };
+  export type { GuestApiV1, HostApiV1, HostSnapshotV1, SessionPhaseName };
+  export { SessionPhase } from '@chain/casino-sdk';
 
   export type GuestBridgeConnection = {
     promise: Promise<HostApiV1>;

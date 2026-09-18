@@ -16,6 +16,7 @@
  *    draws a second one, and `revealOutcome` is called once the animation lands
  *    so the host's own display cannot spoil the result before it.
  */
+import { createGate } from './gate';
 import { connectGameToHost, computeMaxWager } from '@chain/casino-sdk/guest';
 import type { MaxWagerResult } from '@chain/casino-sdk/guest';
 import type { HostApiV1, HostSnapshotV1, GuestBridgeConnection } from '@chain/casino-sdk/guest';
@@ -150,6 +151,9 @@ export function createChainHost<S extends BaseSessionView, A>(options: ChainHost
   const maxStakeFrom = (result: MaxWagerResult): bigint | null =>
     result.kind === 'limit' ? result.maxWager : null;
 
+  /** One host call at a time on the two that cost money — see gate.ts. */
+  const gate = createGate();
+
   const store = createViewStore<HostViewOf<S>>(() => ({
     kind: 'chain',
     connected: hostApi !== null || snapshot !== null,
@@ -198,29 +202,35 @@ export function createChainHost<S extends BaseSessionView, A>(options: ChainHost
 
     async openSession(stakeBase) {
       const api = requireApi();
-      localError = null;
-      try {
-        const result = await api.openSession({ wager: stakeBase.toString(), gameData: '0x' });
-        sessionKey = result.sessionKey;
-        dismissedKey = null;
-      } catch (error: unknown) {
-        localError = error instanceof Error ? error.message : 'the bet was rejected';
-        sessionKey = null;
-      }
-      store.emit();
+      if (gate.busy) return;
+      await gate.run(async () => {
+        localError = null;
+        try {
+          const result = await api.openSession({ wager: stakeBase.toString(), gameData: '0x' });
+          sessionKey = result.sessionKey;
+          dismissedKey = null;
+        } catch (error: unknown) {
+          localError = error instanceof Error ? error.message : 'the bet was rejected';
+          sessionKey = null;
+        }
+        store.emit();
+      });
     },
 
     async submitAction(action: A) {
       const api = requireApi();
       const row = currentRow();
       if (!row?.sessionId) throw new Error('no open session to act on');
-      localError = null;
-      try {
-        await api.submitAction({ sessionId: row.sessionId, actionData: options.encodeAction(action) });
-      } catch (error: unknown) {
-        localError = error instanceof Error ? error.message : 'the action was rejected';
-      }
-      store.emit();
+      if (gate.busy) return;
+      await gate.run(async () => {
+        localError = null;
+        try {
+          await api.submitAction({ sessionId: row.sessionId, actionData: options.encodeAction(action) });
+        } catch (error: unknown) {
+          localError = error instanceof Error ? error.message : 'the action was rejected';
+        }
+        store.emit();
+      });
     },
 
     async revealOutcome() {

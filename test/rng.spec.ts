@@ -13,6 +13,18 @@ import {WEIGHT_DENOM, LOTS, CUMULATIVE_WEIGHTS, lotForDraw, drawLot} from '../sr
 /** The contract's rehash: keccak256 over the raw 32 bytes. */
 const keccakRehash: Rehash = word => wordFromBytes(wordToBytes(BigInt(keccak256(wordToBytes(word)))));
 
+/**
+ * The clock for the two million-draw statistical runs below.
+ *
+ * A million keccak256 hashes is a minute of real work, not a hung test, and at
+ * the 5 s default they sat close enough to the line to fail intermittently —
+ * which is worse than failing, because a suite that is red at random teaches a
+ * reader to ignore it. This says only how long those tests may TAKE. What they
+ * are allowed to conclude — the chi-square bound and the 0.5% frequency band —
+ * is untouched.
+ */
+const MILLION_DRAW_TIMEOUT_MS = 120_000;
+
 /** A cheap deterministic word stream. Not the game's randomness — test fuel. */
 function* words(seed: bigint): Generator<bigint> {
   let w = seed;
@@ -129,7 +141,7 @@ describe('I3 — uniformity, and that the naive modulo would fail', () => {
     }
     const stat = chiSquare(counts, DRAWS);
     expect(stat, `chi-square ${stat.toFixed(1)} exceeded ${CRITICAL}`).toBeLessThan(CRITICAL);
-  });
+  }, MILLION_DRAW_TIMEOUT_MS);
 
   it('the forbidden `word % 10000` is measurably biased, so this gate has teeth', () => {
     // 2^256 mod 10000 != 0, so low residues get one extra preimage. Measure it
@@ -188,7 +200,7 @@ describe('mapping a draw to a lot', () => {
       const expected = lot.weight / WEIGHT_DENOM;
       expect(Math.abs(observed - expected), `${lot.name}: saw ${observed}, expected ${expected}`).toBeLessThan(0.005);
     }
-  });
+  }, MILLION_DRAW_TIMEOUT_MS);
 });
 
 describe('bytes32 conversion', () => {

@@ -14,7 +14,7 @@
  * Pure: no DOM, no randomness, no clock.
  */
 import { LOTS, FACE_DENOM, WEIGHT_DENOM, type Lot, type LotId } from './paytable';
-import { INCHES, WAX_BP, WAX_DENOM, waxBpAt } from './wax';
+import { INCHES, WAX_DENOM, waxBpAt } from './wax';
 import { type Rational, rat, ZERO, add, mul, div, max, compare, toNumber } from '../../../shared/math/rational';
 
 /** Probability of drawing this lot, exact. */
@@ -234,6 +234,3 @@ export function standardDeviation(policy: Policy): number {
   const variance = toNumber(second) - toNumber(mean) ** 2;
   return Math.sqrt(Math.max(variance, 0));
 }
-
-/** Every wax rung, for printing. */
-export const WAX_LADDER = WAX_BP;

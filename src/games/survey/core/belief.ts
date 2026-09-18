@@ -15,7 +15,7 @@
  *
  * so the posterior depends on `m` alone. Exact rationals throughout.
  */
-import { PRIOR_SOUND_NUM, PRIOR_SOUND_DEN, ACCURACY_NUM, ACCURACY_DEN, MAX_SURVEYS } from './vessel';
+import { PRIOR_SOUND_NUM, PRIOR_SOUND_DEN, ACCURACY_NUM, ACCURACY_DEN } from './vessel';
 import { rat, add, sub, mul, div, compare, type Rational } from '../../../shared/math/rational';
 
 /** `q`, the chance a surveyor's report matches the truth. */
@@ -69,13 +69,6 @@ export function bestCallConfidence(margin: number): Rational {
   const p = posteriorSound(margin);
   const q = sub(rat(1n), p);
   return compare(p, q) >= 0 ? p : q;
-}
-
-/** Every margin a round can actually reach: -MAX_SURVEYS .. +MAX_SURVEYS. */
-export function reachableMargins(): readonly number[] {
-  const out: number[] = [];
-  for (let m = -MAX_SURVEYS; m <= MAX_SURVEYS; m++) out.push(m);
-  return out;
 }
 
 /** A margin is reachable after `k` surveys only if it has `k`'s parity and |m| <= k. */

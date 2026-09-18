@@ -15,9 +15,8 @@
  * Same split as `render/light.ts`: the decision is checkable and tested, the
  * plumbing is not.
  */
-import { BROKER_LIST, HOUSE, PRICE_DENOM, type Broker } from '../../core/market';
-import { reservationPrice, meanPrice } from '../../core/weitzman';
-import { solve, optimalPolicy, askValue, takeValue, type Solution } from '../../core/solve';
+import { BROKER_LIST, HOUSE, PRICE_DENOM } from '../../core/market';
+import { solve, askValue, takeValue, type Solution } from '../../core/solve';
 import { compare, sub, toNumber, type Rational } from '../../../../shared/math/rational';
 import { dwellFromTension, withTurbo } from '../../../../shared/audio/pacing';
 
@@ -44,11 +43,6 @@ export function priceHz(priceBp: number): number {
   const span = Math.log(HIGHEST / LOWEST);
   const position = span > 0 ? Math.log(Math.max(priceBp, LOWEST) / LOWEST) / span : 0;
   return FLOOR_HZ * (CEILING_HZ / FLOOR_HZ) ** clamp01(position);
-}
-
-/** True when this price is worth having: it beats what is already in hand. */
-export function beatsTheBest(priceBp: number, bestBp: number): boolean {
-  return priceBp > bestBp;
 }
 
 /** The room bed follows what the day has cost, so it thins as the fees mount. */
@@ -117,16 +111,6 @@ export function knifeEdge(
     }
   }
   return best;
-}
-
-/** What the optimal player would do here — for the pacing, never for the UI. */
-export function optimalAt(mask: number, bestBp: number): Broker | null {
-  return optimalPolicy(solved())(mask, bestBp);
-}
-
-/** A broker's index and mean, for anything that wants to print both. */
-export function indexAndMean(broker: Broker): { readonly index: Rational; readonly mean: Rational } {
-  return { index: reservationPrice(broker), mean: meanPrice(broker) };
 }
 
 // ---------------------------------------------------------------------------

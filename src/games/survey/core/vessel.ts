@@ -126,12 +126,6 @@ export function payoutBase(stakeBase: bigint, valueBp: number, surveys: number):
   return (stakeBase * BigInt(valueBp) * BigInt(premiumBpAt(surveys))) / PAYOUT_DENOM;
 }
 
-/** What a call is worth, in value-basis-points, given how the voyage turns out. */
-export function settledValueBp(call: Call, cargo: Cargo, isSound: boolean): number {
-  if (call === 'DECLINE') return DECLINE_BP;
-  return isSound ? cargo.valueBp : 0;
-}
-
 /** Maps a uniform draw in [0, WEIGHT_DENOM) to a cargo. Mirrors the contract. */
 export function cargoForDraw(r: number): Cargo {
   if (!Number.isInteger(r) || r < 0 || r >= WEIGHT_DENOM) {

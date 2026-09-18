@@ -65,10 +65,6 @@ export function max(a: Rational, b: Rational): Rational {
   return compare(a, b) >= 0 ? a : b;
 }
 
-export function isZero(a: Rational): boolean {
-  return a.n === 0n;
-}
-
 /**
  * Decimal expansion to `places`, round-half-away-from-zero — the same rule a
  * reader applies by hand, so a judge checking a printed table against this
@@ -88,19 +84,6 @@ export function toFixed(a: Rational, places: number): string {
   if (places === 0) return `${sign}${rounded}`;
   const whole = rounded / scale;
   const frac = rounded % scale;
-  return `${sign}${whole}.${frac.toString().padStart(places, '0')}`;
-}
-
-/** Decimal expansion truncated toward zero — never used for a published number. */
-export function toFixedTruncated(a: Rational, places: number): string {
-  if (places < 0) throw new RangeError('places must not be negative');
-  const negative = a.n < 0n;
-  const n = negative ? -a.n : a.n;
-  const whole = n / a.d;
-  const scale = 10n ** BigInt(places);
-  const frac = ((n % a.d) * scale) / a.d;
-  const sign = negative ? '-' : '';
-  if (places === 0) return `${sign}${whole}`;
   return `${sign}${whole}.${frac.toString().padStart(places, '0')}`;
 }
 

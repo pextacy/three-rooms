@@ -9,7 +9,7 @@
  * Same split as `render/light.ts`: the decision is checkable, the plumbing is not.
  */
 import { FACE_DENOM, LOTS, MAX_FACE_BP } from '../../core/paytable';
-import { WAX_DENOM, INCHES, waxBpAt } from '../../core/wax';
+import { WAX_DENOM, INCHES } from '../../core/wax';
 import { solve, faceValue } from '../../core/solve';
 import { compare, sub, toNumber, rat, type Rational } from '../../../../shared/math/rational';
 import { dwellFromTension, withTurbo } from '../../../../shared/audio/pacing';
@@ -121,11 +121,6 @@ export function knifeEdge(): { readonly faceBp: number; readonly inch: number; r
 
 function absRational(value: Rational): Rational {
   return value.n < 0n ? rat(-value.n, value.d) : value;
-}
-
-/** Wax at an inch, re-exported so the audio layer never reaches into the game. */
-export function waxAt(inch: number): number {
-  return waxBpAt(inch);
 }
 
 function clamp01(value: number): number {

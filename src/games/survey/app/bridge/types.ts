@@ -63,7 +63,13 @@ export function encodeSurveyAction(action: SurveyAction): `0x${string}` {
   return action === 'UNDERWRITE' ? '0x01' : '0x02';
 }
 
-/** The contract's three phases, as it writes them into the fifth byte. */
+/**
+ * The contract's three phases, as it writes them into the fifth byte.
+ *
+ * All three are named even though nothing here reads phase 0: this is the
+ * mirror of `Survey.sol`'s enum, and a mirror with a gap in it is worse than
+ * no mirror — the next reader has to go and check whether 0 means something.
+ */
 export const PHASE_AWAITING_CARGO = 0;
 export const PHASE_WEIGHING = 1;
 export const PHASE_COMMITTED = 2;

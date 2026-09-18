@@ -158,8 +158,6 @@ export const MAX_PAYOUT_BP = (() => {
   return best;
 })();
 
-export type Action = 'ASK' | 'TAKE';
-
 /**
  * Payout in the token's base units.
  *

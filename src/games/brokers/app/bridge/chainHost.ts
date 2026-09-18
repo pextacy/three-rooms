@@ -16,7 +16,7 @@
  * hand and who has been asked, which is the whole of the position, and not a
  * history it would have to invent.
  */
-import { MAX_PAYOUT_BP, PRICE_DENOM, BROKER_LIST, type BrokerId } from '../../core/market';
+import { MAX_PAYOUT_BP, PRICE_DENOM } from '../../core/market';
 import { askingOrder } from '../../core/weitzman';
 import { drawQuote } from '../../core/draw';
 import { createPrng, seedFromCrypto } from '../../../../shared/bridge/prng';
@@ -120,9 +120,4 @@ export function createBrokersChainHost(options: BrokersChainOptions = {}): Broke
       };
     },
   });
-}
-
-/** Which brokers are still unasked, from a mask. Used by the UI and the ghost. */
-export function unaskedFrom(mask: number): readonly BrokerId[] {
-  return BROKER_LIST.filter(broker => (mask & (1 << broker.id)) === 0).map(broker => broker.id);
 }

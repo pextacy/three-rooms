@@ -77,7 +77,13 @@
     the page's own ink, so there is no seam to notice.
   */
   margin-inline: calc(50% - 50vw);
-  width: 100vw;
+  /*
+    NOT `width: 100vw`. `100vw` includes the scrollbar, so on any viewport with
+    one the stage came out a scrollbar wider than the page and the document
+    scrolled sideways. With `auto` the width resolves from the two negative
+    margins instead, which is the visible width by construction.
+  */
+  width: auto;
 }
 
 /* The words stay in the reading column even though the room no longer does. */
@@ -105,7 +111,23 @@
 .readout {
   position: relative;
   align-self: end;
-  padding: 1rem 0 0;
+  padding: 1rem 0 0.35rem;
+  /*
+    The words get their own ground.
+    
+    The scenes reserve a band at the bottom of the canvas for this block, as a
+    fraction of canvas height — and a fraction cannot know how tall the block
+    actually is, because that depends on how its text wraps. In the gallery's
+    420px cartridge it wraps to five lines and climbs well past any fraction
+    that is right on a laptop, so the desks, the price slips and the manifest
+    were all drawn straight through the words.
+    
+    Reserving MORE would waste the room on a wide screen. So the block carries
+    the room's own ink up behind itself instead: the scene may draw wherever it
+    likes, and the words are legible at every size without either side having
+    to guess about the other.
+  */
+  background: linear-gradient(to top, var(--ink) 62%, rgb(0 0 0 / 0));
 }
 
 .readout__label,
@@ -795,6 +817,10 @@ kbd {
   align-items: stretch;
   margin-left: auto;
   border: 1px solid var(--chrome-rule);
+  /* Four switches on a 390px row do not fit in one line; without this the last
+     of them was simply off the screen. */
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 /*

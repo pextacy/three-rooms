@@ -28,6 +28,14 @@ type Call = { readonly op: string; readonly style: string; readonly box?: readon
 
 function recorder() {
   const calls: Call[] = [];
+  let pathMinX = Infinity;
+  let pathMinY = Infinity;
+  let pathMaxX = -Infinity;
+  let pathMaxY = -Infinity;
+  const at = (x: number, y: number) => {
+    pathMinX = Math.min(pathMinX, x); pathMinY = Math.min(pathMinY, y);
+    pathMaxX = Math.max(pathMaxX, x); pathMaxY = Math.max(pathMaxY, y);
+  };
   let gradients = 0;
   const origins: { x: number; y: number }[] = [];
   let fillStyle: unknown = '#000';
@@ -55,13 +63,28 @@ function recorder() {
     restore: () => {},
     translate: () => {},
     rotate: () => {},
-    beginPath: () => {},
-    moveTo: () => {},
-    lineTo: () => {},
+    beginPath: () => {
+      pathMinX = Infinity; pathMinY = Infinity; pathMaxX = -Infinity; pathMaxY = -Infinity;
+    },
+    moveTo: (x: number, y: number) => at(x, y),
+    lineTo: (x: number, y: number) => at(x, y),
     closePath: () => {},
-    quadraticCurveTo: () => {},
+    quadraticCurveTo: (cx: number, cy: number, x: number, y: number) => {
+      at(cx, cy);
+      at(x, y);
+    },
     arc: () => {},
-    fill: () => calls.push({ op: 'fill', style: String(fillStyle) }),
+    fill: () =>
+      calls.push({
+        op: 'fill',
+        style: String(fillStyle),
+        // A filled PATH gets a box too. Without one, everything drawn as a path
+        // — the lecterns, the lamp's shade, a slip's turned corner — walked
+        // straight through the readout check that exists for rectangles.
+        ...(Number.isFinite(pathMinX)
+          ? { box: [pathMinX, pathMinY, pathMaxX - pathMinX, pathMaxY - pathMinY] as const }
+          : {}),
+      }),
     fillRect: (x: number, y: number, w: number, h: number) =>
       calls.push({ op: 'fillRect', style: String(fillStyle), box: [x, y, w, h] }),
     fillText: (text: string, x: number, y: number) =>

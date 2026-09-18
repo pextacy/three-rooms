@@ -82,7 +82,13 @@ export const SCALE_TOP_BP = BROKER_LIST.reduce(
 );
 
 const BOARD_TOP = 0.08;
-const BOARD_BOTTOM = 0.62;
+/*
+ * The board ends higher than it used to (0.62). Framing the slate and putting a
+ * ledge under it added real height below the last rule, and with the lecterns
+ * under that the floor ran past READOUT_Y into the words — visible the moment
+ * the game is rendered in the gallery's 420px cartridge.
+ */
+const BOARD_BOTTOM = 0.55;
 const LAMP_X = 0.5;
 const LAMP_Y = 0.055;
 /**
@@ -398,8 +404,8 @@ function drawDesks(
     // His desk: a sloped lectern under his column, so the floor has men at it
     // rather than five labels in a row.
     const dw = slotWidth * 0.58;
-    const dy = bottom + height * 0.085;
-    const dh = height * 0.05;
+    const dy = bottom + height * 0.075;
+    const dh = height * 0.04;
     ctx.beginPath();
     ctx.moveTo(x - dw / 2, dy + dh);
     ctx.lineTo(x + dw / 2, dy + dh);
@@ -414,11 +420,11 @@ function drawDesks(
 
     ctx.font = `${Math.max(9, height * 0.023)}px ui-monospace, Menlo, monospace`;
     ctx.fillStyle = cssAlpha(palette.tallow, looking ? 0.95 : named ? 0.78 : 0.6);
-    ctx.fillText(name, x, bottom + height * 0.045);
+    ctx.fillText(name, x, bottom + height * 0.135);
     // The house charges nothing, so he is never "paid" — he is just there.
     const owed = named && column > 0;
     ctx.fillStyle = cssAlpha(owed ? palette.oxblood : palette.tallow, owed ? 0.85 : 0.5);
-    ctx.fillText(owed ? 'paid' : fee, x, bottom + height * 0.072);
+    ctx.fillText(owed ? 'paid' : fee, x, bottom + height * 0.16);
 
     if (looking) {
       // He is reading it: a pen moving, with no number attached to it yet.

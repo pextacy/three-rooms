@@ -224,7 +224,7 @@ function drawDesk(ctx: CanvasRenderingContext2D, width: number, height: number, 
   // The slip itself, squared up on the desk.
   const left = width * 0.16;
   const right = width * 0.84;
-  const top = y + height * 0.05;
+  const top = y + height * 0.014;
   const bottom = height * 0.97;
   ctx.fillStyle = cssAlpha(palette.tallow, 0.085);
   ctx.fillRect(left, top, right - left, bottom - top);
@@ -526,9 +526,17 @@ function drawManifest(
 
   const scale = Math.min(width, height * 1.1);
   const x = width * 0.62;
-  // Everything on the desk is laid out UP from the readout line, never down
-  // from the top: the DOM readout owns the bottom of this box.
-  const bottom = height * READOUT_Y;
+  /*
+   * Everything on the desk is laid out UP from the readout line, never down
+   * from the top: the DOM readout owns the bottom of this box.
+   *
+   * On a narrow canvas the readout's own words wrap wider and climb, so the
+   * line it owns is higher than it is on a wide one. Anchoring to a single
+   * fraction put the manifest on top of "UNDERWRITE NOW AND SHE PAYS" in the
+   * gallery's cartridge.
+   */
+  const narrow = width < height * 0.9;
+  const bottom = height * (narrow ? READOUT_Y - 0.24 : READOUT_Y);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';

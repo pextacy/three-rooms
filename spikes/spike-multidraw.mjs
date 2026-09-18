@@ -1,5 +1,5 @@
 // ============================================================================
-//  SPIKE A + B driver — plan.md D0, phases.md 0.5 / 0.6
+//  SPIKE A + B driver — plan.md D0. Run it with `npm run spike:multidraw`.
 //
 //  Runs against the SDK's local stack (chain + real ECVRF node + LocalCasinoHost).
 //  Nothing here is mocked: every word is a real VRF fulfillment.
@@ -207,7 +207,7 @@ async function main() {
   const fSettled = logsOf(fr, 'CasinoSessionSettled')[0];
   const expectedForfeit = (claimValue * 9000n) / 10000n;
   check('forfeit phase == FORFEITED', Number(fSettled.phase) === 4, `phase ${fSettled.phase}`);
-  check('forfeit pays 90% of the claim value, NOT 100%', fSettled.payout === expectedForfeit, `paid ${formatEther(fSettled.payout)} vs full claim ${formatEther(claimValue)} — docs.md §3.4 claims 100%, the facet takes a 10% cut`);
+  check('forfeit pays 90% of the claim value, NOT 100%', fSettled.payout === expectedForfeit, `paid ${formatEther(fSettled.payout)} vs full claim ${formatEther(claimValue)} — the facet takes a 10% cut; this measurement is why docs.md §3.4 says 90% and not 100%`);
 
   console.log(`\n\x1b[1m${FAIL === 0 ? '\x1b[32mALL GREEN' : '\x1b[31mRED'}\x1b[0m  ${PASS} passed, ${FAIL} failed\n`);
   process.exit(FAIL === 0 ? 0 : 1);

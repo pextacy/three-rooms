@@ -145,6 +145,16 @@ jobs:
       - name: every SDK symbol
         run: npm run spike
 
+      # The D0 spikes. docs.md §7.3 quotes their pass counts, their block
+      # numbers and the 90% forfeit as the evidence for the whole design, so
+      # they are re-measured rather than trusted — a number in a document that
+      # nothing re-runs is a number that goes quietly wrong.
+      - name: the D0 spikes still measure what §7.3 says they measured
+        run: |
+          npm run spike:multidraw
+          npm run spike:maxpayout
+          npm run spike:coinflip
+
   # The header contract is the trap that silently costs the gallery preview, so
   # the live origin is re-read after every push to main.
   live-origin:

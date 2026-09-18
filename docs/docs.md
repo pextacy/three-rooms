@@ -642,16 +642,22 @@ on 2026-09-14. Sources read in full: `solidity/ICasinoGameV2.sol`,
 Everything below was **executed** against the bundled local stack — an in-memory
 hardhat chain, a real ECVRF node, and `LocalCasinoHost`, which the SDK states
 reproduces the production facet's session lifecycle and emits byte-identical
-events. Spike sources live in `spikes/`; run them with `npm run spike` while
-`npm run sdk:stack` is up.
+events. Spike sources live in `spikes/`. With `npm run sdk:stack` up, each one
+is a single command — it drops its own throwaway contract into the simulator's
+watched folder, waits for the node to deploy it, and replays the measurement:
 
 ```
+npm run spike:multidraw   Spike A + B + the caps         -> 22/22 green
+npm run spike:maxpayout   a real 25x through the facet   ->  5/5  green
+npm run spike:coinflip    the reference game, end to end ->  3/3  green
+
 spikes/CandleSpike.sol        throwaway ICasinoGameV2 with CANDLE's real shape
 spikes/CandleSpikeMax.sol     same, forced-jackpot, to settle a real 25x
-spikes/spike-multidraw.mjs    Spike A + B + the caps       -> 22/22 green
-spikes/spike-maxpayout.mjs    a real 25x through the facet ->  5/5  green
-spikes/spike-coinflip.mjs     the reference game, end to end -> 3/3 green
 ```
+
+`npm run spike` is a different thing and is not these: it is the SDK symbol
+sweep (`scripts/spike-sdk.ts`, 28 assertions) that CI runs to check every SDK
+call this project makes is still exercised end to end.
 
 ---
 

@@ -133,7 +133,8 @@ so is `MAX_PAYOUT_BP`.
 ├── test/
 ├── scripts/                  verify-rtp, verify-survey, verify-brokers, gen-*,
 │                             gates, play*, round-trip*
-├── spikes/                   throwaway SDK spikes + their .sol. Deleted after use.
+├── spikes/                   the D0 spikes + their .sol. KEPT, because docs.md
+│                             §7.3 cites their measurements — `npm run spike:*`.
 ├── sdk/casino-sdk/           the downloaded SDK. Not vendored, not committed.
 ├── docs/                     docs.md  prd.md  plan.md  claude.md
 └── vercel.json
@@ -404,8 +405,12 @@ This project's whole pitch is that the math is checkable. That means:
 ## 9. When you are stuck
 
 - SDK behaviour you cannot confirm from the downloaded package: **do not guess.**
-  Write the smallest possible spike against the local simulator
-  (`spikes/spike-*.mjs`, run with `npm run spike`), run it, and record the answer in `docs.md` §SDK notes.
+  Write the smallest possible spike against the local simulator, put it in
+  `spikes/` beside the D0 ones, give it a `spike:<name>` script that deploys
+  whatever it needs and runs it in one command, and record the answer in
+  `docs.md` §SDK notes. A spike whose result is quoted in a document is not
+  throwaway — it is the evidence for a claim, and it stays runnable.
+  (`npm run spike` is something else: the SDK symbol sweep.)
 - If a spike proves the SDK cannot do something the design needs, escalate to
   `plan.md` §Risks and take the documented fallback. Do not silently redesign the
   game.

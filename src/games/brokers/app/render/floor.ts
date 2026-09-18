@@ -389,7 +389,7 @@ function drawSlips(
     ctx.fillStyle = cssAlpha(slip.isBest ? palette.brass : palette.oxblood, 0.9);
     ctx.fillRect(x - Math.max(1, width * 0.002), y, Math.max(2, width * 0.004), Math.max(2, height * 0.006));
 
-    ctx.font = `${Math.max(12, height * 0.05)}px ui-serif, Georgia, serif`;
+    ctx.font = `${Math.max(12, height * 0.05)}px 'Libre Caslon Text', Georgia, serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = cssAlpha(ink, alpha);
@@ -445,7 +445,7 @@ function drawDesks(
     // A man's NAME is a word, so it is set in the word face — the same rule the
     // rest of the interface follows. His fee is a figure and stays monospaced,
     // because five of them have to read down a row as a column of numbers.
-    ctx.font = `${Math.max(11, height * 0.027)}px ui-serif, Georgia, serif`;
+    ctx.font = `${Math.max(11, height * 0.027)}px 'Libre Caslon Text', Georgia, serif`;
     ctx.fillStyle = cssAlpha(palette.tallow, looking ? 0.95 : named ? 0.82 : 0.66);
     ctx.fillText(name, x, bottom + height * 0.135);
     // The house charges nothing, so he is never "paid" — he is just there.

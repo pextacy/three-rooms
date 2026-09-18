@@ -1,4 +1,47 @@
 /*
+ * Caslon, because of where and when this is.
+ *
+ * William Caslon cut his first types in London between 1722 and 1725 and issued
+ * his specimen in 1734 — the room these games are set in was reading them while
+ * they were new. Nothing else is this close to the brief, and it is not a
+ * costume: an English text face of exactly this decade is what a bill of sale,
+ * an underwriter's slip and a broker's book were actually set in.
+ *
+ * What was here before was `ui-serif`, which is not a typeface but a promise
+ * the operating system keeps differently everywhere: New York on macOS,
+ * Georgia on Windows, something else again on Linux. The page a judge opens was
+ * not the page anyone designed.
+ *
+ * Libre Caslon Text (SIL OFL, licence beside the files) is the screen cut —
+ * the historical one is too fine at these sizes. Subset to the characters this
+ * interface actually uses: 10.7 KB for the regular, which is what every game
+ * page loads. `swap`, so the first frame never waits for it.
+ */
+@font-face {
+  font-family: 'Libre Caslon Text';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/caslon-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Libre Caslon Text';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/caslon-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Libre Caslon Text';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/caslon-italic-400.woff2') format('woff2');
+}
+
+/*
   The four ink ROLES (claude.md §5). No fifth is approved, in any room.
 
   Shared by every game on this origin: one light model, one type scale, one set
@@ -47,7 +90,7 @@
    * a number that has to align in a column, a key you press, and a command you
    * type.
    */
-  --font: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font: 'Libre Caslon Text', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --font-num: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /*

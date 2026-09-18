@@ -351,8 +351,15 @@ if (!headersOnly) {
      */
     const downloadFor = async document_ => {
       const html = await readFile(document_, 'utf8');
+      /*
+       * `woff2` is in this list deliberately. A preloaded text face is 10.7 KB
+       * a visitor downloads before the first word is legible, and counting only
+       * js/css/svg would have let it in through a door the budget cannot see —
+       * which is the same trick as a gate that passes because it checked
+       * nothing.
+       */
       const refs = new Set(
-        [...html.matchAll(/(?:src|href)="(\/[^"]+\.(?:js|css|svg))"/g)].map(m => m[1]),
+        [...html.matchAll(/(?:src|href)="(\/[^"]+\.(?:js|css|svg|woff2))"/g)].map(m => m[1]),
       );
       let gz = await gzOf(document_);
       const missing = [];

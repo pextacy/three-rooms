@@ -169,6 +169,15 @@ const STYLE = String.raw`
   the threshold of — its own ink, under its own light — and the moment the page
   becomes a document it becomes paper, and stays paper to the foot.
 */
+/*
+  Caslon on the printed sheets too. These pages are the ones a judge reads at
+  length, and they were set in whatever ui-serif happens to mean on the
+  machine they opened it with. See tokens.css for why.
+*/
+@font-face { font-family: 'Libre Caslon Text'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/caslon-400.woff2') format('woff2'); }
+@font-face { font-family: 'Libre Caslon Text'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/caslon-700.woff2') format('woff2'); }
+@font-face { font-family: 'Libre Caslon Text'; font-style: italic; font-weight: 400; font-display: swap; src: url('/fonts/caslon-italic-400.woff2') format('woff2'); }
+
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
@@ -177,7 +186,7 @@ const STYLE = String.raw`
   --sheet-edge: #b6af9e;
   --iron: #17140f;
   --iron-soft: #4d463a;
-  --font: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font: 'Libre Caslon Text', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --font-num: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --column: min(58rem, 100% - clamp(2.5rem, 10vw, 6rem));
   --wide: min(76rem, 100% - clamp(2.5rem, 10vw, 6rem));

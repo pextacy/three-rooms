@@ -460,14 +460,14 @@ function drawLot(
   // Its face value, in tallow, above the goods. Hierarchy by luminance, never by
   // size — the type scale is fixed (claude.md §5).
   const faceSize = Math.max(18, s * 0.075);
-  ctx.font = `${faceSize}px ui-serif, Georgia, serif`;
+  ctx.font = `${faceSize}px 'Libre Caslon Text', Georgia, serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = cssAlpha(receded ? palette.oxblood : palette.tallow, receded ? 0.55 : 1);
   ctx.fillText(state.lot.faceText, x, baseY - s * 0.185 + lift);
 
   const nameSize = Math.max(11, s * 0.026);
-  ctx.font = `${nameSize}px ui-serif, Georgia, serif`;
+  ctx.font = `${nameSize}px 'Libre Caslon Text', Georgia, serif`;
   ctx.fillStyle = cssAlpha(receded ? palette.oxblood : ink, receded ? 0.5 : 0.9);
   ctx.fillText(state.lot.name, x, baseY - s * 0.155 + lift);
 
@@ -736,7 +736,7 @@ function drawBurnedLot(
   const y = height * TABLE_Y - s * 0.05 - s * 0.04 * fade;
   const alpha = (1 - fade) * 0.5;
 
-  ctx.font = `${Math.max(12, s * 0.05 * (1 - fade * 0.3))}px ui-serif, Georgia, serif`;
+  ctx.font = `${Math.max(12, s * 0.05 * (1 - fade * 0.3))}px 'Libre Caslon Text', Georgia, serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = cssAlpha(palette.oxblood, alpha);

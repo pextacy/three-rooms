@@ -119,6 +119,9 @@ function state(overrides: Partial<RoadsState> = {}): RoadsState {
  * The scene's own furniture uses fixed ink alphas (the water at 0.75); the fog
  * is the one that moves with the belief, so it is identified by being neither
  * of those — and by covering the whole window down to the desk.
+ *
+ * The ship models herself in HER OWN ink rather than the room's, precisely so
+ * that nothing she draws can be mistaken here for doubt.
  */
 const FURNITURE_ALPHAS = [0.75, 0.12];
 

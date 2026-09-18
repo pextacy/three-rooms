@@ -83,8 +83,8 @@ export const SCALE_TOP_BP = BROKER_LIST.reduce(
 
 const BOARD_TOP = 0.08;
 const BOARD_BOTTOM = 0.62;
-const LAMP_X = 0.06;
-const LAMP_Y = 0.66;
+const LAMP_X = 0.5;
+const LAMP_Y = 0.055;
 /**
  * Nothing is drawn below this. The readout is DOM and sits over the bottom of
  * the same box (`table.css`), so anything painted down there lands on real text
@@ -138,33 +138,134 @@ export function heightOf(priceBp: number): number {
 const COLUMNS = BROKER_LIST.length + 1;
 const columnX = (width: number, index: number) => (width / COLUMNS) * (index + 0.5);
 
+type Lamp = { readonly x: number; readonly y: number; readonly reach: number };
+
+/**
+ * A fill that falls off from the lamp, and from nothing else.
+ *
+ * Same rule as CANDLE's room: a gradient may only come from the light. The
+ * board used to be drawn with flat alphas in the 0.09–0.22 range, which is
+ * where chalk on slate stops being dim and starts being invisible — the names
+ * of the men on the floor could not be read at all.
+ */
+function litFill(
+  ctx: CanvasRenderingContext2D,
+  lamp: Lamp,
+  near: Rgb,
+  nearAlpha: number,
+  far: Rgb,
+  farAlpha: number,
+  reachScale = 1,
+): CanvasGradient {
+  const g = ctx.createRadialGradient(lamp.x, lamp.y, 0, lamp.x, lamp.y, lamp.reach * reachScale);
+  g.addColorStop(0, cssAlpha(near, nearAlpha));
+  g.addColorStop(0.5, cssAlpha(near, nearAlpha * 0.6 + farAlpha * 0.4));
+  g.addColorStop(1, cssAlpha(far, farAlpha));
+  return g;
+}
+
 export function drawFloor(ctx: CanvasRenderingContext2D, width: number, height: number, state: FloorState): void {
   const palette = paletteAtWax(levelFor(state.feesBp), LAMPLIGHT);
+  const lamp: Lamp = { x: width * LAMP_X, y: height * LAMP_Y, reach: Math.max(width, height) * 0.92 };
 
   ctx.fillStyle = css(palette.ink);
   ctx.fillRect(0, 0, width, height);
 
+  drawWall(ctx, width, height, lamp, palette);
+  drawSlate(ctx, width, height, lamp, palette);
+
   // The board is a MINERAL, so it is mottled before it is lit — grain first,
   // then the lamp over it, which is the order the two things happen in.
   drawGrain(ctx, width, height, SLATE);
-  drawLamp(ctx, width, height, palette);
+  drawLamp(ctx, width, height, lamp, palette);
   drawBoard(ctx, width, height, state, palette);
-  drawSlips(ctx, width, height, state, palette);
-  drawDesks(ctx, width, height, state, palette);
+  drawSlips(ctx, width, height, state, lamp, palette);
+  drawDesks(ctx, width, height, state, lamp, palette);
 }
 
-/** The lamp's own falloff. THE one gradient in the whole build. */
-function drawLamp(ctx: CanvasRenderingContext2D, width: number, height: number, palette: Palette): void {
-  const x = width * LAMP_X;
-  const y = height * LAMP_Y;
-  const glow = ctx.createRadialGradient(x, y, 0, x, y, Math.max(width, height) * 0.75);
-  glow.addColorStop(0, cssAlpha(palette.tallow, 0.24));
-  glow.addColorStop(0.3, cssAlpha(palette.brass, 0.1));
+/** The room the board is hung in. */
+function drawWall(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  lamp: Lamp,
+  palette: Palette,
+): void {
+  ctx.fillStyle = litFill(ctx, lamp, palette.tallow, 0.07, palette.tallow, 0.012, 1.1);
+  ctx.fillRect(0, 0, width, height);
+}
+
+/**
+ * The slate itself, in its frame.
+ *
+ * Without this the whole canvas was "the board", which meant it was nothing:
+ * there was no edge, no surface and no object, just chalk floating on the page.
+ */
+function drawSlate(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  lamp: Lamp,
+  palette: Palette,
+): void {
+  const top = height * (BOARD_TOP - 0.05);
+  const bottom = height * (BOARD_BOTTOM + 0.055);
+  const inset = width * 0.012;
+
+  // The frame: worn wood around the slate.
+  ctx.fillStyle = litFill(ctx, lamp, palette.oxblood, 0.7, palette.oxblood, 0.12, 1.25);
+  ctx.fillRect(inset * 0.5, top - inset, width - inset, bottom - top + inset * 2);
+
+  // The slate: darker than the wall it hangs on, so the board reads as a plane.
+  ctx.fillStyle = litFill(ctx, lamp, palette.ink, 0.92, palette.ink, 0.99, 1.3);
+  ctx.fillRect(inset, top, width - inset * 2, bottom - top);
+
+  // The ledge along the bottom, where the chalk and the rag live.
+  ctx.fillStyle = litFill(ctx, lamp, palette.oxblood, 0.85, palette.oxblood, 0.16, 1.25);
+  ctx.fillRect(inset * 0.5, bottom, width - inset, height * 0.012);
+}
+
+/**
+ * The Argand lamp over the board, and its falloff.
+ *
+ * It used to be off the frame — "the lamp itself is off the frame; its light is
+ * not". That left the brightest thing in the room invisible and the top of the
+ * board empty. It hangs where its light comes from now.
+ */
+function drawLamp(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  lamp: Lamp,
+  palette: Palette,
+): void {
+  const glow = ctx.createRadialGradient(lamp.x, lamp.y, 0, lamp.x, lamp.y, lamp.reach * 0.8);
+  glow.addColorStop(0, cssAlpha(palette.tallow, 0.3));
+  glow.addColorStop(0.3, cssAlpha(palette.brass, 0.11));
   glow.addColorStop(1, cssAlpha(palette.ink, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, height);
-  // The lamp itself is off the frame; its light is not. Drawing the flame put a
-  // candle through the name of the first man on the floor.
+
+  const s = Math.min(width, height * 1.5);
+  // The rod it hangs from, the shade, and the chimney under it.
+  ctx.fillStyle = cssAlpha(palette.oxblood, 0.75);
+  ctx.fillRect(lamp.x - s * 0.004, 0, s * 0.008, lamp.y - s * 0.03);
+
+  ctx.beginPath();
+  ctx.moveTo(lamp.x - s * 0.062, lamp.y);
+  ctx.lineTo(lamp.x + s * 0.062, lamp.y);
+  ctx.lineTo(lamp.x + s * 0.022, lamp.y - s * 0.034);
+  ctx.lineTo(lamp.x - s * 0.022, lamp.y - s * 0.034);
+  ctx.closePath();
+  ctx.fillStyle = cssAlpha(palette.oxblood, 0.92);
+  ctx.fill();
+  // The rim of the shade, catching its own burner from underneath.
+  ctx.fillStyle = cssAlpha(palette.tallow, 0.5);
+  ctx.fillRect(lamp.x - s * 0.062, lamp.y - Math.max(1, s * 0.003), s * 0.124, Math.max(1, s * 0.003));
+
+  // The burner, which is the one genuinely bright thing on this floor.
+  ctx.fillStyle = cssAlpha(palette.tallow, 0.85);
+  ctx.fillRect(lamp.x - s * 0.016, lamp.y, s * 0.032, s * 0.016);
 }
 
 /**
@@ -189,25 +290,25 @@ function drawBoard(
   // Chalked, not printed. A rule on a slate board is laid down by a hand with a
   // straight edge, so it breaks: this draws it as a run of short strokes whose
   // gaps and weights come from the line's own height, which makes it repeatable
-  // frame to frame and still not mechanical. A crisp 1px rule here was the last
-  // thing on this canvas that looked typeset rather than written.
+  // frame to frame and still not mechanical.
   for (const multiple of [0.5, 1, 2, 5]) {
     const y = bottom - (bottom - top) * heightOf(Math.round(multiple * PRICE_DENOM));
-    const thickness = Math.max(1, height * 0.001);
+    const thickness = Math.max(1, height * 0.0016);
     const step = Math.max(6, width * 0.016);
-    ctx.fillStyle = cssAlpha(palette.tallow, 0.09);
+    ctx.fillStyle = cssAlpha(palette.tallow, 0.3);
     for (let x = 0; x < width; x += step) {
       const wobble = ((Math.sin((x + y) * 0.07) + 1) / 2) * 0.5 + 0.5; // 0.5 .. 1
       ctx.globalAlpha = wobble;
       // The last stroke is cut at the frame rather than allowed to overhang it.
-      // It overhung, and `brokers-scene.spec.ts` is what said so.
       ctx.fillRect(x, y, Math.min(step * 0.82, width - x), thickness);
     }
     ctx.globalAlpha = 1;
     ctx.font = `${Math.max(9, height * 0.022)}px ui-monospace, Menlo, monospace`;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = cssAlpha(palette.tallow, 0.22);
-    ctx.fillText(`${multiple}x`, width * 0.012, y - height * 0.006);
+    // On the RIGHT margin. The house keeps the leftmost column, so a label on
+    // the left sat underneath his price — "1.02x" printed over "1x".
+    ctx.textAlign = 'right';
+    ctx.fillStyle = cssAlpha(palette.tallow, 0.55);
+    ctx.fillText(`${multiple}x`, width - width * 0.014, y - height * 0.008);
   }
 
   const best = state.slips.find(slip => slip.isBest);
@@ -215,8 +316,8 @@ function drawBoard(
 
   // The line in hand, in brass: the number TAKE pays, drawn as a height.
   const y = bottom - (bottom - top) * heightOf(best.priceBp);
-  ctx.fillStyle = cssAlpha(palette.brass, 0.55);
-  ctx.fillRect(0, y, width, Math.max(1, height * 0.003));
+  ctx.fillStyle = cssAlpha(palette.brass, 0.95);
+  ctx.fillRect(0, y, width, Math.max(1, height * 0.0035));
 }
 
 function drawSlips(
@@ -224,6 +325,7 @@ function drawSlips(
   width: number,
   height: number,
   state: FloorState,
+  lamp: Lamp,
   palette: Palette,
 ): void {
   const top = height * BOARD_TOP;
@@ -238,23 +340,34 @@ function drawSlips(
     const y = bottom - (bottom - top) * heightOf(slip.priceBp) * fall;
 
     const ink = slip.isBest ? palette.brass : palette.tallow;
-    const alpha = slip.isBest ? 0.95 : 0.38;
+    const alpha = slip.isBest ? 1 : 0.72;
 
     // The slip itself: a pinned scrap of paper, at the height of its number.
-    const slipW = slotWidth * 0.66;
-    const slipH = Math.max(3, height * 0.018);
-    ctx.fillStyle = cssAlpha(ink, alpha * 0.32);
-    ctx.fillRect(x - slipW / 2, y, slipW, slipH);
+    const slipW = slotWidth * 0.42;
+    const slipH = Math.max(6, height * 0.05);
+    // Pinned at the top and hanging, with the bottom corner turned up the way a
+    // scrap of paper does.
+    ctx.beginPath();
+    ctx.moveTo(x - slipW / 2, y);
+    ctx.lineTo(x + slipW / 2, y);
+    ctx.lineTo(x + slipW / 2, y + slipH * 0.82);
+    ctx.lineTo(x + slipW * 0.3, y + slipH);
+    ctx.lineTo(x - slipW / 2, y + slipH * 0.94);
+    ctx.closePath();
+    ctx.fillStyle = litFill(ctx, lamp, palette.tallow, alpha * 0.42, palette.ink, 0.1, 1.4);
+    ctx.fill();
+    // A pin through the top of it.
+    ctx.fillStyle = cssAlpha(slip.isBest ? palette.brass : palette.oxblood, 0.9);
+    ctx.fillRect(x - Math.max(1, width * 0.002), y, Math.max(2, width * 0.004), Math.max(2, height * 0.006));
 
-    ctx.font = `${Math.max(12, height * 0.048)}px ui-serif, Georgia, serif`;
+    ctx.font = `${Math.max(12, height * 0.05)}px ui-serif, Georgia, serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = cssAlpha(ink, alpha);
-    ctx.fillText(slip.priceText, x, y - height * 0.012);
+    ctx.fillText(slip.priceText, x, y - height * 0.014);
   }
 }
 
-/** The desks of the men nobody has asked yet: a name, a fee, and no price. */
 /**
  * The foot of every column: who stands there, and what he charges.
  *
@@ -266,6 +379,7 @@ function drawDesks(
   width: number,
   height: number,
   state: FloorState,
+  lamp: Lamp,
   palette: Palette,
 ): void {
   const bottom = height * BOARD_BOTTOM;
@@ -281,26 +395,36 @@ function drawDesks(
     const looking = desk?.looking === true;
     const x = columnX(width, column);
 
-    // The desk itself: a rule under the column.
-    ctx.fillStyle = cssAlpha(palette.tallow, looking ? 0.4 : named ? 0.22 : 0.12);
-    ctx.fillRect(x - slotWidth * 0.33, bottom, slotWidth * 0.66, Math.max(1, height * 0.0018));
+    // His desk: a sloped lectern under his column, so the floor has men at it
+    // rather than five labels in a row.
+    const dw = slotWidth * 0.58;
+    const dy = bottom + height * 0.085;
+    const dh = height * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(x - dw / 2, dy + dh);
+    ctx.lineTo(x + dw / 2, dy + dh);
+    ctx.lineTo(x + dw * 0.42, dy);
+    ctx.lineTo(x - dw * 0.42, dy + dh * 0.28);
+    ctx.closePath();
+    ctx.fillStyle = litFill(ctx, lamp, palette.oxblood, looking ? 0.95 : named ? 0.78 : 0.5, palette.ink, 0.1, 1.4);
+    ctx.fill();
 
     const name = column === 0 ? 'the house' : (desk?.name ?? BROKER_LIST[column - 1]?.name ?? '');
     const fee = column === 0 ? 'no fee' : (desk?.feeText ?? '');
 
-    ctx.font = `${Math.max(9, height * 0.021)}px ui-monospace, Menlo, monospace`;
-    ctx.fillStyle = cssAlpha(palette.tallow, looking ? 0.75 : named ? 0.45 : 0.3);
-    ctx.fillText(name, x, bottom + height * 0.042);
+    ctx.font = `${Math.max(9, height * 0.023)}px ui-monospace, Menlo, monospace`;
+    ctx.fillStyle = cssAlpha(palette.tallow, looking ? 0.95 : named ? 0.78 : 0.6);
+    ctx.fillText(name, x, bottom + height * 0.045);
     // The house charges nothing, so he is never "paid" — he is just there.
     const owed = named && column > 0;
-    ctx.fillStyle = cssAlpha(owed ? palette.oxblood : palette.tallow, owed ? 0.5 : 0.22);
+    ctx.fillStyle = cssAlpha(owed ? palette.oxblood : palette.tallow, owed ? 0.85 : 0.5);
     ctx.fillText(owed ? 'paid' : fee, x, bottom + height * 0.072);
 
     if (looking) {
       // He is reading it: a pen moving, with no number attached to it yet.
       const t = state.reducedMotion ? 0.5 : (Math.sin(state.time * 6) + 1) / 2;
-      ctx.fillStyle = cssAlpha(palette.brass, 0.5);
-      ctx.fillRect(x - slotWidth * 0.22 + slotWidth * 0.44 * t, bottom - height * 0.022, slotWidth * 0.05, height * 0.014);
+      ctx.fillStyle = cssAlpha(palette.brass, 0.85);
+      ctx.fillRect(x - slotWidth * 0.22 + slotWidth * 0.44 * t, dy - height * 0.012, slotWidth * 0.05, height * 0.012);
     }
   }
 }

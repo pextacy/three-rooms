@@ -299,32 +299,92 @@ function drawShip(
   ctx.translate(x, hullY);
   ctx.rotate(list);
 
-  // --- the hull: a flat sheer with a raked bow ---
+  // --- the hull: sheer, raked bow, and a stern that stands up ---
   ctx.beginPath();
-  ctx.moveTo(-hullW / 2, -hullH);
-  ctx.lineTo(hullW / 2, -hullH);
-  ctx.lineTo(hullW * 0.36, 0);
-  ctx.lineTo(-hullW * 0.42, 0);
+  ctx.moveTo(-hullW * 0.46, -hullH * 0.9);
+  ctx.quadraticCurveTo(0, -hullH * 1.18, hullW * 0.38, -hullH * 0.95);
+  // The quarterdeck stands a little proud of the waist — a raised stern, not
+  // the fin this drew when it was twice the height of the hull.
+  ctx.lineTo(hullW * 0.4, -hullH * 1.32);
+  ctx.lineTo(hullW * 0.5, -hullH * 1.26);
+  ctx.lineTo(hullW * 0.48, 0);
+  ctx.quadraticCurveTo(0, hullH * 0.42, -hullW * 0.46, -hullH * 0.18);
   ctx.closePath();
-  ctx.fillStyle = cssAlpha(ink, 0.85);
+  ctx.fillStyle = cssAlpha(ink, 0.9);
   ctx.fill();
 
-  // --- three masts, shortening aft ---
-  ctx.fillStyle = cssAlpha(ink, 0.7);
+  // The wale along her side, and the gunports under it — the two marks that
+  // turn a silhouette into a vessel of a particular century.
+  // Everything below the wale is in her own shadow, which is what gives a flat
+  // silhouette a side. Drawn in HER OWN ink at a lower strength rather than in
+  // the room's: `ink` at an arbitrary alpha is how the fog is identified
+  // (survey-scene.spec.ts), and a hull that shaded itself with it would read as
+  // doubt that never lifts.
+  ctx.fillStyle = cssAlpha(ink, 0.62);
+  ctx.fillRect(-hullW * 0.44, -hullH * 0.5, hullW * 0.94, hullH * 0.5);
+  // The wale itself is the lit top edge of that band.
+  ctx.fillStyle = cssAlpha(ink, 1);
+  ctx.fillRect(-hullW * 0.44, -hullH * 0.55, hullW * 0.94, Math.max(1, scale * 0.0035));
+  // Gunports: tarred, so they are the one rust mark on a bone hull.
+  ctx.fillStyle = cssAlpha(palette.oxblood, 0.75);
+  for (let i = 0; i < 7; i++) {
+    ctx.fillRect(-hullW * 0.36 + i * hullW * 0.115, -hullH * 0.38, scale * 0.009, scale * 0.011);
+  }
+
+  // The bowsprit, running out over the water.
+  ctx.fillStyle = cssAlpha(ink, 0.8);
+  ctx.save();
+  ctx.translate(-hullW * 0.44, -hullH * 0.85);
+  ctx.rotate(-0.34);
+  ctx.fillRect(-hullW * 0.2, -Math.max(1, scale * 0.0025), hullW * 0.22, Math.max(1, scale * 0.005));
+  ctx.restore();
+
+  // --- three masts, shortening aft, each carrying canvas ---
   for (let i = 0; i < 3; i++) {
-    const mx = -hullW * 0.28 + i * hullW * 0.28;
-    const mh = scale * (0.16 - i * 0.022);
-    ctx.fillRect(mx, -hullH - mh, Math.max(1, scale * 0.004), mh);
-    // One yard each, so she reads as a ship and not a comb.
-    ctx.fillRect(mx - scale * 0.028, -hullH - mh * 0.78, scale * 0.06, Math.max(1, scale * 0.003));
+    const mx = -hullW * 0.26 + i * hullW * 0.26;
+    const mh = scale * (0.185 - i * 0.026);
+    ctx.fillStyle = cssAlpha(ink, 0.85);
+    ctx.fillRect(mx - Math.max(1, scale * 0.002), -hullH * 0.95 - mh, Math.max(1, scale * 0.004), mh);
+
+    // Two yards, and the sail furled along each. A ship at anchor in the roads
+    // is not under way, so the canvas is gathered rather than drawing.
+    for (const [t, spread] of [[0.82, 1], [0.54, 0.78]] as const) {
+      const yy = -hullH * 0.95 - mh * t;
+      const yw = scale * 0.048 * spread * (1 - i * 0.12);
+      ctx.fillStyle = cssAlpha(ink, 0.8);
+      ctx.fillRect(mx - yw, yy, yw * 2, Math.max(1, scale * 0.003));
+      ctx.beginPath();
+      ctx.moveTo(mx - yw * 0.94, yy);
+      ctx.quadraticCurveTo(mx, yy + scale * 0.017, mx + yw * 0.94, yy);
+      ctx.closePath();
+      ctx.fillStyle = cssAlpha(ink, 0.42);
+      ctx.fill();
+    }
+
+    // Shrouds: the standing rigging that holds the mast up, and the one detail
+    // that stops three sticks reading as a comb.
+    ctx.fillStyle = cssAlpha(ink, 0.3);
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(mx, -hullH * 0.95 - mh * 0.62);
+      ctx.lineTo(mx + side * hullW * 0.09, -hullH * 0.9);
+      ctx.lineTo(mx + side * hullW * 0.075, -hullH * 0.9);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   ctx.restore();
 
   // Her reflection: one short streak under the hull, so she sits IN the water
   // rather than on top of it.
-  ctx.fillStyle = cssAlpha(ink, 0.12);
-  ctx.fillRect(x - hullW * 0.3, hullY + hullH * 0.35, hullW * 0.6, Math.max(1, hullH * 0.3));
+  // Broken into bands, because water does not hold a solid image.
+  for (let i = 0; i < 5; i++) {
+    const w = hullW * (0.6 - i * 0.07);
+    const yy = hullY + hullH * (0.3 + i * 0.22);
+    ctx.fillStyle = cssAlpha(ink, 0.13 - i * 0.02);
+    ctx.fillRect(x - w / 2, yy, w, Math.max(1, hullH * 0.12));
+  }
 
   // A surveyor is aboard: his boat crosses the water while his report is out.
   if (state.surveyorOut) {

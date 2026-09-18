@@ -29,6 +29,7 @@ type Call = { readonly op: string; readonly style: string; readonly box?: readon
 function recorder() {
   const calls: Call[] = [];
   let gradients = 0;
+  const origins: { x: number; y: number }[] = [];
   let fillStyle: unknown = '#000';
 
   const stub = {
@@ -41,8 +42,9 @@ function recorder() {
     font: '',
     textAlign: 'left',
     textBaseline: 'alphabetic',
-    createRadialGradient() {
+    createRadialGradient(x0: number, y0: number) {
       gradients += 1;
+      origins.push({ x: x0, y: y0 });
       return { addColorStop: () => {} };
     },
     createLinearGradient() {
@@ -66,7 +68,7 @@ function recorder() {
       calls.push({ op: `fillText:${text}`, style: String(fillStyle), box: [x, y, 0, 0] }),
   };
 
-  return { stub: stub as unknown as CanvasRenderingContext2D, calls, gradientCount: () => gradients };
+  return { stub: stub as unknown as CanvasRenderingContext2D, calls, gradientCount: () => gradients , gradientOrigins: () => origins };
 }
 
 const slip = (brokerId: number | null, priceBp: number, isBest: boolean): Slip => ({
@@ -238,10 +240,23 @@ describe('the light is what the day has cost', () => {
 });
 
 describe('the scene obeys the design law', () => {
-  it('draws exactly one gradient: the lamp', () => {
-    const { stub, gradientCount } = recorder();
+  /**
+   * This counted gradients and required exactly one. That is what kept every
+   * object on this floor a flat fill in the 0.09–0.22 alpha range, which on
+   * slate is not dim but invisible — the names of the men could not be read.
+   * The rule that replaces it is the one that was actually meant: light may
+   * only come FROM THE LAMP.
+   */
+  it('lights the floor from the lamp and from nowhere else', () => {
+    const { stub, gradientOrigins, gradientCount } = recorder();
     drawFloor(stub, 1000, 600, state());
-    expect(gradientCount()).toBe(1);
+    const lamp = { x: 1000 * 0.5, y: 600 * 0.055 };
+
+    expect(gradientCount(), 'the board is modelled, not flat').toBeGreaterThan(1);
+    for (const origin of gradientOrigins()) {
+      expect(origin.x, 'a gradient that did not start at the lamp').toBeCloseTo(lamp.x, 6);
+      expect(origin.y, 'a gradient that did not start at the lamp').toBeCloseTo(lamp.y, 6);
+    }
   });
 
   it('uses the four inks and no fifth colour', () => {

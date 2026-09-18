@@ -21,6 +21,7 @@
 import { INCHES, waxBpAt } from '../../core/wax';
 import { cssAlpha, paletteAtWax, css, type Rgb } from '../../../../shared/render/light';
 import { drawGrain, SOOT } from '../../../../shared/render/grain';
+import { readoutTopOf } from '../../../../shared/render/readout';
 
 /** Everything the scene needs to draw a frame. Nothing it can derive itself. */
 export type SceneState = {
@@ -47,6 +48,8 @@ export type SceneState = {
   readonly time: number;
   /** Honour `prefers-reduced-motion`: a steady flame, same light. */
   readonly reducedMotion: boolean;
+  /** Where the DOM readout begins, measured. See shared/render/readout.ts. */
+  readonly readoutTop?: number;
 };
 
 export type LotFace = {
@@ -420,8 +423,17 @@ function drawLot(
   if (!state.lot) return;
 
   const x = width * LOT_X;
-  const baseY = height * TABLE_Y + (height - height * TABLE_Y) * 0.42;
   const s = Math.min(width, height * 1.4);
+  /*
+   * The goods stand ON the table, and the chalked payout goes under them — all
+   * of it has to finish above the words. The block's height is measured rather
+   * than assumed, because it depends on how the words wrap.
+   */
+  const readoutTop = height * (state.readoutTop ?? 0.86);
+  const baseY = Math.min(
+    height * TABLE_Y + (height - height * TABLE_Y) * 0.42,
+    readoutTop - s * 0.1,
+  );
 
   // A settled lot goes oxblood and lifts away. The recede is carried by position
   // and weight as well as colour — nothing is said in colour alone.
@@ -452,12 +464,12 @@ function drawLot(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = cssAlpha(receded ? palette.oxblood : palette.tallow, receded ? 0.55 : 1);
-  ctx.fillText(state.lot.faceText, x, height * TABLE_Y - s * 0.075 + lift);
+  ctx.fillText(state.lot.faceText, x, baseY - s * 0.185 + lift);
 
   const nameSize = Math.max(11, s * 0.026);
   ctx.font = `${nameSize}px ui-serif, Georgia, serif`;
   ctx.fillStyle = cssAlpha(receded ? palette.oxblood : ink, receded ? 0.5 : 0.9);
-  ctx.fillText(state.lot.name, x, height * TABLE_Y - s * 0.045 + lift);
+  ctx.fillText(state.lot.name, x, baseY - s * 0.155 + lift);
 
   if (state.payoutText) {
     // Chalked on the boards in front of the lot, with a rule under it — the
@@ -825,7 +837,15 @@ export function mountScene(canvas: HTMLCanvasElement): SceneHandle {
     }
     if (burnedFade < 1) burnedFade = Math.min(1, burnedFade + 0.035);
 
-    drawScene(ctx, canvas.width, canvas.height, { ...game, pinFall, flare, time, burnedFade, reducedMotion });
+    drawScene(ctx, canvas.width, canvas.height, {
+      ...game,
+      pinFall,
+      flare,
+      time,
+      burnedFade,
+      reducedMotion,
+      readoutTop: readoutTopOf(canvas, 0.86),
+    });
 
     lastFrameMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
     frames += 1;

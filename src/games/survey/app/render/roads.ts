@@ -37,6 +37,7 @@ import { posteriorSound, bestCallConfidence } from '../../core/belief';
 import { toNumber } from '../../../../shared/math/rational';
 import { cssAlpha, paletteAtWax, css, type Rgb, DAYLIGHT } from '../../../../shared/render/light';
 import { drawGrain, DAMP } from '../../../../shared/render/grain';
+import { readoutTopOf } from '../../../../shared/render/readout';
 
 type Palette = Record<'tallow' | 'brass' | 'oxblood' | 'ink', Rgb>;
 
@@ -68,6 +69,8 @@ export type RoadsState = {
   readonly time: number;
   /** Honour `prefers-reduced-motion`: a flat sea, the same light. */
   readonly reducedMotion: boolean;
+  /** Where the DOM readout begins, measured. See shared/render/readout.ts. */
+  readonly readoutTop?: number;
 };
 
 export type RoadsMetrics = {
@@ -139,7 +142,7 @@ export function drawRoads(
   drawSea(ctx, width, height, state, palette);
   drawShip(ctx, width, height, state, palette, p);
   drawFog(ctx, width, height, state, palette);
-  drawDesk(ctx, width, height, palette);
+  drawDesk(ctx, width, height, palette, state.readoutTop ?? READOUT_Y);
   drawLamp(ctx, width, height, palette);
   // The weather goes over everything beyond the glass AND the desk in front of
   // it, because damp is in the room too. Under the slips, so the numbers a
@@ -213,7 +216,13 @@ function drawFog(
  * the FOG by exactly that, and furniture that shaded itself with it would read
  * as doubt.
  */
-function drawDesk(ctx: CanvasRenderingContext2D, width: number, height: number, palette: Palette): void {
+function drawDesk(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  palette: Palette,
+  readoutTop: number,
+): void {
   const y = height * DESK_Y;
   ctx.fillStyle = css(palette.ink);
   ctx.fillRect(0, y, width, height - y);
@@ -225,7 +234,8 @@ function drawDesk(ctx: CanvasRenderingContext2D, width: number, height: number, 
   const left = width * 0.16;
   const right = width * 0.84;
   const top = y + height * 0.014;
-  const bottom = height * 0.97;
+  // The slip stops where the words begin, so its rules never run under them.
+  const bottom = height * readoutTop;
   ctx.fillStyle = cssAlpha(palette.tallow, 0.085);
   ctx.fillRect(left, top, right - left, bottom - top);
 
@@ -335,7 +345,13 @@ function drawShip(
   // is scaled twice.
   const scale = Math.min(width, height * 1.1);
   const x = width * 0.6;
-  const waterline = height * WATERLINE_Y;
+  /*
+   * She rides higher when the words below her leave less room. At the
+   * cartridge's proportions a waterline fixed at 0.42 put her hull across
+   * "THE VOYAGE ON OFFER" — the first line of the readout, which sits in the
+   * short fade at the top of its own ground and so cannot hide her.
+   */
+  const waterline = Math.min(height * WATERLINE_Y, height * ((state.readoutTop ?? 0.86) - 0.22));
 
   // She settles by the head as the case for rot hardens: `p` is 0.4 at the
   // prior, so she already floats a little low before anyone goes aboard.
@@ -473,7 +489,8 @@ function drawSlips(
   palette: Palette,
 ): void {
   // On the desk, and above the line the DOM readout owns.
-  const lineY = height * (DESK_Y + (READOUT_Y - DESK_Y) * 0.62);
+  const readoutTop = state.readoutTop ?? READOUT_Y;
+  const lineY = height * (DESK_Y + (readoutTop - DESK_Y) * 0.62);
   // Clear of the lamp, which stands at the left-hand edge of the desk.
   const left = width * 0.22;
   const slot = width * 0.05;
@@ -535,8 +552,7 @@ function drawManifest(
    * fraction put the manifest on top of "UNDERWRITE NOW AND SHE PAYS" in the
    * gallery's cartridge.
    */
-  const narrow = width < height * 0.9;
-  const bottom = height * (narrow ? READOUT_Y - 0.24 : READOUT_Y);
+  const bottom = height * ((state.readoutTop ?? READOUT_Y) - 0.06);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
@@ -625,7 +641,13 @@ export function mountRoads(canvas: HTMLCanvasElement): RoadsHandle {
       slipFall[i] = current + (target - current) * 0.16;
     }
 
-    drawRoads(ctx, canvas.width, canvas.height, { ...game, slipFall, time, reducedMotion });
+    drawRoads(ctx, canvas.width, canvas.height, {
+      ...game,
+      slipFall,
+      time,
+      reducedMotion,
+      readoutTop: readoutTopOf(canvas, READOUT_Y),
+    });
 
     lastFrameMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
     frames += 1;

@@ -50,7 +50,7 @@ export const COPY = {
   notEnoughChips: 'Not enough chips. Refill the purse.',
 
   // --- demo ---------------------------------------------------------------
-  demoBadge: 'DEMO — PLAY CHIPS',
+  demoBadge: 'PLAY CHIPS',
   demoNote: 'Free play. The purse lasts one page load and nothing is saved.',
   purse: 'Purse',
   refill: 'REFILL',
@@ -118,8 +118,8 @@ export const COPY = {
     ['L', 'the ledger'],
   ] as ReadonlyArray<readonly [string, string]>,
 
-  soundOn: 'SOUND ON',
-  soundOff: 'SOUND OFF',
+  soundOn: 'SOUND',
+  soundOff: 'MUTED',
   soundKey: 'M',
 
   // --- the Ghost Lot ------------------------------------------------------

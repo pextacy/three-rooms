@@ -33,6 +33,7 @@
 import { BROKER_LIST, TOTAL_FEES_BP, PRICE_DENOM } from '../../core/market';
 import { LEVEL_FULL, LEVEL_DENOM, cssAlpha, paletteAtWax, css, type Rgb, LAMPLIGHT } from '../../../../shared/render/light';
 import { drawGrain, SLATE } from '../../../../shared/render/grain';
+import { readoutTopOf } from '../../../../shared/render/readout';
 
 type Palette = Record<'tallow' | 'brass' | 'oxblood' | 'ink', Rgb>;
 
@@ -68,6 +69,16 @@ export type FloorState = {
   readonly slipFall: readonly number[];
   readonly time: number;
   readonly reducedMotion: boolean;
+  /**
+   * Where the DOM readout begins, as a fraction of canvas height.
+   *
+   * The floor used to reserve a FIXED fraction for it, and a fraction cannot
+   * know how tall that block is — it depends on how its words wrap, which
+   * depends on the width and the type scale. Every time either moved, the
+   * lecterns and the price slips were drawn through the words again. The mount
+   * measures the block and the floor lays itself out against the answer.
+   */
+  readonly readoutTop?: number;
 };
 
 export type FloorMetrics = {
@@ -170,23 +181,32 @@ function litFill(
   return g;
 }
 
+/** The band the desks, the names and the fees need under the board. */
+const DESK_BAND = 0.17;
+
+/** The board's own bottom, kept clear of wherever the readout actually starts. */
+export function boardBottomFor(readoutTop: number): number {
+  return Math.max(0.3, Math.min(BOARD_BOTTOM, readoutTop - DESK_BAND));
+}
+
 export function drawFloor(ctx: CanvasRenderingContext2D, width: number, height: number, state: FloorState): void {
   const palette = paletteAtWax(levelFor(state.feesBp), LAMPLIGHT);
+  const boardBottom = boardBottomFor(state.readoutTop ?? READOUT_Y);
   const lamp: Lamp = { x: width * LAMP_X, y: height * LAMP_Y, reach: Math.max(width, height) * 0.92 };
 
   ctx.fillStyle = css(palette.ink);
   ctx.fillRect(0, 0, width, height);
 
   drawWall(ctx, width, height, lamp, palette);
-  drawSlate(ctx, width, height, lamp, palette);
+  drawSlate(ctx, width, height, lamp, palette, boardBottom);
 
   // The board is a MINERAL, so it is mottled before it is lit — grain first,
   // then the lamp over it, which is the order the two things happen in.
   drawGrain(ctx, width, height, SLATE);
   drawLamp(ctx, width, height, lamp, palette);
-  drawBoard(ctx, width, height, state, palette);
-  drawSlips(ctx, width, height, state, lamp, palette);
-  drawDesks(ctx, width, height, state, lamp, palette);
+  drawBoard(ctx, width, height, state, palette, boardBottom);
+  drawSlips(ctx, width, height, state, lamp, palette, boardBottom);
+  drawDesks(ctx, width, height, state, lamp, palette, boardBottom);
 }
 
 /** The room the board is hung in. */
@@ -213,9 +233,10 @@ function drawSlate(
   height: number,
   lamp: Lamp,
   palette: Palette,
+  boardBottom: number,
 ): void {
   const top = height * (BOARD_TOP - 0.05);
-  const bottom = height * (BOARD_BOTTOM + 0.055);
+  const bottom = height * (boardBottom + 0.055);
   const inset = width * 0.012;
 
   // The frame: worn wood around the slate.
@@ -287,9 +308,10 @@ function drawBoard(
   height: number,
   state: FloorState,
   palette: Palette,
+  boardBottom: number,
 ): void {
   const top = height * BOARD_TOP;
-  const bottom = height * BOARD_BOTTOM;
+  const bottom = height * boardBottom;
 
   // Rules at the multiples a player thinks in, so the ratio scale can be read.
   //
@@ -333,9 +355,10 @@ function drawSlips(
   state: FloorState,
   lamp: Lamp,
   palette: Palette,
+  boardBottom: number,
 ): void {
   const top = height * BOARD_TOP;
-  const bottom = height * BOARD_BOTTOM;
+  const bottom = height * boardBottom;
   const slotWidth = width / COLUMNS;
 
   for (const [i, slip] of state.slips.entries()) {
@@ -387,8 +410,9 @@ function drawDesks(
   state: FloorState,
   lamp: Lamp,
   palette: Palette,
+  boardBottom: number,
 ): void {
-  const bottom = height * BOARD_BOTTOM;
+  const bottom = height * boardBottom;
   const slotWidth = width / COLUMNS;
   const asked = new Set(state.slips.map(slip => slip.brokerId));
 
@@ -492,7 +516,13 @@ export function mountFloor(canvas: HTMLCanvasElement): FloorHandle {
       slipFall[i] = (slipFall[i] ?? 0) + (1 - (slipFall[i] ?? 0)) * 0.18;
     }
 
-    drawFloor(ctx, canvas.width, canvas.height, { ...game, slipFall, time, reducedMotion });
+    drawFloor(ctx, canvas.width, canvas.height, {
+      ...game,
+      slipFall,
+      time,
+      reducedMotion,
+      readoutTop: readoutTopOf(canvas, READOUT_Y),
+    });
 
     lastFrameMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
     frames += 1;

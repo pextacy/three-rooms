@@ -127,7 +127,12 @@
     likes, and the words are legible at every size without either side having
     to guess about the other.
   */
-  background: linear-gradient(to top, var(--ink) 62%, rgb(0 0 0 / 0));
+  /*
+    Solid for most of its height, with a short fade at the top so it meets the
+    room rather than cutting it. A mostly-transparent scrim let the scene's own
+    furniture show through the words, which is the thing it exists to prevent.
+  */
+  background: linear-gradient(to top, var(--ink) 0 82%, rgb(0 0 0 / 0));
 }
 
 .readout__label,
@@ -256,13 +261,18 @@
   text-align: right;
 }
 
+/*
+  A boxed key beside every switch doubled the width of the instrument and read
+  as a second label — "SOUND ON  [M]" is two things where one was meant. The
+  hint is set as a hint: no box, no border, just the letter, quiet and close.
+*/
 kbd {
   font-family: var(--font-num);
-  font-size: 0.7rem;
-  padding: 0.05rem 0.3rem;
-  border: 1px solid currentColor;
-  border-radius: 2px;
-  opacity: 0.65;
+  font-size: 0.75rem;
+  padding: 0;
+  margin-left: 0.15rem;
+  border: 0;
+  opacity: 0.45;
 }
 
 /* The stake between rounds: present, but never in front of the game. */
@@ -793,12 +803,19 @@ kbd {
   row-gap: 0.05rem;
 }
 
+/*
+  The smallest type on the page had the least contrast, which is backwards:
+  small text needs more of it, not less. At 0.5 alpha this measured 4.41:1 on
+  THE SURVEY's ground — under the 4.5:1 AA needs for normal text — and 9px is
+  below comfortable reading size in any room. 0.62 puts all three rooms at
+  6.2:1 or better, which is where every other label already sat.
+*/
 .top__reading-label {
   font-family: var(--font-num);
-  font-size: 0.5625rem;
-  letter-spacing: 0.16em;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.5;
+  opacity: 0.62;
 }
 
 .top__reading-value {

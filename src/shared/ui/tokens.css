@@ -28,8 +28,15 @@
     and the one everybody sees — with no scale and no serif at all.
   */
   --t-lot: 2.75rem;
-  --t-body: 0.9375rem;
-  --t-label: 0.75rem;
+  /*
+   * Raised from 0.9375/0.75rem. 15px of serif body and 12px of tracked-out
+   * monospace is small for a room this dim, and the type scale being FIXED
+   * (claude.md §5) is a rule about not using size for hierarchy — not a reason
+   * to set everything below comfortable reading size. Every step moves
+   * together, so the hierarchy is unchanged.
+   */
+  --t-body: 1rem;
+  --t-label: 0.8125rem;
 
   --font: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --font-num: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;

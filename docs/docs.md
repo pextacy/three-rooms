@@ -953,7 +953,8 @@ Reach probability by inch   : 100% / 76.90% / 59.14% / 45.48% / 30.42%
 | Hold for ≥ 5.00× | 52.959% |
 | Claim the first lot regardless (unreachable — nobody claims an empty crate) | **44.000%** |
 
-> **Corrected on D1.** This row read **46.500%**, as does `prd.md` §4.5. Claiming
+> **Corrected on D1.** This row read **46.500%**, and so did `prd.md` §4.5 until
+> it was corrected with it — both say 44.000% now. Claiming
 > whatever is on the table at the first inch is worth `E[face] × wax(1) = 0.44 ×
 > 1.00 = 0.44` exactly — 44.000%. An exhaustive scan over 200,000 per-inch
 > policies found none worth 46.500%, so the old figure corresponds to no policy at

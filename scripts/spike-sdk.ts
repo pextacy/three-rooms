@@ -119,14 +119,20 @@ console.log(`\n${B('bet-limits.ts — computeMaxWager')}`);
   check('our max multiplier is 25', MAX_X === 25);
 
   const snap = (casino: NonNullable<HostSnapshotV1['casino']>) => ({ casino }) as Pick<HostSnapshotV1, 'casino'>;
+  const wagerOf = (r: ReturnType<typeof computeMaxWager>) => (r.kind === 'limit' ? r.maxWager : null);
+
   // reservedProfit for a 25x game is wager * 24, so the risk cap binds at cap/24.
   const risk = computeMaxWager(snap({ maxAllowedReservedProfit: (2_400n * 10n ** 18n).toString() }), { maxMultiplierX: MAX_X });
-  check('the risk leg binds at maxAllowedReservedProfit / 24', risk === 100n * 10n ** 18n, `${formatEther(risk ?? 0n)} tokens`);
+  check('the risk leg binds at maxAllowedReservedProfit / 24', wagerOf(risk) === 100n * 10n ** 18n, `${formatEther(wagerOf(risk) ?? 0n)} tokens`);
 
   const capped = computeMaxWager(snap({ maxAllowedReservedProfit: (2_400n * 10n ** 18n).toString(), maxBetAmount: (10n * 10n ** 18n).toString() }), { maxMultiplierX: MAX_X });
-  check('an absolute maxBetAmount wins when it is lower', capped === 10n * 10n ** 18n, `${formatEther(capped ?? 0n)} tokens`);
+  check('an absolute maxBetAmount wins when it is lower', wagerOf(capped) === 10n * 10n ** 18n, `${formatEther(wagerOf(capped) ?? 0n)} tokens`);
 
-  check('an absent casino block reads as unknown, not unlimited', computeMaxWager(null, { maxMultiplierX: MAX_X }) === undefined);
+  // It returns a TAGGED UNION, never undefined. Reading it as a bare value is
+  // what silently disabled the ceiling in a deployed build (chain.ts).
+  check('an absent casino block reads as unknown, not unlimited', computeMaxWager(null, { maxMultiplierX: MAX_X }).kind === 'unknown');
+  check('and the result is always a tagged union, never a bare value or undefined',
+    ['limit', 'no-limit', 'unknown'].includes(computeMaxWager(null, { maxMultiplierX: MAX_X }).kind));
 }
 
 // ---------------------------------------------------------------- gameState

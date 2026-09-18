@@ -838,7 +838,56 @@ and the lot. **Always call `revealOutcome({ sessionId })` when the animation lan
 — until then the host hides the payout so its balance display cannot spoil the
 result, which is exactly the "clamped downward-only" behaviour §4.1 asks for.
 `computeMaxWager(snapshot, { maxMultiplierX: 25 })` turns the live `snapshot.casino`
-risk limits into our stake ceiling. Call `connection.destroy()` on unmount.
+risk limits into our stake ceiling — see §7.3.11, its shape changed under us.
+Call `connection.destroy()` on unmount.
+
+#### 7.3.11 The SDK is not pinned, and it moved
+
+`fetch-sdk.mjs` downloads `sdk.chain.wtf/sdk/casino-sdk.zip` — no version, no
+checksum — and **skips the download whenever `sdk/` is already there**. A
+developer's checkout and any warm CI cache therefore keep whatever they first
+got. A Vercel build container starts empty and takes the current one on every
+deploy. So what is tested locally and what ships are two different SDKs, and
+nothing said so.
+
+On **2026-09-17** the SDK changed `computeMaxWager` from `bigint | undefined`
+to a tagged union:
+
+```ts
+type MaxWagerResult =
+  | { kind: 'limit'; maxWager: bigint }
+  | { kind: 'no-limit' }
+  | { kind: 'unknown' };
+```
+
+`chain.ts` read it as `computeMaxWager(...) ?? null`. The union is never
+`undefined`, so the whole object became `maxStakeBase`. Nothing threw —
+`stakeBase > { kind: 'limit', … }` is simply `false` in JavaScript — so **the
+wager ceiling stopped binding for every player inside a host**, and the only
+symptom was `openSession` reverting on chain with no reason shown. It was live.
+
+`tsc` could not see it: `src/types/casino-sdk.d.ts` is hand-written, so the
+compiler checks against our description of the SDK rather than the SDK.
+`npm run spike` does assert these exact values and would have caught it, but it
+needs a running chain, which makes it the one check nobody runs casually.
+
+Three things changed, and the same shape of drift is now caught in either
+direction:
+
+- `chain.ts` maps the union properly. `no-limit` and `unknown` both read as "we
+  publish no ceiling" — `unknown` is not treated as unlimited in the sense the
+  SDK warns about, because the facet still refuses an over-large wager; what we
+  must not do is print a ceiling we cannot derive.
+- `test/sdk-contract.spec.ts` calls the real SDK on every `npm test`, with no
+  chain and no simulator, and asserts the surface the `.d.ts` claims. Checked
+  against the old SDK: six of its eight tests fail.
+- CI force-fetches the SDK before it runs anything, so it tests the build the
+  deploy will make rather than a cached one.
+
+Also in that release: `VrfVerificationChecksV1` dropped `fastVerifyComponentsMatch`
+and `fulfillmentCommitted`, and `RandomnessRequestEchoV1` renamed `requester` →
+`consumer`, `payment` → `fee`, `clientData` → `callbackData` and added
+`callbackGasLimit`. This game reads none of them.
 
 ### 7.4 Fallback if per-inch randomness is unsupported
 

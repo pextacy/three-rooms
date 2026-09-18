@@ -22,8 +22,18 @@ jobs:
           cache: npm
 
       # postinstall restores the SDK, which the build aliases rather than
-      # reimplementing. No separate step needed.
+      # reimplementing.
       - run: npm ci
+
+      # And then re-fetches it, unconditionally. The SDK is downloaded from
+      # sdk.chain.wtf with no version pin, and `fetch-sdk.mjs` skips the
+      # download whenever sdk/ is already there — so a warm checkout keeps
+      # whatever it first got while the Vercel build container starts empty and
+      # takes the current one every time. That gap shipped a real bug once:
+      # `computeMaxWager` changed shape on 2026-09-17 and the deployed build
+      # stopped enforcing the wager ceiling. CI tests what deploys.
+      - name: the SDK the deploy will actually use
+        run: npm run sdk:fetch -- --force
 
       - name: typecheck
         run: npm run typecheck
@@ -91,6 +101,9 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
 
       - run: npm ci
+
+      - name: the SDK the deploy will actually use
+        run: npm run sdk:fetch -- --force
 
       # Compiles with the same settings the simulator uses, so what CI checks is
       # what the simulator deploys.

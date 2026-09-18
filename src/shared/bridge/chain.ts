@@ -17,6 +17,7 @@
  *    so the host's own display cannot spoil the result before it.
  */
 import { connectGameToHost, computeMaxWager } from '@chain/casino-sdk/guest';
+import type { MaxWagerResult } from '@chain/casino-sdk/guest';
 import type { HostApiV1, HostSnapshotV1, GuestBridgeConnection } from '@chain/casino-sdk/guest';
 import {
   createViewStore,
@@ -131,6 +132,24 @@ export function createChainHost<S extends BaseSessionView, A>(options: ChainHost
     });
   };
 
+  /**
+   * The host's wager ceiling, as a number or nothing.
+   *
+   * `computeMaxWager` returns a TAGGED UNION and never returns undefined. It
+   * used to return `bigint | undefined`, and this read `... ?? null` — which
+   * with the new shape hands the whole object through as `maxStakeBase`.
+   * Nothing throws: `stakeBase > {kind:'limit',…}` is simply `false` in JS, so
+   * the ceiling silently stopped binding and a player inside a host could set a
+   * stake the facet would then refuse, with no reason shown.
+   *
+   * `no-limit` and `unknown` both read as "we publish no ceiling". The SDK
+   * warns that `unknown` must not be treated as unlimited — and it is not: the
+   * facet still refuses an over-large wager. What we must not do is PRINT a
+   * ceiling we cannot derive, and we do not.
+   */
+  const maxStakeFrom = (result: MaxWagerResult): bigint | null =>
+    result.kind === 'limit' ? result.maxWager : null;
+
   const store = createViewStore<HostViewOf<S>>(() => ({
     kind: 'chain',
     connected: hostApi !== null || snapshot !== null,
@@ -141,7 +160,7 @@ export function createChainHost<S extends BaseSessionView, A>(options: ChainHost
     // The HOST owns and draws the balance. We do not render a second one.
     purseBase: null,
     minStakeBase: BigInt(options.minStakeWhole ?? 1) * one(),
-    maxStakeBase: computeMaxWager(snapshot, { maxMultiplierX: options.maxMultiplierX }) ?? null,
+    maxStakeBase: maxStakeFrom(computeMaxWager(snapshot, { maxMultiplierX: options.maxMultiplierX })),
     defaultStakeBase: BigInt(options.defaultStakeWhole ?? 10) * one(),
     theme: snapshot?.ui.theme ?? 'dark',
     session: toSession(),

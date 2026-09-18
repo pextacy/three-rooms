@@ -8,8 +8,12 @@
  * the SDK version moves, since `npm run spike` exercises every symbol below —
  * and leaves Vite free to alias the real source at build time.
  *
- * Shapes copied from `sdk/casino-sdk/src/types.ts`. If they drift, `npm run
- * spike` is what catches it.
+ * Shapes copied from `sdk/casino-sdk/src/types.ts`. If they drift, this file
+ * says something `tsc` believes and the real SDK does not — which is exactly
+ * how the `computeMaxWager` change of 2026-09-17 reached production. Two things
+ * catch it now: `test/sdk-contract.spec.ts`, which calls the real SDK and
+ * asserts the shapes below on every `npm test`, and `npm run spike`, which
+ * exercises every symbol against the live simulator.
  */
 declare module '@chain/casino-sdk' {
   export type HexString = `0x${string}`;
@@ -117,14 +121,30 @@ declare module '@chain/casino-sdk/guest' {
   export function connectGameToHost(methods: GuestApiV1): GuestBridgeConnection;
 
   /**
+   * - `limit`: the platform accepts wagers up to `maxWager`.
+   * - `no-limit`: the host publishes its limits and none of them binds this bet.
+   * - `unknown`: the host publishes nothing to derive a limit from — fall back
+   *   to your own limits instead of treating it as unlimited.
+   *
+   * This was `bigint | undefined` until the SDK moved on 2026-09-17. The old
+   * shape is why `chain.ts` read `computeMaxWager(...) ?? null`, and why the
+   * deployed build stopped enforcing a ceiling: the union is never undefined,
+   * so the object itself became `maxStakeBase`. `test/sdk-contract.spec.ts`
+   * calls the real SDK and fails if this declaration drifts again.
+   */
+  export type MaxWagerResult =
+    | { kind: 'limit'; maxWager: bigint }
+    | { kind: 'no-limit' }
+    | { kind: 'unknown' };
+
+  /**
    * The highest wager `openSession` accepts right now, in base units, for a game
-   * whose worst case is `wager * maxMultiplierX`. `undefined` means the host did
-   * not report limits — treat as unknown, never as unlimited.
+   * whose worst case is `wager * maxMultiplierX`.
    */
   export function computeMaxWager(
     snapshot: Pick<HostSnapshotV1, 'casino'> | null | undefined,
     input: { maxMultiplierX: number },
-  ): bigint | undefined;
+  ): MaxWagerResult;
 
   export function reportGameContentSize(hostApi: Pick<HostApiV1, 'reportContentSize'> | null | undefined): Promise<void>;
   export function observeGameContentSize(hostApi: Pick<HostApiV1, 'reportContentSize'> | null | undefined): {

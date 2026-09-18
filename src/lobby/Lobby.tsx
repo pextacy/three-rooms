@@ -218,14 +218,35 @@ export function Lobby() {
 
             <p className="room__line">{game.line}</p>
 
-            <p className="room__rtp">
-              <span className="room__rtp-value">{game.rtp}</span>
-              <span className="room__rtp-label">{COPY.figureRtp}</span>
+            {/*
+              The literature the shape comes from. It is the whole claim this
+              door makes — that these are known decision problems rather than a
+              theme over a coin flip — and it was sitting unused in the
+              catalogue while the card showed nothing but a percentage.
+            */}
+            <p className="room__source">{game.source}</p>
+
+            <dl className="room__figures">
+              <div>
+                <dt>{COPY.figureRtp}</dt>
+                <dd className="room__rtp-value">{game.rtp}</dd>
+              </div>
+              <div>
+                <dt>{COPY.figureMax}</dt>
+                <dd>{game.maxPayout}</dd>
+              </div>
+            </dl>
+
+            <p className="room__lit">
+              {COPY.litPrefix} {game.lit}
             </p>
 
             <p className="room__aside">
               <a className="room__aside-link" href={`/${game.slug}/about/`}>
                 {COPY.about}
+              </a>
+              <a className="room__aside-link" href={`/${game.slug}/how/`}>
+                {COPY.how}
               </a>
             </p>
           </li>

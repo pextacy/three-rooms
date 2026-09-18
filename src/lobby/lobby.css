@@ -313,6 +313,57 @@ body {
   first thing a judge looks for, so it is set as an object rather than as body
   copy: monospace, large, and in the room's own ink.
 */
+/*
+  Where the shape comes from. This is the door's whole claim — that these are
+  known decision problems and not a theme over a coin flip — and it was in the
+  catalogue, unused, while the card showed a percentage and nothing else.
+*/
+.room__source {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--iron-soft);
+}
+
+/* Two readings, set as readings: a term and a figure under it. */
+.room__figures {
+  margin: 0.7rem 0 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  gap: 0 2rem;
+}
+
+.room__figures dt {
+  font-family: var(--font-num);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--iron-soft);
+}
+
+.room__figures dd {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-num);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--iron);
+}
+
+/* The declared return is the figure a judge checks, so it keeps the accent. */
+.room__figures .room__rtp-value {
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+
+/* What the room is lit by — the one line that says these are three places. */
+.room__lit {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--iron-soft);
+}
+
 .room__rtp {
   margin: 0.2rem 0 0;
   display: flex;
@@ -339,7 +390,10 @@ body {
 }
 
 .room__aside {
-  margin: 0.15rem 0 0;
+  margin: 0.6rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
 }
 
 .room__aside-link {

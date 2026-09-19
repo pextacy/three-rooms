@@ -28,7 +28,7 @@ import { CandlePaytable } from './generated/Paytable.sol';
  *      could corrupt, and `ctx.sessionId` is never read (I6).
  *
  *      All paytable and ladder constants come from `generated/Paytable.sol`,
- *      which `npm run gen:constants` mirrors from `src/game/paytable.ts`.
+ *      which `npm run gen:constants` mirrors from `src/games/candle/core/paytable.ts`.
  *      Never hand-edit either.
  *
  *      No constructor arguments. No unbounded loops — the heaviest operation in
@@ -104,7 +104,7 @@ contract CandleGame is ICasinoGameV2 {
    *      (5536/65536)^64 ~ 4e-69 — far rarer than a keccak collision, and it
    *      reverts loudly instead of spinning.
    *
-   *      Mirrors `draw` in src/game/rng.ts window for window (I11).
+   *      Mirrors `draw` in src/shared/rng.ts window for window (I11).
    */
   function _draw(bytes32 word, uint256 cursor) private pure returns (uint256) {
     bytes32 seed = word;

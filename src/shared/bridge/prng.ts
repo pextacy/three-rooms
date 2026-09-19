@@ -5,13 +5,13 @@
  * game's randomness model: with a host present the contract's VRF is the only
  * authority. It exists so the free-play build can synthesise the same message
  * shapes without a chain, and its output still goes through the real
- * `src/game/rng.ts` rejection sampler — so the demo's distribution IS the
+ * `src/shared/rng.ts` rejection sampler — so the demo's distribution IS the
  * production distribution.
  */
 export type Prng = {
   /** Next 32-bit unsigned value. */
   nextUint32(): number;
-  /** A fresh 256-bit word, the shape `src/game/rng.ts` consumes. */
+  /** A fresh 256-bit word, the shape `src/shared/rng.ts` consumes. */
   nextWord(): bigint;
 };
 

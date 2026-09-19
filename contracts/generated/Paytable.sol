@@ -4,9 +4,9 @@ pragma solidity ^0.8.30;
 // ===========================================================================
 //  GENERATED FILE — DO NOT EDIT.
 //
-//  Produced by `npm run gen:constants` from src/game/paytable.ts,
-//  src/game/wax.ts and src/game/solve.ts. Edit those, re-run, and let the
-//  parity tests tell you what broke (claude.md §2).
+//  Produced by `npm run gen:constants` from src/games/candle/core/paytable.ts,
+//  src/games/candle/core/wax.ts and src/games/candle/core/solve.ts. Edit
+//  those, re-run, and let the parity tests tell you what broke (claude.md §2).
 //
 //  Declared RTP under optimal play: 96.9961%
 //    exact: 7577820426157 / 7812500000000
@@ -44,7 +44,7 @@ library CandlePaytable {
   uint256 internal constant RTP_DENOMINATOR = 7_812_500_000_000;
 
   /// @notice Maps a uniform draw in [0, WEIGHT_DENOM) to a lot's face value.
-  /// @dev Mirrors `lotForDraw` in src/game/paytable.ts, branch for branch.
+  /// @dev Mirrors `lotForDraw` in src/games/candle/core/paytable.ts, branch for branch.
   function faceBpFor(uint256 r) internal pure returns (uint256) {
     if (r < 6_690) return    0; // 0.00x  Empty crate
     if (r < 7_690) return   50; // 0.50x  Ship's stores

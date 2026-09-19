@@ -42,7 +42,7 @@ const WINDOW_BITS = 16n;
 
 /**
  * Expands an exhausted word into a fresh one. The contract uses
- * `keccak256(abi.encodePacked(seed))` over the raw 32 bytes; `src/game/` is
+ * `keccak256(abi.encodePacked(seed))` over the raw 32 bytes; the game core is
  * pure and carries no hash implementation, so callers inject it.
  *
  * The path is reached with probability (5536/65536)^16 ≈ 1.4e-18 — it exists so

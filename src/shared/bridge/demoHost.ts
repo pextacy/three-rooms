@@ -3,7 +3,7 @@
  *
  * Implements the identical `CandleHost` interface with a seeded PRNG, so the UI
  * has exactly one code path and the demo cannot drift into being a different
- * game. Draws go through the same `src/game/rng.ts` as production, and payouts
+ * game. Draws go through the same `src/shared/rng.ts` as production, and payouts
  * through the same `payoutBase`, so both the distribution and the arithmetic are
  * the production ones.
  *

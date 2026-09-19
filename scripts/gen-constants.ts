@@ -1,7 +1,7 @@
 /**
  * `npm run gen:constants` — emits `contracts/generated/Paytable.sol`.
  *
- * The paytable lives in ONE place (`src/game/paytable.ts`). This mirrors it into
+ * The paytable lives in ONE place (`src/games/candle/core/paytable.ts`). This mirrors it into
  * Solidity so the contract and the client cannot drift (claude.md §2).
  * **Never hand-edit the output.**
  */
@@ -55,9 +55,9 @@ pragma solidity ^0.8.30;
 // ===========================================================================
 //  GENERATED FILE — DO NOT EDIT.
 //
-//  Produced by \`npm run gen:constants\` from src/game/paytable.ts,
-//  src/game/wax.ts and src/game/solve.ts. Edit those, re-run, and let the
-//  parity tests tell you what broke (claude.md §2).
+//  Produced by \`npm run gen:constants\` from src/games/candle/core/paytable.ts,
+//  src/games/candle/core/wax.ts and src/games/candle/core/solve.ts. Edit
+//  those, re-run, and let the parity tests tell you what broke (claude.md §2).
 //
 //  Declared RTP under optimal play: ${R.toPercent(rtp, 4)}%
 //    exact: ${R.toExactString(rtp)}
@@ -95,7 +95,7 @@ library CandlePaytable {
   uint256 internal constant RTP_DENOMINATOR = ${rtp.d.toLocaleString('en-US').replace(/,/g, '_')};
 
   /// @notice Maps a uniform draw in [0, WEIGHT_DENOM) to a lot's face value.
-  /// @dev Mirrors \`lotForDraw\` in src/game/paytable.ts, branch for branch.
+  /// @dev Mirrors \`lotForDraw\` in src/games/candle/core/paytable.ts, branch for branch.
   function faceBpFor(uint256 r) internal pure returns (uint256) {
 ${branches}
     return ${String(last.faceBp)}; // ${(last.faceBp / FACE_DENOM).toFixed(2)}x  ${last.name}

@@ -7,7 +7,7 @@
  *
  * The words come from a fast xoshiro-style PRNG rather than keccak — the VRF is
  * not what is under test here, the MAPPING is, and every word still goes
- * through the real `draw()` in src/game/rng.ts.
+ * through the real `draw()` in src/shared/rng.ts.
  *
  *   npm run bench                # 10^7 draws, 10^7 rounds
  *   BENCH_N=1000000 npm run bench

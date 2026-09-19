@@ -1,8 +1,8 @@
 /**
  * `npm run verify:rtp` — the exhaustive recomputation (docs.md §7).
  *
- * Every number this prints is recomputed from `src/game/paytable.ts` by the DP
- * in `src/game/solve.ts`, in exact BigInt rationals. Nothing is read from a
+ * Every number this prints is recomputed from `src/games/candle/core/paytable.ts` by the DP
+ * in `src/games/candle/core/solve.ts`, in exact BigInt rationals. Nothing is read from a
  * constant. This is the command a reviewer runs to check the claim, and it is
  * where the README and the `?` panel get their numbers (claude.md §8).
  */

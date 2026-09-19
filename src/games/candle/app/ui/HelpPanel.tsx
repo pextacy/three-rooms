@@ -1,7 +1,7 @@
 /**
  * The `?` panel (plan.md D2, claude.md §8).
  *
- * Every number here is computed at render time by the DP in `src/game/solve.ts`
+ * Every number here is computed at render time by the DP in `src/games/candle/core/solve.ts`
  * — the same function `npm run verify:rtp` runs. Nothing is typed by hand, so
  * the panel cannot drift from the contract. We publish the thresholds and the
  * whole strategy band, including the careless end: we are not selling an

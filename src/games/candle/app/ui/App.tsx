@@ -7,7 +7,7 @@
  * fixes it, so it has to be judged like this first.
  *
  * The UI holds no game logic (claude.md §3). Every number it shows is either
- * read from the host or computed by `src/game/`.
+ * read from the host or computed by `src/games/candle/core/`.
  */
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

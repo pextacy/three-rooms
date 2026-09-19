@@ -1,44 +1,76 @@
 /*
- * Caslon, because of where and when this is.
+ * Newsreader for the words, JetBrains Mono for the figures.
  *
- * William Caslon cut his first types in London between 1722 and 1725 and issued
- * his specimen in 1734 — the room these games are set in was reading them while
- * they were new. Nothing else is this close to the brief, and it is not a
- * costume: an English text face of exactly this decade is what a bill of sale,
- * an underwriter's slip and a broker's book were actually set in.
+ * What was here was Libre Caslon Text, chosen for the date on the calendar: an
+ * English text face of the 1720s for a room set in the 1720s. That was the
+ * right argument about history and the wrong one about the screen. Caslon's
+ * fine strokes are the first thing a backlit dark page eats, and every room on
+ * this origin is dark by design — the light model is the product.
  *
- * What was here before was `ui-serif`, which is not a typeface but a promise
- * the operating system keeps differently everywhere: New York on macOS,
- * Georgia on Windows, something else again on Linux. The page a judge opens was
- * not the page anyone designed.
+ * Newsreader (SIL OFL, licence beside the files) is a screen news serif, cut
+ * at optical size 12 here: at the same x-height its stems are a quarter
+ * heavier than Caslon's, which is the whole point of the swap.
  *
- * Libre Caslon Text (SIL OFL, licence beside the files) is the screen cut —
- * the historical one is too fine at these sizes. Subset to the characters this
- * interface actually uses: 10.7 KB for the regular, which is what every game
- * page loads. `swap`, so the first frame never waits for it.
+ * AT THE SAME X-HEIGHT is doing work in that sentence, and it is why
+ * `size-adjust` is below. Newsreader's em is drawn smaller than Caslon's —
+ * 469 against 530 at the same `font-size` — so swapping the face alone would
+ * have shrunk every word on the origin by a sixth, silently undoing the one
+ * deliberate decision the type scale records: that 15px of body text is too
+ * small for a room this dim. 113% puts the x-height back on 530 exactly and
+ * the caps on 778 against Caslon's 770, for the roman and the italic both —
+ * one value serves both because Newsreader's italic runs the same 2% over its
+ * roman that Caslon's did. Measured in Chrome, not inferred: the adjustment
+ * reaches `ctx.font` too, so the three canvases keep the sizes they were
+ * drawn against.
+ *
+ * The figure face used to be `ui-monospace`, which is not a typeface but a
+ * promise the operating system keeps differently everywhere: SF Mono on macOS,
+ * Consolas on Windows, something else again on Linux. Every price, every seed
+ * and every keycap on this origin was set in a face nobody chose — the same
+ * mistake `ui-serif` was, one layer down. JetBrains Mono (SIL OFL) needs no
+ * adjustment: it lands on the same x-height and the same 600/1000 advance the
+ * system monospaces it replaces already had.
+ *
+ * There is no bold. Nothing on this origin asks for one — every heading and
+ * every `th` sets 400 — so shipping a weight the browser can never match would
+ * be 7.5 KB of file that exists to be listed. Caslon's 700 was already that,
+ * and was carried here before anyone checked. The 500 is not spare: it is what
+ * `.section__head` resolves to, and it says so there.
+ *
+ * `swap` on all four, so the first frame never waits for any of them.
  */
 @font-face {
-  font-family: 'Libre Caslon Text';
+  font-family: 'Newsreader';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/caslon-400.woff2') format('woff2');
+  size-adjust: 113%;
+  src: url('/fonts/newsreader-400.woff2') format('woff2');
 }
 
 @font-face {
-  font-family: 'Libre Caslon Text';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/caslon-700.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Libre Caslon Text';
+  font-family: 'Newsreader';
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/caslon-italic-400.woff2') format('woff2');
+  size-adjust: 113%;
+  src: url('/fonts/newsreader-italic-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/jetbrains-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/jetbrains-500.woff2') format('woff2');
 }
 
 /*
@@ -90,8 +122,8 @@
    * a number that has to align in a column, a key you press, and a command you
    * type.
    */
-  --font: 'Libre Caslon Text', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  --font-num: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font: 'Newsreader', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --font-num: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /*
     Chrome tokens. Distinct from the four inks on purpose: inside a light host

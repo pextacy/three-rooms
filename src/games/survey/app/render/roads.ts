@@ -558,19 +558,19 @@ function drawManifest(
   ctx.textBaseline = 'alphabetic';
 
   if (state.payoutText) {
-    ctx.font = `${Math.max(12, scale * 0.032)}px ui-monospace, Menlo, monospace`;
+    ctx.font = `${Math.max(12, scale * 0.032)}px 'JetBrains Mono', ui-monospace, Menlo, monospace`;
     ctx.fillStyle = cssAlpha(palette.brass, state.settled ? 0.7 : 0.95);
     ctx.fillText(state.payoutText, x, bottom);
   }
 
   const nameY = bottom - Math.max(16, scale * 0.045);
-  ctx.font = `${Math.max(11, scale * 0.028)}px 'Libre Caslon Text', Georgia, serif`;
+  ctx.font = `${Math.max(11, scale * 0.028)}px 'Newsreader', Georgia, serif`;
   ctx.fillStyle = cssAlpha(state.settled ? palette.oxblood : palette.brass, state.settled ? 0.5 : 0.9);
   ctx.fillText(state.manifest.name, x, nameY);
 
   // The value, in the same weight CANDLE gives a face value. Hierarchy by
   // luminance, never by size — the type scale is fixed (claude.md §5).
-  ctx.font = `${Math.max(18, scale * 0.085)}px 'Libre Caslon Text', Georgia, serif`;
+  ctx.font = `${Math.max(18, scale * 0.085)}px 'Newsreader', Georgia, serif`;
   ctx.fillStyle = cssAlpha(state.settled ? palette.oxblood : palette.tallow, state.settled ? 0.55 : 1);
   ctx.fillText(state.manifest.valueText, x, nameY - Math.max(14, scale * 0.032));
 }

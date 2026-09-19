@@ -460,14 +460,14 @@ function drawLot(
   // Its face value, in tallow, above the goods. Hierarchy by luminance, never by
   // size — the type scale is fixed (claude.md §5).
   const faceSize = Math.max(18, s * 0.075);
-  ctx.font = `${faceSize}px 'Libre Caslon Text', Georgia, serif`;
+  ctx.font = `${faceSize}px 'Newsreader', Georgia, serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = cssAlpha(receded ? palette.oxblood : palette.tallow, receded ? 0.55 : 1);
   ctx.fillText(state.lot.faceText, x, baseY - s * 0.185 + lift);
 
   const nameSize = Math.max(11, s * 0.026);
-  ctx.font = `${nameSize}px 'Libre Caslon Text', Georgia, serif`;
+  ctx.font = `${nameSize}px 'Newsreader', Georgia, serif`;
   ctx.fillStyle = cssAlpha(receded ? palette.oxblood : ink, receded ? 0.5 : 0.9);
   ctx.fillText(state.lot.name, x, baseY - s * 0.155 + lift);
 
@@ -476,7 +476,7 @@ function drawLot(
     // auctioneer's own mark. It used to be a bare figure floating on the table
     // with nothing to say it belonged to anything.
     const py = baseY + s * 0.072 + lift;
-    ctx.font = `${Math.max(12, s * 0.032)}px ui-monospace, Menlo, monospace`;
+    ctx.font = `${Math.max(12, s * 0.032)}px 'JetBrains Mono', ui-monospace, Menlo, monospace`;
     const rule = s * 0.075;
     ctx.fillStyle = cssAlpha(palette.brass, receded ? 0.35 : 0.5);
     ctx.fillRect(x - rule, py + s * 0.012, rule * 2, Math.max(1, s * 0.0025));
@@ -736,7 +736,7 @@ function drawBurnedLot(
   const y = height * TABLE_Y - s * 0.05 - s * 0.04 * fade;
   const alpha = (1 - fade) * 0.5;
 
-  ctx.font = `${Math.max(12, s * 0.05 * (1 - fade * 0.3))}px 'Libre Caslon Text', Georgia, serif`;
+  ctx.font = `${Math.max(12, s * 0.05 * (1 - fade * 0.3))}px 'Newsreader', Georgia, serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = cssAlpha(palette.oxblood, alpha);

@@ -50,7 +50,7 @@ Two absolute rules about where truth lives:
 
 ---
 
-## 2. Game core (`src/game/`)
+## 2. Game core (`src/games/<slug>/core/`)
 
 Pure TypeScript. No React, no DOM, no `window`, no `Date.now()`, no ambient
 randomness. Everything is `(state, input) -> state`.
@@ -154,7 +154,7 @@ forces the keccak rehash.
 > 10⁷ simulated rounds in ~20 s by generating its word stream from a fast PRNG
 > instead of keccak — the mapping is what is under test there, not the VRF.
 
-**One deliberate asymmetry.** `src/game/` carries no hash implementation, because
+**One deliberate asymmetry.** The game core carries no hash implementation, because
 it must stay pure (`claude.md` §3). The rehash on window exhaustion is therefore
 an **injected** function: the contract uses `keccak256(abi.encodePacked(seed))`,
 the parity tests inject exactly that, and `demoHost` injects a fresh word from its
@@ -924,7 +924,7 @@ document plus every chunk it loads, which is what one player downloads.
 | `vite`, `typescript`, `vitest` | toolchain |
 | `jsdom` | **devDependency only.** The environment for `test/ui.spec.tsx`, which drives the real React tree through a whole round plus the keyboard path. A render that throws is the kind of break that ships silently; nothing lighter proves it does not. Zero bundle cost. |
 | `viem` | **devDependency only.** Drives the spikes and the parity tests against the local chain. Deliberately **not** a runtime dependency: `gameData` is empty and `actionData` is a single byte, so the guest needs no ABI encoder and the bundle pays nothing for this. |
-| Libre Caslon Text | **Not a package — three self-hosted `woff2` files in `public/fonts/`.** William Caslon cut his first types in London between 1722 and 1725; the room these games are set in was reading them while they were new, and an English text face of exactly this decade is what a bill of sale and an underwriter's slip were actually set in. What it replaces is `ui-serif`, which is not a typeface but a promise the operating system keeps differently everywhere — New York on macOS, Georgia on Windows — so the page a judge opened was not the page anyone designed. SIL OFL, licence beside the files. Subset to the characters this interface uses: **10.7 KB** for the regular, which is what a game page loads, plus an italic and a bold the List alone needs. `font-display: swap`, so the first frame never waits for it, and the bundle gate counts `woff2` so the weight is in the budget rather than beside it. |
+| Newsreader, JetBrains Mono | **Not packages — four self-hosted `woff2` files in `public/fonts/`.** Two faces, and the rule for which is which is the one the interface already follows: words in the text face, figures in the figure face. They replace a Caslon picked for the date on the calendar and a `ui-monospace` that is not a typeface at all but a promise the operating system keeps differently everywhere — SF Mono on macOS, Consolas on Windows — so every price, seed and keycap on this origin was set in a face nobody chose. Newsreader is cut at optical size 12 and carries `size-adjust: 113%`, which is not decoration: its em is drawn smaller than Caslon's, so the face alone would have shrunk every word here by a sixth and quietly undone the one thing the type scale is on record about. Adjusted, it lands on Caslon's x-height exactly with stems a quarter heavier — which is the point, on pages that are dark by design. JetBrains Mono needs no adjustment: same x-height, same 600/1000 advance as the system monospaces it replaces. Both SIL OFL, licences beside the files. Subset to the 110 characters this interface uses: **7.3 KB** for the text regular and **5.0 KB** for the figures, which is what a game page preloads, plus an italic the door and the panels need and a 500 that `.section__head` resolves to. **There is no bold** — every heading and every `th` on this origin sets 400, so a bold would be a file that exists to be listed. `font-display: swap`, so the first frame never waits, and the bundle gate counts `woff2` so the weight is in the budget rather than beside it. |
 
 No animation library, no state library, no UI kit, no icon pack, no audio library.
 

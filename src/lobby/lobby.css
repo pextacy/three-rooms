@@ -115,7 +115,19 @@ body {
 .masthead {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  /*
+    1.15fr held the turned italic line on one line in Caslon with about four
+    pixels to spare, which is not a margin, it is a coincidence. The text face
+    is 7.5% wider now and the coincidence expired: between roughly 1200px and
+    1360px — 1280 and 1366 being the two commonest laptops there are — "When do
+    you stop?" broke across two lines and `text-wrap: balance` split the
+    question mid-phrase, which is the one thing the italic line exists not to
+    do. 1.25fr is the smallest ratio that holds it, and it costs nothing: the
+    three-line title was TALLER than the lede beside it, so the masthead comes
+    out 56px shorter at 1280 than it was with the break in it. Below 62rem this
+    is one column and the ratio does not apply at all.
+  */
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   column-gap: clamp(1.5rem, 5vw, 4rem);
   row-gap: 0.85rem;
   align-items: end;

@@ -2,13 +2,13 @@
   GENERATED FILE — DO NOT EDIT.
   Written by `npm run gen:readme` from src/games/, src/shared/render/ and each
   game's own audio. Every number below is recomputed from the manifests by the
-  same DPs that `npm run verify:rtp` and `npm run verify:survey` run, in exact
-  BigInt rationals. Edit the source, re-run.
+  same DPs that `npm run verify:rtp`, `verify:survey` and `verify:brokers`
+  run, in exact BigInt rationals. Edit the source, re-run.
 -->
 
 # Games with a decision in them
 
-Two provably-fair on-chain wagering games for **Chain Jam Vol. 1**, on one origin.
+Three provably-fair on-chain wagering games for **Chain Jam Vol. 1**, on one origin.
 Each is a separate entry: its own page, its own `game.manifest.json`, its own
 contract, its own declared RTP.
 
@@ -19,7 +19,7 @@ contract, its own declared RTP.
 | **THE BROKERS** | Search with recall — Pandora's Box, and Weitzman's index | **96.9637%** | 4.99× | [https://candle-ashen-tau.vercel.app/brokers/](https://candle-ashen-tau.vercel.app/brokers/) |
 
 Free play in both. No wallet, no modal, no splash — the first round is already on
-the table when the page loads. Reproduce either number in under a minute:
+the table when the page loads. Reproduce any of the three in under a minute:
 
 ```sh
 npm install
@@ -528,10 +528,10 @@ RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract -- candle
 RPC_URL=https://…  DEPLOYER_KEY=0x…  npm run deploy:contract -- survey
 ```
 
-Two contracts, one interface, the same discipline: no constructor arguments, no
-storage, every hook `view`, no unbounded loops. Session state travels in four
-bytes of `gameState` for CANDLE and five for THE SURVEY, which the facet emits
-and takes back. The deployed bytecode is **2,614 bytes** for CANDLE, **3,809 bytes** for THE SURVEY and **3,235 bytes** for THE BROKERS — between a tenth and a sixth of the EIP-170 limit.
+Three contracts, one interface, the same discipline: no constructor arguments,
+no storage, every hook `view`, no unbounded loops. Session state travels in
+four bytes of `gameState` for CANDLE and five for each of THE SURVEY and THE
+BROKERS, which the facet emits and takes back. The deployed bytecode is **2,614 bytes** for CANDLE, **3,809 bytes** for THE SURVEY and **3,235 bytes** for THE BROKERS — between a tenth and a sixth of the EIP-170 limit.
 
 `deploy:contract` has no default chain on purpose, and reads each contract back
 after deploying — against that game's own generated constants, so a retuned

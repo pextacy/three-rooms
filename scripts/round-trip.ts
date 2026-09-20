@@ -37,6 +37,9 @@ const chain = {
   nativeCurrency: { name: 'E', symbol: 'E', decimals: 18 },
   rpcUrls: { default: { http: [deployed.rpcUrl] } },
 } as const;
+// Anvil's well-known dev account #0. Published in the Foundry docs, funded only
+// on a throwaway local chain, and worthless anywhere else — it is in the clear
+// on purpose so this runs with no setup. Never a key that holds anything.
 const account = privateKeyToAccount('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80');
 const pub = createPublicClient({ chain, transport: http(deployed.rpcUrl) });
 const wallet = createWalletClient({ account, chain, transport: http(deployed.rpcUrl) });

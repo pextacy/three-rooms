@@ -72,6 +72,15 @@ jobs:
       - name: build
         run: npm run build
 
+      # gen:readme MEASURES the deployed bytecode from the forge artefacts rather
+      # than quoting a number somebody typed. That makes the regeneration below
+      # comparable to the committed README only if the contracts have actually
+      # been built here: without it the generator takes its no-artefacts branch
+      # and the diff fails on a missing sentence rather than a stale number.
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: build the contracts, so the README's sizes are measurable
+        run: npm run contracts:build
+
       # README.md, the site's documents and the Solidity constants are all
       # generated. A stale one is a published number that no longer matches the
       # code.

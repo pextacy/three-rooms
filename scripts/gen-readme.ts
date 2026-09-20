@@ -104,13 +104,28 @@ const sizes = [
   ['THE SURVEY', bytecodeSize('Survey.sol/SurveyGame.json')],
   ['THE BROKERS', bytecodeSize('Brokers.sol/BrokersGame.json')],
 ] as const;
-// "a, b and c" — the numbers themselves carry commas, so the list is joined by
-// hand rather than by a regex over the finished string.
-const phrases = sizes.map(([name, bytes]) => `**${(bytes as number).toLocaleString('en-US')} bytes** for ${name}`);
-const sizeSentence = sizes.every(([, bytes]) => bytes !== null)
-  ? `The deployed bytecode is ${phrases.slice(0, -1).join(', ')} and ${phrases[phrases.length - 1]} — ` +
-    'between a tenth and a sixth of the EIP-170 limit.'
-  : 'Run `npm run contracts:build` to see the deployed sizes against the EIP-170 limit.';
+/*
+  "a, b and c" — the numbers themselves carry commas, so the list is joined by
+  hand rather than by a regex over the finished string.
+
+  The narrowing below is load-bearing, and used not to be. `phrases` was built
+  unconditionally above the `every(... !== null)` guard, with a `bytes as number`
+  cast that told TypeScript to stop looking — so on a checkout with no forge
+  artefacts the map hit null.toLocaleString() and the generator died before the
+  guard it was written to obey could run. bytecodeSize() has always returned
+  null for that case and the comment above it has always promised the sentence
+  adapts; it just never got the chance.
+*/
+const phrases: string[] = [];
+for (const [name, bytes] of sizes) {
+  if (bytes === null) break;
+  phrases.push(`**${bytes.toLocaleString('en-US')} bytes** for ${name}`);
+}
+const sizeSentence =
+  phrases.length === sizes.length
+    ? `The deployed bytecode is ${phrases.slice(0, -1).join(', ')} and ${phrases[phrases.length - 1]} — ` +
+      'between a tenth and a sixth of the EIP-170 limit.'
+    : 'Run `npm run contracts:build` to see the deployed sizes against the EIP-170 limit.';
 
 const solution = solve();
 const optimal = optimalPolicy(solution);

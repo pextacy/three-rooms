@@ -9,9 +9,15 @@
       content="Wagering games built on decision primitives that do not exist anywhere in the casino industry."
     />
     <link rel="icon" href="/candle-icon.svg" />
-    <!-- Both faces the first frame needs: the words, and every live figure. -->
+    <!--
+      The text face only. The figure face is NOT preloaded on purpose: its
+      fallback is the system monospace, which carries the same 600/1000 advance
+      (measured in Chrome: 240.0px against 240.8px for the same string), so the
+      swap changes the glyphs and moves nothing. Newsreader has no such
+      stand-in — Georgia is a different width — so it keeps the hint, and the
+      critical path keeps a request it can spend on something that shifts.
+    -->
     <link rel="preload" href="/fonts/newsreader-400.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/jetbrains-400.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="theme-color" content="#0c0a07" />
 
     <!--

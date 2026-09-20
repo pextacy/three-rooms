@@ -11,3 +11,12 @@ spikes/dbg.mjs
 .vercel
 contracts/out/
 cache/
+
+# Nothing here needs one, and that is the point: `deploy-contract.mjs` reads
+# DEPLOYER_KEY from the environment and has no default, so the one key this repo
+# can be handed is a funded one. On a public repo an untracked .env is a file
+# somebody commits by accident exactly once.
+.env
+.env.*
+*.pem
+*.key

@@ -14,9 +14,9 @@ contract, its own declared RTP.
 
 | | The decision primitive | Declared RTP | Max | Play |
 |---|---|---|---|---|
-| **CANDLE** | Discounted optimal stopping — Gilbert–Mosteller with a deterministic decay and a forced acceptance at the horizon | **96.9961%** | 25× | [https://candle-ashen-tau.vercel.app/candle/](https://candle-ashen-tau.vercel.app/candle/) |
-| **THE SURVEY** | Sequential hypothesis testing — Wald's problem with a priced stopping rule | **97.4141%** | 20× | [https://candle-ashen-tau.vercel.app/survey/](https://candle-ashen-tau.vercel.app/survey/) |
-| **THE BROKERS** | Search with recall — Pandora's Box, and Weitzman's index | **96.9637%** | 4.99× | [https://candle-ashen-tau.vercel.app/brokers/](https://candle-ashen-tau.vercel.app/brokers/) |
+| **CANDLE** | Discounted optimal stopping — Gilbert–Mosteller with a deterministic decay and a forced acceptance at the horizon | **96.9961%** | 25× | [https://three-rooms-jam.vercel.app/candle/](https://three-rooms-jam.vercel.app/candle/) |
+| **THE SURVEY** | Sequential hypothesis testing — Wald's problem with a priced stopping rule | **97.4141%** | 20× | [https://three-rooms-jam.vercel.app/survey/](https://three-rooms-jam.vercel.app/survey/) |
+| **THE BROKERS** | Search with recall — Pandora's Box, and Weitzman's index | **96.9637%** | 4.99× | [https://three-rooms-jam.vercel.app/brokers/](https://three-rooms-jam.vercel.app/brokers/) |
 
 Free play in both. No wallet, no modal, no splash — the first round is already on
 the table when the page loads. Reproduce any of the three in under a minute:

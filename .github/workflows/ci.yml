@@ -35,6 +35,16 @@ jobs:
       - name: the SDK the deploy will actually use
         run: npm run sdk:fetch -- --force
 
+      # The SDK has dependencies of its own — penpal and zod, declared in its own
+      # package.json — and `npm ci` above installs this project's, not its. Only
+      # one thing here reaches them: test/sdk-contract.spec.ts imports the SDK's
+      # manifest.ts, which imports zod. Without this the suite dies on
+      # ERR_MODULE_NOT_FOUND, while passing locally for anyone who has ever run
+      # sdk:install by hand. The contract job below has always had this step;
+      # this job never did, and nothing noticed until CI ran for the first time.
+      - name: install the SDK workspaces
+        run: npm run sdk:install
+
       - name: typecheck
         run: npm run typecheck
 

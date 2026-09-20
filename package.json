@@ -1,9 +1,9 @@
 {
-  "name": "candle",
+  "name": "three-rooms",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "A lot is on the table, the candle is burning, and every inch you wait is worth less.",
+  "description": "Three provably-fair on-chain wagering games for Chain Jam Vol. 1 — optimal stopping, sequential testing and search with recall, in Lloyd's Coffee House, 1728.",
   "scripts": {
     "dev": "vite --port 3200 --strictPort",
     "build": "node scripts/require-sdk.mjs && vite build",
